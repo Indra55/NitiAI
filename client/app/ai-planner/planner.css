@@ -1,0 +1,216 @@
+/* AI Planner Custom Styles */
+
+/* Smooth transitions for drag-and-drop */
+.kanban-task {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.kanban-task:hover {
+    transform: translateY(-2px);
+}
+
+.kanban-task.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+    cursor: grabbing !important;
+}
+
+/* Timeline animations */
+@keyframes milestone-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.7);
+    }
+
+    50% {
+        box-shadow: 0 0 0 10px rgba(var(--primary-rgb), 0);
+    }
+}
+
+.milestone-node.active {
+    animation: milestone-pulse 2s infinite;
+}
+
+/* Progress bar animations */
+@keyframes progress-fill {
+    from {
+        width: 0%;
+    }
+}
+
+.progress-bar {
+    animation: progress-fill 1s ease-out;
+}
+
+/* Completion celebration */
+@keyframes celebrate {
+
+    0%,
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    25% {
+        transform: scale(1.1) rotate(-5deg);
+    }
+
+    75% {
+        transform: scale(1.1) rotate(5deg);
+    }
+}
+
+.celebration-icon {
+    animation: celebrate 0.6s ease-in-out;
+}
+
+/* Dependency graph node pulse */
+@keyframes node-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+.dependency-node.in-progress {
+    animation: node-pulse 2s infinite;
+}
+
+/* Card hover effects */
+.planner-card {
+    transition: all 0.3s ease;
+    background: var(--card);
+    border: 1px solid var(--border);
+}
+
+.planner-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Badge animations */
+.badge-pop {
+    animation: badge-pop 0.3s ease-out;
+}
+
+@keyframes badge-pop {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Loading states */
+.skeleton {
+    background: linear-gradient(90deg,
+            var(--muted) 25%,
+            var(--muted-foreground) 50%,
+            var(--muted) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Priority indicators */
+.priority-critical {
+    border-left: 4px solid #ef4444;
+}
+
+.priority-high {
+    border-left: 4px solid #f97316;
+}
+
+.priority-medium {
+    border-left: 4px solid #f59e0b;
+}
+
+.priority-low {
+    border-left: 4px solid #3b82f6;
+}
+
+/* Glassmorphism effects */
+.glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Smooth scrolling */
+.timeline-container {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--muted);
+}
+
+.timeline-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.timeline-container::-webkit-scrollbar-track {
+    background: var(--muted);
+    border-radius: 4px;
+}
+
+.timeline-container::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+
+.timeline-container::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-foreground);
+}
+
+/* Task card blocked state */
+.task-blocked {
+    opacity: 0.6;
+    position: relative;
+}
+
+.task-blocked::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(45deg,
+            transparent,
+            transparent 10px,
+            rgba(107, 114, 128, 0.1) 10px,
+            rgba(107, 114, 128, 0.1) 20px);
+    pointer-events: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .kanban-columns {
+        flex-direction: column;
+    }
+
+    .timeline-node {
+        transform: scale(0.8);
+    }
+}

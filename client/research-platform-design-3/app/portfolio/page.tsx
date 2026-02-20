@@ -1,0 +1,75 @@
+"use client"
+
+import { DynamicNavbar } from "@/components/dynamic-navbar"
+import { ProtectedRoute } from "@/components/protected-route"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { ArrowRight, Code } from "lucide-react"
+
+export default function PortfolioPage() {
+  const projects = [
+    {
+      title: "Distributed Cache System",
+      description: "High-performance cache with 99.9% uptime",
+      impact: "2M+ requests/day",
+      link: "#",
+    },
+    {
+      title: "Real-time Analytics Dashboard",
+      description: "Live insights for 500+ companies",
+      impact: "40% performance improvement",
+      link: "#",
+    },
+    {
+      title: "AI-Powered Recommendation Engine",
+      description: "Personalized content for 1M+ users",
+      impact: "35% engagement increase",
+      link: "#",
+    },
+  ]
+
+  return (
+    <ProtectedRoute>
+      <DynamicNavbar />
+      <main className="min-h-screen bg-background pt-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
+          <section className="space-y-4 mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary">
+              <Code className="w-4 h-4" />
+              Showcase Your Work
+            </div>
+            <h1 className="text-5xl lg:text-6xl font-display font-bold tracking-tight text-pretty leading-[1.1]">
+              Your Portfolio
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl font-medium">
+              Highlight projects that matter. Make your impact visible to recruiters.
+            </p>
+          </section>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project, i) => (
+              <Card
+                key={i}
+                className="p-6 border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/60 transition-all hover:shadow-lg hover:scale-105 animate-in fade-in slide-in-from-bottom-4"
+                style={{ animationDelay: `${100 + i * 100}ms` }}
+              >
+                <h3 className="font-display text-lg font-bold mb-2">{project.title}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{project.description}</p>
+                <p className="text-sm font-medium text-primary mb-4">{project.impact}</p>
+                <Button variant="link" className="p-0 h-auto text-primary gap-2">
+                  View Project <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Card>
+            ))}
+          </div>
+
+          <div className="mt-16 text-center">
+            <Button size="lg" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+              Add a Project <ArrowRight className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </main>
+    </ProtectedRoute>
+  )
+}

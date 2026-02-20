@@ -1,0 +1,293 @@
+/* Dashboard-specific styles with research platform design - EXACT IMPLEMENTATION */
+
+.dashboard-theme {
+  /* Warm white background theme for dashboard */
+  --background: oklch(0.99 0.005 50);
+  --foreground: oklch(0.15 0.01 270);
+  --card: oklch(1 0.003 50);
+  --card-foreground: oklch(0.15 0.01 270);
+  --popover: oklch(1 0.003 50);
+  --popover-foreground: oklch(0.15 0.01 270);
+  /* Updated primary to vibrant warm orange with better contrast */
+  --primary: oklch(0.62 0.22 35);
+  --primary-foreground: oklch(0.98 0.005 60);
+  /* Updated secondary to modern teal for better complementary feel */
+  --secondary: oklch(0.65 0.12 170);
+  --secondary-foreground: oklch(0.15 0.01 270);
+  --muted: oklch(0.96 0.008 50);
+  --muted-foreground: oklch(0.45 0.02 250);
+  --accent: oklch(0.58 0.16 15);
+  --accent-foreground: oklch(0.98 0.005 60);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.98 0.005 60);
+  --border: oklch(0.92 0.008 50);
+  --input: oklch(0.95 0.008 48);
+  --ring: oklch(0.62 0.22 35);
+  --chart-1: oklch(0.62 0.22 35);
+  --chart-2: oklch(0.65 0.12 170);
+  --chart-3: oklch(0.58 0.16 15);
+  --chart-4: oklch(0.68 0.15 120);
+  --chart-5: oklch(0.6 0.14 280);
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-bg-strong: rgba(255, 255, 255, 0.9);
+
+  /* Fix cursor - dashboard should have normal cursor */
+  cursor: auto;
+
+  /* Warm white background */
+  background-color: var(--background) !important;
+}
+
+/* White dropdown menus for dashboard */
+.dashboard-theme [data-slot="dropdown-menu-content"],
+.dashboard-theme [role="menu"],
+.dashboard-theme [data-radix-popper-content-wrapper] {
+  background-color: #ffffff !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+.dashboard-theme [data-slot="dropdown-menu-item"],
+.dashboard-theme [role="menuitem"] {
+  color: var(--foreground) !important;
+}
+
+.dashboard-theme [data-slot="dropdown-menu-item"]:hover,
+.dashboard-theme [role="menuitem"]:hover {
+  background-color: var(--muted) !important;
+}
+
+.dashboard-theme * {
+  cursor: inherit;
+}
+
+.dashboard-theme button,
+.dashboard-theme a,
+.dashboard-theme [role="button"],
+.dashboard-theme [type="button"],
+.dashboard-theme input[type="submit"],
+.dashboard-theme input[type="button"] {
+  cursor: pointer !important;
+}
+
+.dashboard-theme input:not([type="button"]):not([type="submit"]),
+.dashboard-theme textarea,
+.dashboard-theme select {
+  cursor: text !important;
+}
+
+.dark .dashboard-theme {
+  --background: oklch(0.12 0.01 270);
+  --foreground: oklch(0.95 0.01 60);
+  --card: oklch(0.15 0.015 270);
+  --card-foreground: oklch(0.95 0.01 60);
+  --popover: oklch(0.14 0.015 270);
+  --popover-foreground: oklch(0.95 0.01 60);
+  /* Updated dark mode primary */
+  --primary: oklch(0.7 0.22 35);
+  --primary-foreground: oklch(0.12 0.01 270);
+  /* Updated dark mode secondary */
+  --secondary: oklch(0.62 0.12 170);
+  --secondary-foreground: oklch(0.95 0.01 60);
+  --muted: oklch(0.2 0.02 260);
+  --muted-foreground: oklch(0.6 0.01 250);
+  --accent: oklch(0.65 0.16 15);
+  --accent-foreground: oklch(0.12 0.01 270);
+  --destructive: oklch(0.55 0.2 25);
+  --destructive-foreground: oklch(0.95 0.01 60);
+  --border: oklch(0.25 0.02 260);
+  --input: oklch(0.22 0.02 260);
+  --ring: oklch(0.7 0.22 35);
+  --chart-1: oklch(0.7 0.22 35);
+  --chart-2: oklch(0.62 0.12 170);
+  --chart-3: oklch(0.65 0.16 15);
+  --chart-4: oklch(0.7 0.15 120);
+  --chart-5: oklch(0.62 0.14 280);
+  --glass-bg: oklch(0.15 0.015 270 / 0.6);
+  --glass-bg-strong: oklch(0.15 0.015 270 / 0.8);
+}
+
+.dashboard-theme {
+  font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
+  letter-spacing: -0.3px;
+  line-height: 1.6;
+  color: var(--foreground);
+  background-color: var(--background);
+}
+
+.dashboard-theme h1,
+.dashboard-theme h2,
+.dashboard-theme h3,
+.dashboard-theme h4,
+.dashboard-theme h5,
+.dashboard-theme h6 {
+  font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+
+.dashboard-theme h1 {
+  font-size: 2.25rem;
+}
+
+.dashboard-theme h2 {
+  font-size: 1.875rem;
+}
+
+.dashboard-theme h3 {
+  font-size: 1.5rem;
+}
+
+.dashboard-theme p {
+  line-height: 1.75;
+  color: var(--foreground);
+}
+
+/* Ensure Poppins font for all dashboard elements */
+.dashboard-theme,
+.dashboard-theme *,
+.dashboard-theme input,
+.dashboard-theme textarea,
+.dashboard-theme select,
+.dashboard-theme button,
+.dashboard-theme a,
+.dashboard-theme span,
+.dashboard-theme p,
+.dashboard-theme div {
+  font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
+}
+
+/* Consistent box shadows across all dashboard elements */
+.dashboard-theme [class*="Card"],
+.dashboard-theme .card,
+.dashboard-theme [class*="card"],
+.dashboard-theme [data-card],
+.dashboard-theme [data-slot="card"],
+.dashboard-theme article,
+.dashboard-theme [class*="shadow"] {
+  box-shadow: none !important;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  border: none !important;
+}
+
+.dashboard-theme [class*="Card"]:not(.no-zoom):hover,
+.dashboard-theme .card:not(.no-zoom):hover,
+.dashboard-theme [class*="card"]:not(.no-zoom):hover,
+.dashboard-theme [data-card]:not(.no-zoom):hover,
+.dashboard-theme [data-slot="card"]:not(.no-zoom):hover,
+.dashboard-theme article:not(.no-zoom):hover {
+  box-shadow: none !important;
+  transform: translateY(-2px);
+}
+
+.no-zoom:hover {
+  transform: none !important;
+}
+
+/* Override Tailwind shadow classes */
+.dashboard-theme .shadow-sm,
+.dashboard-theme .shadow,
+.dashboard-theme .shadow-md,
+.dashboard-theme .shadow-lg {
+  box-shadow: none !important;
+}
+
+/* Explicitly target border-none and shadow-none for total eradication */
+.dashboard-theme .border-none {
+  border: none !important;
+}
+
+.dashboard-theme .shadow-none {
+  box-shadow: none !important;
+}
+
+/* Ensure main containers have warm white background */
+.dashboard-theme main,
+.dashboard-theme [role="main"],
+.dashboard-theme .min-h-screen {
+  background-color: var(--background) !important;
+}
+
+/* Navbar specific fixes for dashboard - ensure visibility */
+.dashboard-theme nav,
+nav.dashboard-theme {
+  color: var(--foreground) !important;
+}
+
+.dashboard-theme nav *,
+nav.dashboard-theme * {
+  color: inherit;
+}
+
+.dashboard-theme nav button,
+.dashboard-theme nav a,
+nav.dashboard-theme button,
+nav.dashboard-theme a {
+  color: var(--foreground) !important;
+}
+
+.dashboard-theme nav .text-muted-foreground,
+nav.dashboard-theme .text-muted-foreground {
+  color: var(--muted-foreground) !important;
+}
+
+.dashboard-theme nav span,
+nav.dashboard-theme span {
+  color: var(--foreground) !important;
+}
+
+.dashboard-theme nav svg,
+nav.dashboard-theme svg {
+  color: inherit;
+}
+
+/* Premium animations and effects for dashboard */
+@keyframes gradient-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.15);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.dashboard-theme .gradient-shift {
+  animation: gradient-shift 3s ease infinite;
+}
+
+.dashboard-theme .glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.dashboard-theme .shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background-size: 1000px 100%;
+}
