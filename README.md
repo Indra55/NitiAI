@@ -1,134 +1,90 @@
-# SkillSphere - AI Career Guidance Platform 🚀
+# NitiAI - Comprehensive AI Career Guidance Platform 🚀
 
-SkillSphere is an intelligent career acceleration platform that helps users analyze their resumes, gain market insights, and generate professional portfolios using AI.
+NitiAI is an all-in-one intelligent career acceleration platform. It helps users analyze resumes, gain market insights, generate professional portfolios, and practice with a state-of-the-art Mock Interview Arena.
+
+## 🔗 Deployment
+The live application is accessible at: **[https://nitiai.vercel.app](https://nitiai.vercel.app)**
+
+---
 
 ## 🌟 Key Features
 
-*   **📄 AI Resume Parsing**: Automatically extracts professional details (skills, experience, education) from PDF resumes using Google Gemini AI.
-*   **🎭 Career Persona**: Generates a detailed professional persona summarizing your strengths, weaknesses, and unique value proposition based on deep resume analysis.
-*   **🤖 AI Career Coach**: Interactive chat interface providing personalized career advice, role recommendations, and skill gap analysis.
-*   **💼 LinkedIn Job Tracker**: Browser extension integration that allows you to save jobs directly from LinkedIn, track application status, and get AI-match scores instantly.
-*   **👥 Peer Learning**: Connect with peers aiming for similar roles to share resources, conduct study sessions, and track progress together.
-*   **📚 Personalized Learning**: Curated learning paths and resource recommendations tailored to close your specific skill gaps.
-*   **💻 Mock Interview Arena**: Full-featured coding interview environment with **P2P Video/Audio** (WebRTC) and a real-time code compiler hosted on **GCP Computer Engine**.
-*   **📝 AI Performance Reports**: Detailed post-interview feedback analyzing code quality, efficiency, and interview performance.
-*   **📊 Job Market Trends**: Visualizes trending roles, fast-growing industries, and salary insights tailored to your profile.
-*   **🌐 Dynamic Portfolio Builder**: Generates a stunning, downloadable personal portfolio website based on your resume data.
-*   **🔒 Secure Authentication**: Robust user authentication system using JWT.
+### 1. NitiAI Core (Career Guidance)
+*   **📄 AI Resume Parsing**: Extracts skills, experience, and education from PDFs using Google Gemini.
+*   **🎭 Career Persona**: Deep analysis of your professional profile to highlight unique value propositions.
+*   **🤖 AI Career Coach**: Personalized career advice and skill gap analysis via an interactive chat interface.
+*   **💼 Job Tracker**: Save jobs from LinkedIn and get instant AI-match scores.
+*   **� Market Trends**: Visualizes trending roles, growing industries, and salary insights.
+*   **🌐 Portfolio Builder**: Generates stunning, downloadable personal portfolios.
 
-## 🛠️ Tech Stack
+### 2. Mock Interview Arena
+*   **💻 Coding Environment**: Real-time collaborative editor with live code execution.
+*   **🎙️ Voice Interactor**: AI-powered voice interviews for a hands-free, realistic experience (powered by Vapi).
+*   **� Performance Reports**: Detailed post-interview feedback on code quality, logic, and communication.
+*   **� Resource Discovery**: Targeted YouTube resources based on your interview performance.
 
-### Client (Frontend)
-*   **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
-*   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-*   **UI Components**: [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/)
-*   **Animations**: [Framer Motion](https://www.framer.com/motion/)
-*   **Charts**: [Recharts](https://recharts.org/)
-*   **Real-time**: [Socket.io Client](https://socket.io/) (for signaling)
-*   **Video**: WebRTC (Peer-to-Peer)
+---
 
-### Server (Backend)
-*   **Runtime**: [Node.js](https://nodejs.org/)
-*   **Framework**: [Express.js](https://expressjs.com/)
-*   **Database**: [PostgreSQL](https://www.postgresql.org/)
-*   **AI**: [Google Generative AI (Gemini)](https://ai.google.dev/)
-*   **Authentication**: JWT (JSON Web Tokens)
-*   **Real-time**: [Socket.io](https://socket.io/)
-*   **Infrastructure**: [Google Cloud Platform (GCP)](https://cloud.google.com/) (Compute Engine for Code Execution)
-*   **File Handling**: Multer, PDF-Parse
+## 🔑 Master API Key Guide
 
-## 📋 Prerequisites
+To fully power NitiAI, you must configure the following API keys in their respective `.env` files.
 
-Before you begin, ensure you have the following installed:
-*   [Node.js](https://nodejs.org/) (v18 or higher)
-*   [PostgreSQL](https://www.postgresql.org/) (Local or Cloud instance)
-*   [Git](https://git-scm.com/)
+| API Key | Purpose | Required In |
+| :--- | :--- | :--- |
+| `GEMINI_API_KEY` | Resume parsing, Career feedback, & Interview evaluation | `server/.env` & `MOCK_INTERVIEW/backend/.env` |
+| `OPENROUTER_API_KEY` | Advanced LLM analysis & fallback reasoning | `server/.env` & `MOCK_INTERVIEW/backend/.env` |
+| `RAPIDAPI_KEY` | LinkedIn job search data | `server/.env` |
+| `ADZUNA_APP_ID/KEY` | Job market trends and salary data | `server/.env` |
+| `EXECUTION_API_URL` | Safe remote code execution (Piston/GCP) | `MOCK_INTERVIEW/backend/.env` |
+| `SERPAPI_API_KEY` | Targeted YouTube educational resource search | `MOCK_INTERVIEW/backend/.env` |
+| `NEXT_PUBLIC_VAPI_KEY` | Voice-based AI interview interaction | `MOCK_INTERVIEW/frontend/.env.local` |
+| `DATABASE_URL` | PostgreSQL connection string | `server/.env` |
+| `JWT_SECRET` | Secure authentication and token signing | `server/.env` |
+
+---
 
 ## 🚀 Getting Started
 
-### 1. Clone the Repository
+### Project Structure
+- `/client` & `/server`: The core NitiAI Career Guidance platform.
+- `/MOCK_INTERVIEW/frontend` & `/MOCK_INTERVIEW/backend`: The dedicated Interview Arena.
 
+### 1. Setup NitiAI Core
+**Backend (`/server`):**
 ```bash
-git clone https://github.com/yourusername/skillsphere.git
-cd skillsphere
-```
-
-### 2. Backend Setup (`/server`)
-
-Navigate to the server directory and install dependencies:
-
-```bash
-cd server
-npm install
-```
-
-Create a `.env` file in the `server` directory:
-
-```env
-PORT=5000
-# Database Configuration
-DB_USER=your_postgres_user
-DB_HOST=localhost
-DB_NAME=skillsphere_db
-DB_PASSWORD=your_postgres_password
-DB_PORT=5432
-
-# Security
-JWT_SECRET=your_super_secret_jwt_key
-
-# AI Configuration
-GEMINI_API_KEY=your_google_gemini_api_key
-```
-
-Start the backend server:
-
-```bash
+cd server && npm install
+# Setup .env with GEMINI, RAPIDAPI, ADZUNA, DATABASE_URL
 npm run dev
 ```
-*The server will start on http://localhost:5000*
 
-### 3. Frontend Setup (`/client`)
-
-Open a new terminal, navigate to the client directory, and install dependencies:
-
+**Frontend (`/client`):**
 ```bash
-cd client
-npm install
-```
-
-Create a `.env` file in the `client` directory:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
-```
-
-Start the frontend development server:
-
-```bash
+cd client && npm install
+# Setup .env with NEXT_PUBLIC_API_URL
 npm run dev
 ```
-*The application will be accessible at http://localhost:3000*
 
-## 🗄️ Database Schema
+### 2. Setup Mock Interview Arena
+**Backend (`/MOCK_INTERVIEW/backend`):**
+```bash
+cd MOCK_INTERVIEW/backend && npm install
+# Setup .env with GEMINI, OPENROUTER, SERPAPI, EXECUTION_API_URL
+npm start
+```
 
-Make sure your PostgreSQL database has the following tables (or use the provided migration script if available):
+**Frontend (`/MOCK_INTERVIEW/frontend`):**
+```bash
+cd MOCK_INTERVIEW/frontend && npm install
+# Setup .env.local with VAPI, OPENROUTER, SERPAPI
+npm run dev
+```
 
-*   `users`: Stores user credentials and profile info.
-*   `resume_info`: Stores parsed resume data and AI insights.
+---
 
-## 🧪 Usage Guide
+## 🛠️ Tech Stack
+- **Frontend**: Next.js 14, Tailwind CSS, Framer Motion, Socket.io, Lucide React.
+- **Backend**: Node.js, Express, PostgreSQL, Socket.io, JWT.
+- **AI/Cloud**: Google Gemini, OpenRouter, Vapi AI, GCP Compute Engine.
 
-1.  **Sign Up/Login**: Create an account to access the dashboard.
-2.  **Upload Resume**: Upload your PDF resume. The AI will parse it and populate your profile.
-3.  **Explore Dashboard**: View your skills analysis and career trajectory.
-4.  **Job Trends**: Check the "Job Trends" page for AI-driven market insights.
-5.  **Chat with AI**: Use the chat feature to ask specific career questions (e.g., "What skills should I learn next?").
-6.  **Generate Portfolio**: Go to "Portfolio," customize your settings, and download a standalone HTML portfolio file.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License.
+---
+Developed with ❤️ for NitiAI
