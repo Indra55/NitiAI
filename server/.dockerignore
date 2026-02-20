@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log*
+.env
+.git
+.gitignore
+.dockerignore
+docker-compose.yaml
+README.md
+API_TEST.md
+RESUME_PARSER_API.md
+RESUME_PARSER_GUIDE.md
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
