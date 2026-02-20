@@ -14,14 +14,24 @@ The live application is accessible at: **[https://nitiai.vercel.app](https://nit
 *   **🎭 Career Persona**: Deep analysis of your professional profile to highlight unique value propositions.
 *   **🤖 AI Career Coach**: Personalized career advice and skill gap analysis via an interactive chat interface.
 *   **💼 Job Tracker**: Save jobs from LinkedIn and get instant AI-match scores.
-*   **� Market Trends**: Visualizes trending roles, growing industries, and salary insights.
+*   **📈 Market Trends**: Visualizes trending roles, growing industries, and salary insights.
 *   **🌐 Portfolio Builder**: Generates stunning, downloadable personal portfolios.
 
 ### 2. Mock Interview Arena
 *   **💻 Coding Environment**: Real-time collaborative editor with live code execution.
 *   **🎙️ Voice Interactor**: AI-powered voice interviews for a hands-free, realistic experience (powered by Vapi).
-*   **� Performance Reports**: Detailed post-interview feedback on code quality, logic, and communication.
-*   **� Resource Discovery**: Targeted YouTube resources based on your interview performance.
+*   **📊 Performance Reports**: Detailed post-interview feedback on code quality, logic, and communication.
+*   **🔍 Resource Discovery**: Targeted YouTube resources based on your interview performance.
+
+---
+
+## 🏗️ System Architecture & Database Design
+
+### 1. System Architecture Pipeline
+![Architecture Diagram](./career_path_engine_pipeline_2026_02_20_062754_SU3JEIB0Y5.png)
+
+### 2. Database Schema Design
+![Database Diagram](./career_path_engine_pipeline_2026_02_20_065430_FUrp0SMD2T.png)
 
 ---
 
