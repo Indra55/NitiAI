@@ -58,7 +58,7 @@ export default function InterviewPage() {
                 </p>
                 <Button 
                   className="gap-2"
-                  onClick={() => window.location.href = "https://hacksync-interview.vercel.app/"}
+                  onClick={() => window.location.href = "https://vega-mock-interviews.vercel.app/"}
                 >
                   <Mic className="w-4 h-4" />
                   Practice Interview

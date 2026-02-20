@@ -5,7 +5,6 @@ import { DynamicNavbar } from "@/components/dynamic-navbar"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ProgressRing } from "@/components/progress-ring"
 import {
     matchAnalysis,
     type MatchAnalysisResponse,
@@ -80,6 +79,15 @@ function matchColor(pct: number) {
     return "text-red-600"
 }
 
+function matchStrength(pct: number) {
+    if (pct >= 90) return "Exceptional"
+    if (pct >= 80) return "Strong"
+    if (pct >= 70) return "Good"
+    if (pct >= 60) return "Decent"
+    if (pct >= 40) return "Moderate"
+    return "Weak"
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -102,6 +110,12 @@ export default function MatchAnalysisPage() {
             if (res.error) {
                 setError(res.error)
             } else if (res.data) {
+                console.log("[MatchAnalysis] Full API Result:", res.data);
+                if (res.data.skill_heatmap) {
+                    console.log("[MatchAnalysis] Skill Heatmap Length:", res.data.skill_heatmap.length);
+                } else {
+                    console.warn("[MatchAnalysis] skill_heatmap is MISSING in response!");
+                }
                 setResult(res.data)
             }
         } catch (err: unknown) {
@@ -135,7 +149,7 @@ export default function MatchAnalysisPage() {
                         {/* ── JD Input ── */}
                         <section className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
                             <Card className="p-6 bg-card/50 backdrop-blur-sm border-none shadow-none">
-                                <label htmlFor="jd-input" className="block text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                                <label htmlFor="jd-input" className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                                     <Clipboard className="w-4 h-4 text-primary" />
                                     Paste Job Description
                                 </label>
@@ -150,7 +164,7 @@ export default function MatchAnalysisPage() {
 
                                 {error && (
                                     <p className="mt-3 text-sm text-red-500 flex items-center gap-1.5">
-                                        <XCircle className="w-4 h-4 flex-shrink-0" />
+                                        <XCircle className="w-4 h-4 shrink-0" />
                                         {error}
                                     </p>
                                 )}
@@ -162,7 +176,7 @@ export default function MatchAnalysisPage() {
                                     <Button
                                         onClick={handleAnalyze}
                                         disabled={loading || jdText.trim().length < 20}
-                                        className="gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white rounded-xl px-6 shadow-lg"
+                                        className="gap-2 bg-linear-to-r from-primary to-accent hover:opacity-90 text-white rounded-xl px-6 shadow-lg"
                                     >
                                         {loading ? (
                                             <>
@@ -199,38 +213,64 @@ export default function MatchAnalysisPage() {
                         {result && !loading && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
 
-                                {/* Row 1 — Score + Radar Chart */}
-                                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <Card className="p-8 bg-card/50 backdrop-blur-sm flex flex-col items-center justify-center gap-6 no-zoom border-none shadow-none">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <ProgressRing
-                                                percentage={result.match_percentage}
-                                                size={160}
-                                                strokeWidth={12}
-                                                label="Match Score"
-                                            />
-                                        </div>
-                                        <div className={`px-4 py-1.5 rounded-full text-sm font-bold ${verdictColor(result.overall_verdict)}`}>
-                                            {result.overall_verdict}
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            Confidence: {result.confidence_score}%
-                                        </p>
-                                    </Card>
+                                {/* Top Overview Section — Consolidated Match Info & Heatmap */}
+                                <section>
+                                    <Card className="p-8 bg-card/50 backdrop-blur-sm border-none shadow-none no-zoom overflow-hidden relative group">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-primary/30 via-primary to-primary/30" />
+                                        
+                                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+                                            {/* Score & Verdict Column */}
+                                            <div className="lg:col-span-2 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6">
+                                                <div className="space-y-1">
+                                                    <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Overall Match</h2>
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-7xl font-black tracking-tighter text-foreground">
+                                                            {result.match_percentage}%
+                                                        </span>
+                                                        <span className="text-lg font-bold text-primary animate-pulse">MATCH</span>
+                                                    </div>
+                                                </div>
 
-                                    <Card className="p-8 bg-card/50 backdrop-blur-sm flex flex-col items-center justify-center border-none shadow-none no-zoom min-h-[300px]">
-                                        {result.skill_heatmap && result.skill_heatmap.length > 0 ? (
-                                            <SkillsRadar 
-                                                data={result.skill_heatmap} 
-                                                title="Skill Alignment Heatmap"
-                                                description="How your profile matches JD requirement domains"
-                                            />
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-                                                <AlertTriangle className="w-8 h-8 opacity-20" />
-                                                <p className="text-xs text-center">Skill heatmap data unavailable</p>
+                                                <div className="flex flex-col gap-3 w-full max-w-[240px]">
+                                                    <div className={`px-6 py-2.5 rounded-2xl text-base font-black text-center shadow-lg shadow-primary/5 border-none ${verdictColor(result.overall_verdict)}`}>
+                                                        {result.overall_verdict.toUpperCase()}
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center justify-between px-4 py-2 bg-foreground/5 rounded-xl border-none">
+                                                        <span className="text-xs font-medium text-muted-foreground">AI Confidence</span>
+                                                        <span className="text-sm font-bold text-foreground">{result.confidence_score}%</span>
+                                                    </div>
+                                                </div>
+
+                                                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
+                                                    Your profile shows <span className="text-foreground font-semibold">{matchStrength(result.match_percentage)}</span> alignment with this role's core requirements.
+                                                </p>
                                             </div>
-                                        )}
+
+                                            {/* Radar Chart Column */}
+                                            <div className="lg:col-span-3 flex justify-center w-full min-h-[350px]">
+                                                {result.skill_heatmap && (Array.isArray(result.skill_heatmap) ? result.skill_heatmap.length > 0 : Object.keys(result.skill_heatmap).length > 0) ? (
+                                                    <SkillsRadar 
+                                                        data={Array.isArray(result.skill_heatmap) 
+                                                            ? result.skill_heatmap 
+                                                            : Object.entries(result.skill_heatmap).map(([k, v]) => ({ category: k, value: v }))
+                                                        } 
+                                                        title="Skill Alignment Heatmap"
+                                                        description="Domain-specific compatibility breakdown"
+                                                    />
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 py-10 opacity-60">
+                                                        <div className="relative">
+                                                            <AlertTriangle className="w-12 h-12 text-muted-foreground/30 animate-pulse" />
+                                                            <Sparkles className="w-5 h-5 text-primary absolute -top-1 -right-1 opacity-40" />
+                                                        </div>
+                                                        <p className="text-xs text-center font-medium max-w-[160px]">
+                                                            Processing domain analysis...
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </Card>
                                 </section>
 
@@ -294,7 +334,7 @@ export default function MatchAnalysisPage() {
                                                     key={i}
                                                     className="flex items-start gap-3 p-3 rounded-lg hover:bg-emerald-500/5 transition-colors"
                                                 >
-                                                    <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                                                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 flex-wrap">
                                                             <span className="font-semibold text-sm text-foreground">{s.skill}</span>
@@ -327,7 +367,7 @@ export default function MatchAnalysisPage() {
                                                     key={i}
                                                     className="flex items-start gap-3 p-3 rounded-lg hover:bg-red-500/5 transition-colors"
                                                 >
-                                                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                                    <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 flex-wrap">
                                                             <span className="font-semibold text-sm text-foreground">{s.skill}</span>
@@ -336,7 +376,7 @@ export default function MatchAnalysisPage() {
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-muted-foreground mt-1 flex items-start gap-1">
-                                                            <Lightbulb className="w-3 h-3 flex-shrink-0 mt-0.5 text-amber-500" />
+                                                            <Lightbulb className="w-3 h-3 shrink-0 mt-0.5 text-amber-500" />
                                                             {s.suggestion}
                                                         </p>
                                                     </div>
@@ -364,7 +404,7 @@ export default function MatchAnalysisPage() {
                                             </div>
                                             <div className="h-2.5 rounded-full bg-border overflow-hidden">
                                                 <div
-                                                    className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-1000"
+                                                    className="h-full rounded-full bg-linear-to-r from-primary to-accent transition-all duration-1000"
                                                     style={{ width: `${result.keyword_analysis?.keyword_match_rate || 0}%` }}
                                                 />
                                             </div>
@@ -473,7 +513,7 @@ export default function MatchAnalysisPage() {
                                                     key={i}
                                                     className="flex items-start gap-4 p-4 rounded-xl hover:bg-card/80 transition-all group"
                                                 >
-                                                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 flex-shrink-0 group-hover:scale-110 transition-transform">
+                                                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 shrink-0 group-hover:scale-110 transition-transform">
                                                         {priorityIcon(s.priority)}
                                                     </div>
                                                     <div className="flex-1 min-w-0">

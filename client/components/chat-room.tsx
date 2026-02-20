@@ -155,7 +155,7 @@ export function ChatRoom({ roomId, username }: ChatRoomProps) {
                 className={`max-w-[75%] rounded-2xl px-4 py-2 ${isMe
                   ? "bg-orange-500 text-white rounded-br-sm"
                   : isAi
-                    ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white rounded-bl-sm shadow-lg"
+                    ? "bg-linear-to-br from-violet-500 to-purple-600 text-white rounded-bl-sm shadow-lg"
                     : "bg-orange-50 text-orange-950 rounded-bl-sm"
                   }`}
               >
