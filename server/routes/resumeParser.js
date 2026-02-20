@@ -653,6 +653,34 @@ Rules:
       // Use the robust safeJsonParse that handles truncated/malformed JSON
       const parsed = this.safeJsonParse(text, fallback);
 
+      // --- Data Normalization ---
+      // Ensure skill_heatmap is a non-empty array
+      if (!parsed.skill_heatmap || !Array.isArray(parsed.skill_heatmap) || parsed.skill_heatmap.length === 0) {
+        console.warn('[matchAnalysis] skill_heatmap missing or invalid format. Attempting recovery...');
+
+        // Check if it's an object instead of an array
+        if (parsed.skill_heatmap && typeof parsed.skill_heatmap === 'object' && !Array.isArray(parsed.skill_heatmap)) {
+          console.log('[matchAnalysis] Converting skill_heatmap object to array');
+          parsed.skill_heatmap = Object.entries(parsed.skill_heatmap).map(([cat, val]) => ({
+            category: cat,
+            value: typeof val === 'number' ? val : 50
+          }));
+        } else {
+          // Create a better default heatmap based on the match percentage if missing
+          console.log('[matchAnalysis] Generating default heatmap based on match score');
+          const score = parsed.match_percentage || 50;
+          parsed.skill_heatmap = [
+            { category: "Core Tech", value: score },
+            { category: "Frameworks", value: Math.max(0, score - 15) },
+            { category: "Cloud/DevOps", value: Math.max(0, score - 30) },
+            { category: "Tools", value: Math.max(0, score - 10) },
+            { category: "Soft Skills", value: 75 },
+            { category: "Architecture", value: Math.max(0, score - 20) }
+          ];
+        }
+      }
+
+      console.log('[matchAnalysis] Final skill_heatmap count:', parsed.skill_heatmap.length);
       console.log('[matchAnalysis] Parsed match_percentage:', parsed.match_percentage);
       console.log('[matchAnalysis] Parsed verdict:', parsed.overall_verdict);
       return parsed;
