@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
-import { Send, Bot, User, Sparkles, Loader2, X } from 'lucide-react';
+import { Send, Bot, User, Sparkles, X } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -143,7 +144,7 @@ export default function AIChatModal({ isOpen, onClose, currentCode, problem }: A
                       <Bot size={14} />
                   </div>
                   <div className="bg-muted rounded-2xl p-3 rounded-tl-sm flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin opacity-50" />
+                      <Spinner size="sm" className="opacity-50" />
                       <span className="text-xs opacity-50">Thinking...</span>
                   </div>
                </div>

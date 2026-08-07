@@ -5,7 +5,6 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
 import { ToasterProvider } from "@/components/ui/toaster-provider"
-import InfiniteGridBackground from "@/components/InfiniteGridBackground"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
@@ -37,7 +36,6 @@ export default function RootLayout({
         suppressHydrationWarning={true}
         className={`font-sans antialiased ${_poppins.variable}`}
       >
-        <InfiniteGridBackground />
         <AuthProvider>
           {children}
           <ToasterProvider />

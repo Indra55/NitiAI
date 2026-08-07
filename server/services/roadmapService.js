@@ -1,7 +1,54 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require("axios");
 
 // Initialize Gemini AI (using Google's Gemini instead of OpenAI for this implementation)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+
+const SARVAM_FLAGS = {
+  generateRoadmap: true
+};
+
+async function callSarvamWithRetry(prompt, maxRetries = 2) {
+  const apiKey = process.env.SARVAM_API_KEY;
+  if (!apiKey) {
+    console.warn("SARVAM_API_KEY is not set. Falling back to Gemini for this call.");
+    return callGemini(prompt);
+  }
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await axios.post("https://api.sarvam.ai/v1/chat/completions", {
+        model: "sarvam-105b",
+        messages: [
+          { role: "system", content: "You are a helpful career coach assistant. Return your response in JSON format. Do not wrap in markdown." },
+          { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" }
+      }, {
+        headers: {
+          "Content-Type": "application/json",
+          "api-subscription-key": apiKey,
+          "Authorization": `Bearer ${apiKey}`
+        }
+      });
+      return response.data.choices[0].message.content;
+    } catch (error) {
+      if (error.response && error.response.status === 429 && attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 35000));
+      } else {
+        console.error("Sarvam API Error:", error.response ? error.response.data : error.message);
+        throw error;
+      }
+    }
+  }
+}
+
+async function callGemini(prompt) {
+  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  return response.text();
+}
 
 /**
  * Generate personalized career roadmap based on user profile
@@ -62,10 +109,12 @@ OUTPUT FORMAT (JSON):
 Generate the roadmap now:`;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        let text;
+        if (SARVAM_FLAGS.generateRoadmap) {
+            text = await callSarvamWithRetry(prompt);
+        } else {
+            text = await callGemini(prompt);
+        }
 
         // Extract JSON from response (handle markdown code blocks)
         let jsonText = text;

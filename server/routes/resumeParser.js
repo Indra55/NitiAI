@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const axios = require('axios');
 
 class EnhancedResumeService {
   constructor() {
@@ -19,6 +20,20 @@ class EnhancedResumeService {
     // Track last request time to prevent rate limiting
     this.lastRequestTime = 0;
     this.minRequestInterval = 4000; // 4 seconds between requests (15 rpm limit)
+
+    // Sarvam AI Feature Flags Configuration
+    this.SARVAM_FLAGS = {
+      parseResumeBasic: true,
+      generateCareerRecommendations: true,
+      analyzeResume: true,
+      getCareerInsights: true,
+      generateCareerDashboard: true,
+      updateResume: true,
+      generateLaTeX: true,
+      tailorResume: true,
+      matchAnalysis: true,
+      chatWithData: true
+    };
   }
 
   /**
@@ -63,9 +78,66 @@ class EnhancedResumeService {
   }
 
   /**
+   * Make API call to Sarvam AI with retry logic
+   */
+  async callSarvamWithRetry(prompt, maxRetries = 2, expectJson = true) {
+    await this.waitForRateLimit();
+
+    const apiKey = process.env.SARVAM_API_KEY;
+    if (!apiKey) {
+      console.warn("SARVAM_API_KEY is not set. Falling back to default model for this call.");
+      return this.callWithRetry(prompt, maxRetries);
+    }
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const payload = {
+          model: "sarvam-105b", // Assuming standard Sarvam chat completions model
+          messages: [
+            { 
+              role: "system", 
+              content: expectJson 
+                ? "You are a helpful assistant. Return your response in JSON format. Do not wrap in markdown." 
+                : "You are a helpful assistant." 
+            },
+            { role: "user", content: prompt }
+          ]
+        };
+        
+        if (expectJson) {
+          payload.response_format = { type: "json_object" };
+        }
+
+        const response = await axios.post("https://api.sarvam.ai/v1/chat/completions", payload, {
+          headers: {
+            "Content-Type": "application/json",
+            "api-subscription-key": apiKey,
+            "Authorization": `Bearer ${apiKey}` // Include both common authentication headers for compatibility
+          }
+        });
+        return response.data.choices[0].message.content;
+      } catch (error) {
+        if (error.response && error.response.status === 429 && attempt < maxRetries) {
+          const waitTime = 35000;
+          console.log(`Sarvam Rate limited. Waiting ${waitTime / 1000}s before retry ${attempt + 1}/${maxRetries}...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          this.lastRequestTime = Date.now();
+        } else {
+          console.error("Sarvam API Error:", error.response ? error.response.data : error.message);
+          throw error;
+        }
+      }
+    }
+  }
+
+  /**
    * Safely parse JSON with fallback
    */
   safeJsonParse(text, fallback = {}) {
+    if (!text || typeof text !== 'string') {
+      console.error('JSON parse error: received null, undefined, or non-string text');
+      return fallback;
+    }
     try {
       // Step 1: Remove markdown code blocks
       let cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
@@ -139,7 +211,9 @@ Return this exact JSON structure:
 }`;
 
     try {
-      const text = await this.callWithRetry(prompt);
+      const text = this.SARVAM_FLAGS.parseResumeBasic 
+        ? await this.callSarvamWithRetry(prompt, 2, true) 
+        : await this.callWithRetry(prompt);
 
       return this.safeJsonParse(text, {
         name: null, email: null, phone: null, location: null,
@@ -149,7 +223,7 @@ Return this exact JSON structure:
         education: [], experience: [], projects: [], certifications: []
       });
     } catch (error) {
-      console.error('Error parsing resume with Gemini:', error.message);
+      console.error('Error parsing resume with Sarvam:', error.message);
       throw new Error('Failed to parse resume. Please try again in a minute.');
     }
   }
@@ -182,7 +256,9 @@ Return JSON:
 }`;
 
     try {
-      const text = await this.callWithRetry(prompt);
+      const text = this.SARVAM_FLAGS.generateCareerRecommendations 
+        ? await this.callSarvamWithRetry(prompt, 2, true) 
+        : await this.callWithRetry(prompt);
 
       return this.safeJsonParse(text, {
         recommended_roles: [],
@@ -217,7 +293,9 @@ Return JSON:
 }`;
 
     try {
-      const text = await this.callWithRetry(prompt);
+      const text = this.SARVAM_FLAGS.analyzeResume 
+        ? await this.callSarvamWithRetry(prompt, 2, true) 
+        : await this.callWithRetry(prompt);
 
       return this.safeJsonParse(text, {
         completeness_score: 50,
@@ -263,7 +341,9 @@ Return JSON:
 }`;
 
     try {
-      const text = await this.callWithRetry(prompt);
+      const text = this.SARVAM_FLAGS.getCareerInsights 
+        ? await this.callSarvamWithRetry(prompt, 2, true) 
+        : await this.callWithRetry(prompt);
 
       return this.safeJsonParse(text, {
         current_role_level: 'mid',
@@ -390,7 +470,9 @@ RULES FOR skill_heatmap:
 Provide exactly 5 recommended career paths, 4 trending roles, 3 fast-growing industries, and 4 skill priorities.`;
 
     try {
-      const text = await this.callWithRetry(prompt);
+      const text = this.SARVAM_FLAGS.generateCareerDashboard 
+        ? await this.callSarvamWithRetry(prompt, 2, true) 
+        : await this.callWithRetry(prompt);
 
       const result = this.safeJsonParse(text, {
         profile_summary: {
@@ -452,7 +534,9 @@ Provide exactly 5 recommended career paths, 4 trending roles, 3 fast-growing ind
     Return JSON only.`;
 
     try {
-      const text = await this.callWithRetry(prompt);
+      const text = this.SARVAM_FLAGS.updateResume 
+        ? await this.callSarvamWithRetry(prompt, 2, true) 
+        : await this.callWithRetry(prompt);
       return this.safeJsonParse(text, currentData);
     } catch (error) {
       console.error('Error updating resume:', error.message);
@@ -480,7 +564,9 @@ Provide exactly 5 recommended career paths, 4 trending roles, 3 fast-growing ind
     LaTeX Code:`;
 
     try {
-      const text = await this.callWithRetry(prompt);
+      const text = this.SARVAM_FLAGS.generateLaTeX 
+        ? await this.callSarvamWithRetry(prompt, 2, false) 
+        : await this.callWithRetry(prompt);
       // Clean up potential markdown blocks
       return text.replace(/```latex\n?|\n?```/g, '').trim();
     } catch (error) {
@@ -533,7 +619,9 @@ Provide exactly 5 recommended career paths, 4 trending roles, 3 fast-growing ind
     }`;
 
     try {
-      const text = await this.callWithRetry(prompt);
+      const text = this.SARVAM_FLAGS.tailorResume 
+        ? await this.callSarvamWithRetry(prompt, 2, true) 
+        : await this.callWithRetry(prompt);
       return this.safeJsonParse(text, {
         tailored_resume_data: null,
         changes_made: [],
@@ -639,10 +727,12 @@ Rules:
     };
 
     try {
-      console.log('[matchAnalysis] Calling Gemini API...');
+      console.log('[matchAnalysis] Calling Sarvam API...');
       console.log('[matchAnalysis] Resume length:', resumeText.length, 'JD length:', jobDescription.length);
-      const text = await this.callWithRetry(prompt);
-      console.log('[matchAnalysis] Gemini raw response (first 500 chars):', text?.substring(0, 500));
+      const text = this.SARVAM_FLAGS.matchAnalysis 
+        ? await this.callSarvamWithRetry(prompt, 2, true) 
+        : await this.callWithRetry(prompt);
+      console.log('[matchAnalysis] Sarvam raw response (first 500 chars):', text?.substring(0, 500));
       console.log('[matchAnalysis] Response type:', typeof text, 'Length:', text?.length);
 
       if (!text || typeof text !== 'string') {
@@ -739,7 +829,9 @@ I'd recommend focusing on..."
 YOUR RESPONSE (plain text only):`;
 
     try {
-      const text = await this.callWithRetry(prompt);
+      const text = this.SARVAM_FLAGS.chatWithData 
+        ? await this.callSarvamWithRetry(prompt, 2, false) 
+        : await this.callWithRetry(prompt);
       return text;
     } catch (error) {
       console.error('Error in chatWithData:', error.message);

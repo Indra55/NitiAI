@@ -23,13 +23,13 @@ import {
 // Main navigation items (always visible)
 const mainNavItems = [
   { label: "Dashboard", href: "/dashboard", icon: TrendingUp },
-  { label: "Resume Builder", href: "/resume-builder", icon: FileText },
+  { label: "Resume Arena", href: "/resume-arena", icon: FileText },
   { label: "JD Match", href: "/match-analysis", icon: FileSearch },
-  { label: "Interview", href: "/interview", icon: Mic },
 ]
 
 // Additional features in dropdown
 const moreNavItems = [
+  { label: "Interview", href: "/interview", icon: Mic },
   { label: "Opportunities", href: "/opportunities", icon: Users },
   { label: "Portfolio", href: "/portfolio", icon: Briefcase },
   { label: "AI Planned Learning", href: "/ai-planner", icon: Brain },
@@ -111,6 +111,7 @@ export function DynamicNavbar() {
     pathname?.startsWith("/skill-gap") ||
     pathname?.startsWith("/peers") ||
     pathname?.startsWith("/ai-planner") ||
+    pathname?.startsWith("/resume-arena") ||
     pathname?.startsWith("/resume-builder") ||
     pathname?.startsWith("/peer-learn") ||
     pathname?.startsWith("/peer-learning") ||
@@ -120,6 +121,7 @@ export function DynamicNavbar() {
     pathname?.startsWith("/linkedin-jobs") ||
     pathname?.startsWith("/coding-practice") ||
     pathname?.startsWith("/match-analysis") ||
+    pathname?.startsWith("/voice-resume") ||
     pathname?.startsWith("/profile")
 
   return (
@@ -141,7 +143,7 @@ export function DynamicNavbar() {
             className={`flex items-center gap-2 font-bold transition-all duration-300 ${isCompressed ? "text-sm" : "text-lg"
               } ${isDashboardRoute ? "text-foreground" : ""}`}
           >
-            <Image src="/nitiai.png" alt="Niti AI" width={96} height={96} className="shrink-0 rounded-full" />
+            <Image src="/nitiai.png" alt="Niti AI" width={48} height={48} className="shrink-0 object-contain" />
           </Link>
 
           {/* Pill-shaped navbar - desktop */}
@@ -294,7 +296,7 @@ export function DynamicNavbar() {
                   <Button variant="ghost" size="icon" className="rounded-full">
                     <Avatar className={`border border-primary/20 transition-all ${isCompressed ? "h-7 w-7" : "h-8 w-8"}`}>
                       <AvatarImage src={user?.avatar || "/placeholder-user.jpg"} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-serif text-xs">
+                      <AvatarFallback className="bg-primary/10 text-primary font-sans text-xs">
                         {user?.name
                           ?.split(" ")
                           .map((n) => n[0])

@@ -2,7 +2,8 @@
 
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Network, Lock, CheckCircle2, Loader2 } from "lucide-react"
+import { Network, Lock, CheckCircle2 } from "lucide-react"
+import { Spinner } from "@/components/ui/spinner"
 import { useEffect, useRef } from "react"
 
 interface Task {
@@ -182,7 +183,7 @@ export function DependencyGraph({ tasks }: Props) {
                                 {task.status === 'completed' ? (
                                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                                 ) : task.status === 'in-progress' ? (
-                                    <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
+                                    <Spinner size="md" className="text-amber-500" />
                                 ) : task.is_blocked ? (
                                     <Lock className="w-5 h-5 text-muted-foreground" />
                                 ) : (

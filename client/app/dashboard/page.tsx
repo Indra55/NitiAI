@@ -44,7 +44,6 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  Loader2,
   RefreshCw,
   Briefcase,
   GraduationCap,
@@ -66,7 +65,7 @@ import {
   Layers,
   ArrowRight,
 } from "lucide-react"
-import { Spinner } from "@/components/ui/spinner"
+import { Spinner as SpinnerComponent } from "@/components/ui/spinner"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { getDashboardData, getSkills, type DashboardData, type Skill } from "@/lib/api"
@@ -240,7 +239,7 @@ export default function DashboardPage() {
             {loading ? (
               <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="flex flex-col items-center gap-4">
-                  <Spinner className="size-16" />
+                  <SpinnerComponent className="size-16" />
                   <p className="text-muted-foreground">Loading your career insights...</p>
                 </div>
               </div>

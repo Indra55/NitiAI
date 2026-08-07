@@ -512,5 +512,109 @@ export async function getExperience(): Promise<ApiResponse<{ experience: Experie
     return apiRequest<{ experience: Experience[] }>("/api/profile/experience");
 }
 
+// ==================== VOICE RESUME API ====================
+
+export interface VoiceSessionResponse {
+    success: boolean;
+    sessionId: string;
+    aiResponse: string;
+    aiResponseAudio: string | null;
+    languages: Record<string, string>;
+}
+
+export interface VoiceProcessResponse {
+    success: boolean;
+    originalTranscript: string;
+    englishTranscript: string;
+    detectedLanguage: string;
+    extractedData: Record<string, unknown>;
+    aiResponse: string;
+    aiResponseAudio: string | null;
+    error?: string;
+}
+
+export async function startVoiceSession(
+    language: string = "en-IN",
+    enableTTS: boolean = false
+): Promise<ApiResponse<VoiceSessionResponse>> {
+    return apiRequest<VoiceSessionResponse>("/api/voice-resume/start-session", {
+        method: "POST",
+        body: JSON.stringify({ language, enableTTS }),
+    });
+}
+
+export async function processVoiceAudio(
+    audioBlob: Blob,
+    language: string,
+    currentResumeData: Record<string, unknown>,
+    conversationHistory: { role: "user" | "ai"; content: string }[],
+    enableTTS: boolean = false
+): Promise<ApiResponse<VoiceProcessResponse>> {
+    try {
+        const token = localStorage.getItem("token");
+        const formData = new FormData();
+        
+        // Determine file extension from blob type
+        const ext = audioBlob.type.includes("webm") ? "webm" : audioBlob.type.includes("mp4") ? "m4a" : "wav";
+        formData.append("audio", audioBlob, `recording.${ext}`);
+        formData.append("language", language);
+        formData.append("currentResumeData", JSON.stringify(currentResumeData));
+        formData.append("conversationHistory", JSON.stringify(conversationHistory));
+        formData.append("enableTTS", enableTTS.toString());
+
+        const headers: Record<string, string> = {};
+        if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+        }
+        // Don't set Content-Type — browser will set it with boundary for FormData
+
+        const response = await fetch(`${API_BASE_URL}/api/voice-resume/process-audio`, {
+            method: "POST",
+            headers,
+            body: formData,
+            credentials: "include",
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            return { error: data.error || "Failed to process audio" };
+        }
+        return { data };
+    } catch (error) {
+        console.error("Voice process failed:", error);
+        return { error: "Network error during audio processing." };
+    }
+}
+
+export async function getVoiceTTS(
+    text: string,
+    language: string = "en-IN",
+    speaker: string = "ritu"
+): Promise<ApiResponse<{ success: boolean; audio: string }>> {
+    return apiRequest<{ success: boolean; audio: string }>("/api/voice-resume/tts", {
+        method: "POST",
+        body: JSON.stringify({ text, language, speaker }),
+    });
+}
+
+export async function getVoiceLanguages(): Promise<ApiResponse<{
+    success: boolean;
+    languages: Record<string, string>;
+    steps: Array<{ id: string; title: string; fields: string[] }>;
+}>> {
+    return apiRequest("/api/voice-resume/languages");
+}
+
+export async function translateVoiceQuestion(
+    stepIndex: number,
+    targetLanguage: string
+): Promise<ApiResponse<{ success: boolean; translatedText: string; originalText: string }>> {
+    return apiRequest("/api/voice-resume/translate-question", {
+        method: "POST",
+        body: JSON.stringify({ stepIndex, targetLanguage }),
+    });
+}
+
 // Export types
 export type { User, RegisterData, LoginData, BasicInfoData, CareerGoalsData, SkillsData };
+

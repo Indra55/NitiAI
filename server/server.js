@@ -48,6 +48,7 @@ app.use("/api/skills", require("./routes/skills"))
 app.use("/api/resume", require("./routes/resume"))
 app.use("/api/planner", require("./routes/planner"))
 app.use("/api/execute", require("./routes/execute"))
+app.use("/api/voice-resume", require("./routes/voiceResume"))
 // Health check endpoint
 app.get("/", (req, res) => {
     res.json({

@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Play, Send, Layout, Terminal, Moon, Sun, Sparkles, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Play, Send, Layout, Terminal, Moon, Sun, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import AIChatModal from './AIChatModal';
@@ -229,7 +230,7 @@ const CodingArena = ({ problems = [], initialIsDarkMode = false, onFinishCoding 
                 size="sm"
                 className="font-bold border-primary/20 hover:border-primary/50 text-foreground"
               >
-                {isEvaluating ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Play size={14} className="mr-2 text-primary" />} Run
+                {isEvaluating ? <Spinner size="sm" className="mr-2" /> : <Play size={14} className="mr-2 text-primary" />} Run
               </Button>
 
               {currentIdx < problems.length - 1 ? (
@@ -248,7 +249,7 @@ const CodingArena = ({ problems = [], initialIsDarkMode = false, onFinishCoding 
                   size="sm"
                   className="font-bold bg-emerald-600 text-white hover:bg-emerald-700"
                 >
-                  {isEvaluating ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Send size={14} className="mr-2" />} Submit
+                  {isEvaluating ? <Spinner size="sm" className="mr-2" /> : <Send size={14} className="mr-2" />} Submit
                 </Button>
               )}
             </div>

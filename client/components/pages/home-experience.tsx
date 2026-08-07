@@ -69,7 +69,7 @@ export function HomeExperience({ onNavigate, userData }: HomeExperienceProps) {
           onClick={() => onNavigate("home")}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <Image src="/nitiai.png" alt="Niti AI" width={72} height={72} className="rounded-full" />
+          <Image src="/nitiai.png" alt="Niti AI" width={48} height={48} className="object-contain" />
         </button>
 
         <button

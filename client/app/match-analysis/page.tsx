@@ -31,8 +31,9 @@ import {
     Lightbulb,
     BarChart3,
     Clipboard,
-    Loader2,
+    MoreHorizontal,
 } from "lucide-react"
+import { Spinner } from "@/components/ui/spinner"
 import "@/app/dashboard/dashboard.css"
 
 // ---------------------------------------------------------------------------
@@ -180,7 +181,7 @@ export default function MatchAnalysisPage() {
                                     >
                                         {loading ? (
                                             <>
-                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                <Spinner size="sm" />
                                                 Analyzing…
                                             </>
                                         ) : (
