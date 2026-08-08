@@ -43,7 +43,6 @@ class GitHubService {
       }
 
       while (hasMore && page <= 10) { // Fetch up to 1000 repos across pages
-        // When OAuth accessToken is provided, query /user/repos to include ALL private + org repos
         const url = accessToken
           ? `https://api.github.com/user/repos?visibility=all&sort=updated&per_page=${perPage}&page=${page}`
           : `https://api.github.com/users/${username}/repos?sort=updated&per_page=${perPage}&page=${page}`;
@@ -160,7 +159,7 @@ class GitHubService {
         try {
           await client.query('BEGIN');
 
-          // Initialize Relational Property Graph Schema
+          // Initialize Relational Property Graph Schema & Migrations
           await client.query(`
             CREATE TABLE IF NOT EXISTS github_repositories (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -173,6 +172,8 @@ class GitHubService {
               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               CONSTRAINT unique_repo_name UNIQUE (repo_name)
             );
+            ALTER TABLE github_repositories ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;
+
             CREATE TABLE IF NOT EXISTS tech_tools (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
               tool_name VARCHAR(100) UNIQUE NOT NULL,
@@ -192,7 +193,7 @@ class GitHubService {
             const repoRes = await client.query(`
               INSERT INTO github_repositories (repo_name, is_private, language, commit_sha)
               VALUES ($1, $2, $3, $4)
-              ON CONFLICT (repo_name) DO UPDATE SET commit_sha = EXCLUDED.commit_sha
+              ON CONFLICT (repo_name) DO UPDATE SET commit_sha = EXCLUDED.commit_sha, is_private = EXCLUDED.is_private
               RETURNING id;
             `, [repo.name, repo.private || false, repo.language, repo.pushed_at]);
 
@@ -253,7 +254,8 @@ class GitHubService {
       ['TypeScript', 'Rust'],
       ['Go', 'TypeScript'],
       ['Python', 'TypeScript'],
-      ['Java', 'C++']
+      ['Java', 'C++'],
+      ['JavaScript', 'TypeScript']
     ];
 
     let qIndex = 1;
