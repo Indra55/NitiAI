@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Globe, Mic, MicOff, Code2, Brain, FileText, Sparkles, RefreshCw, Volume2, 
   CheckCircle2, AlertCircle, Play, Pause, Upload, MessageSquare, Award, ArrowRight,
-  GitBranch, Github, Layers, Target, ShieldCheck
+  GitBranch, Github, Layers, Target, ShieldCheck, Lock
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { getResumeInfo } from '@/lib/api';
@@ -52,10 +52,24 @@ export default function SarvamIndicStudio() {
   // States for GitHub Role-Based Analysis Tab (2-Tier Hybrid Engine)
   const [githubUsername, setGithubUsername] = useState<string>('jaydalvi');
   const [githubRole, setGithubRole] = useState<string>('Senior Backend Engineer');
+  const [githubOAuthConnected, setGithubOAuthConnected] = useState<boolean>(false);
   const [githubAnalysis, setGithubAnalysis] = useState<any>(null);
   const [selectedGithubQuestion, setSelectedGithubQuestion] = useState<any>(null);
   const [githubCandidateAnswer, setGithubCandidateAnswer] = useState<string>('');
   const [githubEvaluationResult, setGithubEvaluationResult] = useState<any>(null);
+
+  // Check URL query parameters for GitHub OAuth callback status
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('githubConnected') === 'true') {
+        setGithubOAuthConnected(true);
+        const user = urlParams.get('username');
+        if (user) setGithubUsername(user);
+        setActiveTab('github-audit');
+      }
+    }
+  }, []);
 
   // Auto-play AI response audio when audio_b64 is received
   const playBase64Audio = (audioB64: string | null) => {
@@ -244,7 +258,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
     }
   };
 
-  // Handler for 2-Tier Hybrid GitHub Role-Based Analysis & Dynamic 3-6 Probing Range
+  // Handler for 2-Tier Hybrid GitHub Role-Based Analysis
   const handleGitHubRoleAnalyze = async () => {
     if (!githubUsername) return;
     setLoading(true);
@@ -258,9 +272,6 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
       setGithubAnalysis(data.analysis);
       if (data.analysis && data.analysis.probingQuestions && data.analysis.probingQuestions.length > 0) {
         setSelectedGithubQuestion(data.analysis.probingQuestions[0]);
-      }
-      if (data.firstQuestionAudio && data.firstQuestionAudio.audios) {
-        playBase64Audio(data.firstQuestionAudio.audios[0]);
       }
     } catch (e) {
       console.error('GitHub role analyze error:', e);
@@ -659,7 +670,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
           </div>
         )}
 
-        {/* GITHUB ROLE-BASED ANALYSIS TAB (2-TIER HYBRID INDEXING) */}
+        {/* GITHUB ROLE-BASED ANALYSIS TAB (2-TIER HYBRID INDEXING + GITHUB OAUTH2) */}
         {activeTab === 'github-audit' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -667,9 +678,42 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                 <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
                   <Github className="w-5 h-5 text-indigo-400" /> GitHub Repository Role Audit & Probing Arena
                 </h2>
-                <p className="text-slate-400 text-sm">2-Tier Hybrid Indexing (In-Memory Hash + PostgreSQL Graph) for fast role alignment & dynamic 3–6 questions.</p>
+                <p className="text-slate-400 text-sm">2-Tier Hybrid Indexing for fast role alignment & dynamic questions across all public & private repos.</p>
               </div>
               <span className="text-xs bg-purple-950 text-purple-300 border border-purple-800 px-3 py-1 rounded-full font-mono">2-Tier Hybrid Engine</span>
+            </div>
+
+            {/* GitHub OAuth Connection Banner */}
+            <div className="p-4 bg-slate-950 border border-purple-900/60 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-6 h-6 text-purple-400 flex-shrink-0" />
+                <div>
+                  <div className="text-xs font-bold text-slate-100 flex items-center gap-2">
+                    <span>GitHub Account Integration</span>
+                    {githubOAuthConnected ? (
+                      <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> OAuth Connected (Public & Private Access)
+                      </span>
+                    ) : (
+                      <span className="bg-amber-950 border border-amber-800 text-amber-400 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Public Repos Only
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Connect your GitHub account to analyze all public and private repositories without API rate limits.
+                  </p>
+                </div>
+              </div>
+
+              {!githubOAuthConnected && (
+                <a
+                  href="/api/github/auth/login"
+                  className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-purple-600/20"
+                >
+                  <Github className="w-4 h-4" /> Connect GitHub Account (Public & Private)
+                </a>
+              )}
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
@@ -695,7 +739,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                   disabled={loading || !githubUsername}
                   className="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Github className="w-4 h-4" />} Run 2-Tier Sync & Generate Probing Range (3-6)
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Github className="w-4 h-4" />} Run 2-Tier Sync & Generate Probing Range
                 </button>
 
                 {/* Candidate Answer Box for Selected GitHub Question */}
