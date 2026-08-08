@@ -65,32 +65,46 @@ class GitHubService {
       };
 
       if (activeToken) {
-        headers['Authorization'] = `Bearer ${activeToken}`;
+        headers['Authorization'] = `token ${activeToken}`;
       }
 
       console.log(`[GitHubService] Fetching repos for "${username}". Using OAuth token: ${activeToken ? 'YES (Private + Public)' : 'NO (Public only)'}`);
 
       while (hasMore && page <= 10) { // Fetch up to 1000 repos across pages
         const url = activeToken
-          ? `https://api.github.com/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&sort=updated&per_page=${perPage}&page=${page}`
+          ? `https://api.github.com/user/repos?visibility=all&sort=updated&per_page=${perPage}&page=${page}`
           : `https://api.github.com/users/${username}/repos?sort=updated&per_page=${perPage}&page=${page}`;
 
         console.log(`[GitHubService] API Query [Page ${page}]: ${url}`);
-        const response = await axios.get(url, { headers });
-        const pageData = response.data;
+        try {
+          const response = await axios.get(url, { headers });
+          const pageData = response.data;
 
-        if (!Array.isArray(pageData) || pageData.length === 0) {
+          if (!Array.isArray(pageData) || pageData.length === 0) {
+            hasMore = false;
+            break;
+          }
+
+          rawRepos = rawRepos.concat(pageData);
+          console.log(`[GitHubService] Page ${page} returned ${pageData.length} repos. Total accumulated: ${rawRepos.length}`);
+
+          if (pageData.length < perPage) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } catch (pageErr) {
+          console.warn(`[GitHubService] Page ${page} fetch warning for ${url}:`, pageErr.message);
+          // If token fails or is invalid, fallback to public repos
+          if (activeToken && page === 1) {
+            console.log(`[GitHubService] Token fetch failed. Retrying public repos endpoint for user "${username}"...`);
+            delete headers['Authorization'];
+            const fallbackUrl = `https://api.github.com/users/${username}/repos?sort=updated&per_page=${perPage}&page=1`;
+            const fallbackRes = await axios.get(fallbackUrl, { headers });
+            rawRepos = fallbackRes.data || [];
+          }
           hasMore = false;
           break;
-        }
-
-        rawRepos = rawRepos.concat(pageData);
-        console.log(`[GitHubService] Page ${page} returned ${pageData.length} repos. Total accumulated: ${rawRepos.length}`);
-
-        if (pageData.length < perPage) {
-          hasMore = false;
-        } else {
-          page++;
         }
       }
 

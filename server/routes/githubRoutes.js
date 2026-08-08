@@ -22,7 +22,7 @@ router.get('/auth/login', (req, res) => {
     return res.status(400).send('GITHUB_CLIENT_ID is not configured in server environment.');
   }
 
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user`;
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user&prompt=consent`;
   res.redirect(githubAuthUrl);
 });
 
