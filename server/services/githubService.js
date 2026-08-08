@@ -11,11 +11,9 @@ const pool = new Pool({
 });
 
 /**
- * GitHubService - 2-Tier Hybrid GitHub Indexing Engine
+ * GitHubService - 2-Tier Hybrid GitHub Indexing Engine & Database Persistence
  * Tier 1: In-Memory Commit SHA Caching & Inverted Hash Table (Tool -> Repos)
- * Tier 2: PostgreSQL Relational Property Graph Persistence (repo_tools Foreign Key Edges)
- * 
- * Supports full pagination across ALL public AND private repositories.
+ * Tier 2: PostgreSQL Relational Property Graph Persistence (repo_tools Foreign Key Edges) & Scan Results Storage
  */
 class GitHubService {
   constructor() {
@@ -24,6 +22,7 @@ class GitHubService {
     this.repoGraphMemory = new Map(); // RepoName -> { tools, language, pushed_at }
     this.shaCache = new Map(); // RepoName -> CommitSHA/PushedAt
     this.userTokens = new Map(); // Username -> OAuth accessToken
+    this.scanCache = new Map(); // Username -> Full Scan Data Object
   }
 
   /**
@@ -44,8 +43,111 @@ class GitHubService {
     if (!username) return null;
     const key = username.toLowerCase().trim();
     const token = this.userTokens.get(key) || null;
-    console.log(`[GitHubService] Get token for "${key}": ${token ? 'FOUND' : 'NOT FOUND (Public fallback)'}`);
     return token;
+  }
+
+  /**
+   * Store complete scan & analysis results in Tier 1 Memory & Tier 2 PostgreSQL Database
+   */
+  async saveScanToDb(username, repos, analysis, targetRole = 'Senior Backend Engineer') {
+    const key = username.toLowerCase().trim();
+    const privateRepos = repos.filter(r => r.private);
+    const publicRepos = repos.filter(r => !r.private);
+
+    const scanData = {
+      githubUsername: username,
+      targetRole,
+      reposCount: repos.length,
+      privateReposCount: privateRepos.length,
+      publicReposCount: publicRepos.length,
+      repos: repos.map(r => ({
+        id: r.id,
+        name: r.name,
+        private: r.private,
+        language: r.language,
+        detected_tools: r.detected_tools
+      })),
+      analysis,
+      updated_at: new Date().toISOString()
+    };
+
+    // Store in Tier 1 Memory Cache
+    this.scanCache.set(key, scanData);
+    console.log(`[GitHubService] Saved scan for "${key}" in Tier 1 Memory Cache. Total Repos: ${repos.length} (${privateRepos.length} Private, ${publicRepos.length} Public)`);
+
+    // Store in Tier 2 PostgreSQL Database
+    if (process.env.DATABASE_URL) {
+      try {
+        const client = await pool.connect();
+        try {
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS github_scans (
+              username VARCHAR(100) PRIMARY KEY,
+              repos_count INT NOT NULL,
+              private_repos_count INT NOT NULL,
+              public_repos_count INT NOT NULL,
+              scan_json JSONB NOT NULL,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          await client.query(`
+            INSERT INTO github_scans (username, repos_count, private_repos_count, public_repos_count, scan_json, updated_at)
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+            ON CONFLICT (username) DO UPDATE SET 
+              repos_count = EXCLUDED.repos_count,
+              private_repos_count = EXCLUDED.private_repos_count,
+              public_repos_count = EXCLUDED.public_repos_count,
+              scan_json = EXCLUDED.scan_json,
+              updated_at = CURRENT_TIMESTAMP;
+          `, [key, repos.length, privateRepos.length, publicRepos.length, JSON.stringify(scanData)]);
+
+          console.log(`[GitHubService] Successfully persisted scan for "${key}" in PostgreSQL Database.`);
+        } finally {
+          client.release();
+        }
+      } catch (dbErr) {
+        console.warn(`[GitHubService] PostgreSQL scan persistence warning:`, dbErr.message);
+      }
+    }
+
+    return scanData;
+  }
+
+  /**
+   * Retrieve stored scan results from Tier 1 Memory or Tier 2 PostgreSQL Database
+   */
+  async getScanFromDb(username) {
+    if (!username) return null;
+    const key = username.toLowerCase().trim();
+
+    // Check Tier 1 Memory Cache
+    if (this.scanCache.has(key)) {
+      console.log(`[GitHubService] Retrieved scan for "${key}" from Tier 1 Memory Cache.`);
+      return this.scanCache.get(key);
+    }
+
+    // Check Tier 2 PostgreSQL Database
+    if (process.env.DATABASE_URL) {
+      try {
+        const client = await pool.connect();
+        try {
+          const res = await client.query(`SELECT scan_json FROM github_scans WHERE username = $1`, [key]);
+          if (res.rows.length > 0) {
+            const scanData = res.rows[0].scan_json;
+            this.scanCache.set(key, scanData);
+            console.log(`[GitHubService] Retrieved scan for "${key}" from PostgreSQL Database.`);
+            return scanData;
+          }
+        } finally {
+          client.release();
+        }
+      } catch (dbErr) {
+        console.warn(`[GitHubService] PostgreSQL scan retrieval warning:`, dbErr.message);
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -70,7 +172,7 @@ class GitHubService {
 
       console.log(`[GitHubService] Fetching repos for "${username}". Using OAuth token: ${activeToken ? 'YES (Private + Public)' : 'NO (Public only)'}`);
 
-      while (hasMore && page <= 10) { // Fetch up to 1000 repos across pages
+      while (hasMore && page <= 10) {
         const url = activeToken
           ? `https://api.github.com/user/repos?visibility=all&sort=updated&per_page=${perPage}&page=${page}`
           : `https://api.github.com/users/${username}/repos?sort=updated&per_page=${perPage}&page=${page}`;
@@ -95,7 +197,6 @@ class GitHubService {
           }
         } catch (pageErr) {
           console.warn(`[GitHubService] Page ${page} fetch warning for ${url}:`, pageErr.message);
-          // If token fails or is invalid, fallback to public repos
           if (activeToken && page === 1) {
             console.log(`[GitHubService] Token fetch failed. Retrying public repos endpoint for user "${username}"...`);
             delete headers['Authorization'];
@@ -146,7 +247,7 @@ class GitHubService {
           stars: repo.stargazers_count,
           forks: repo.forks_count,
           pushed_at: repo.pushed_at,
-          commit_sha: repo.pushed_at, // Lightweight SHA proxy
+          commit_sha: repo.pushed_at,
           detected_tools: Array.from(detectedTools)
         };
       });
@@ -191,7 +292,6 @@ class GitHubService {
         pushed_at: repo.pushed_at
       });
 
-      // Populate Tier 1 Inverted Hash Index (ToolName -> Set of Repo Names)
       for (const tool of toolsSet) {
         if (!this.invertedIndex.has(tool)) {
           this.invertedIndex.set(tool, new Set());
@@ -208,7 +308,6 @@ class GitHubService {
         try {
           await client.query('BEGIN');
 
-          // Initialize Relational Property Graph Schema & Migrations
           await client.query(`
             CREATE TABLE IF NOT EXISTS github_repositories (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -237,7 +336,6 @@ class GitHubService {
             CREATE INDEX IF NOT EXISTS idx_repo_tools_repo ON repo_tools(repo_id);
           `);
 
-          // Insert repos into Tier 2 DB graph
           for (const repo of repos.slice(0, 50)) {
             const repoRes = await client.query(`
               INSERT INTO github_repositories (repo_name, is_private, language, commit_sha)
@@ -294,7 +392,6 @@ class GitHubService {
   generateGraphDrivenQuestions(targetRole, repos) {
     const probingQuestions = [];
 
-    // Generate dynamic tool comparison pairs from Tier 1 Inverted Hash Index
     const toolPairs = [
       ['PostgreSQL', 'MongoDB'],
       ['Redis', 'BullMQ'],
@@ -322,7 +419,6 @@ class GitHubService {
       }
     }
 
-    // If no explicit pairs match, construct dynamic single-tool repo audit questions
     if (probingQuestions.length === 0) {
       repos.slice(0, 5).forEach((repo, i) => {
         if (repo.detected_tools && repo.detected_tools.length > 0) {
