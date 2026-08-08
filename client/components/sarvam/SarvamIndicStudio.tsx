@@ -2,24 +2,13 @@
 
 import React, { useState } from 'react';
 import { 
-  Globe, Mic, Code2, Brain, Award, Sparkles, AudioLines, 
-  CheckCircle2, RefreshCw, Volume2 
+  Globe, Code2, Brain, Sparkles, RefreshCw, Volume2 
 } from 'lucide-react';
 
 export default function SarvamIndicStudio() {
-  const [activeTab, setActiveTab] = useState<string>('job-coach');
+  const [activeTab, setActiveTab] = useState<string>('code-explainer');
   const [targetLang, setTargetLang] = useState<string>('hi-IN');
   const [loading, setLoading] = useState<boolean>(false);
-
-  // States for Feature 1 (Job Coach)
-  const [jobTitle, setJobTitle] = useState('Senior Full Stack Engineer (Node.js & React)');
-  const [jobDesc, setJobDesc] = useState('Looking for an engineer experienced in building RESTful microservices, PostgreSQL query optimization, and real-time WebSockets.');
-  const [jobResult, setJobResult] = useState<any>(null);
-
-  // States for Feature 2 (STAR Coach)
-  const [starQuestion, setStarQuestion] = useState('Describe a time you resolved a major production bug under high pressure.');
-  const [starAnswer, setStarAnswer] = useState('During a peak sale event, our Redis cache server crashed due to out-of-memory errors. I analyzed the memory footprint, implemented LRU eviction policies, and added rate limiting in Node.js within 20 minutes to stabilize throughput.');
-  const [starResult, setStarResult] = useState<any>(null);
 
   // States for Feature 3 (Live Code Explainer)
   const [codeSnippet, setCodeSnippet] = useState('function twoSum(nums, target) {\n  const map = new Map();\n  for(let i=0; i<nums.length; i++) {\n    let diff = target - nums[i];\n    if(map.has(diff)) return [map.get(diff), i];\n    map.set(nums[i], i);\n  }\n}');
@@ -30,49 +19,6 @@ export default function SarvamIndicStudio() {
   const [debateTopic, setDebateTopic] = useState('PostgreSQL vs MongoDB for high-throughput transactional e-commerce checkout');
   const [candidateStance, setCandidateStance] = useState('I choose PostgreSQL because e-commerce transactions require strict ACID compliance to prevent double-spending and stock overbooking.');
   const [debateResult, setDebateResult] = useState<any>(null);
-
-  // States for Feature 5 (Bilingual HR Report)
-  const [candidateName, setCandidateName] = useState('Jay Sharma');
-  const [dsaScore, setDsaScore] = useState(88);
-  const [softSkillsScore, setSoftSkillsScore] = useState(92);
-  const [transcript, setTranscript] = useState('Candidate demonstrated strong algorithm formulation, clearly verbalized time complexity trade-offs in Hinglish, and structured STAR answers effectively.');
-  const [reportResult, setReportResult] = useState<any>(null);
-
-  // Handler for Feature 1
-  const handleJobMatch = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/sarvam/job-translate-and-match', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobTitle, description: jobDesc, targetLang, userSkills: ['Node.js', 'React', 'PostgreSQL', 'JavaScript'] })
-      });
-      const data = await res.json();
-      setJobResult(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handler for Feature 2
-  const handleStarEval = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/sarvam/star-eval', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: starQuestion, candidateAnswer: starAnswer, languageCode: targetLang })
-      });
-      const data = await res.json();
-      setStarResult(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Handler for Feature 3
   const handleCodeExplainer = async () => {
@@ -110,24 +56,6 @@ export default function SarvamIndicStudio() {
     }
   };
 
-  // Handler for Feature 5
-  const handleBilingualReport = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/sarvam/bilingual-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidateName, dsaScore, softSkillsScore, sessionTranscript: transcript, targetLang })
-      });
-      const data = await res.json();
-      setReportResult(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-8 bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 shadow-2xl">
       {/* Header Banner */}
@@ -140,7 +68,7 @@ export default function SarvamIndicStudio() {
             NitiAI Indic Career & Interview Studio
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Multilingual Career Coaching, Code Explainer, Socratic Debates, and HR Intelligence for Indian Languages.
+            Live Code Explainer and Socratic Technical Debate Simulator for Indian Languages.
           </p>
         </div>
 
@@ -164,13 +92,10 @@ export default function SarvamIndicStudio() {
       </div>
 
       {/* Feature Tabs Navigation */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
         {[
-          { id: 'job-coach', label: '1. Indic Job Coach', icon: Globe },
-          { id: 'star-eval', label: '2. STAR Coach', icon: Award },
-          { id: 'code-explainer', label: '3. Code Explainer', icon: Code2 },
-          { id: 'tech-debate', label: '4. Tech Debate', icon: Brain },
-          { id: 'hr-scribe', label: '5. HR Bilingual Scribe', icon: AudioLines },
+          { id: 'code-explainer', label: '3. Indic Live Code Audio Explainer', icon: Code2 },
+          { id: 'tech-debate', label: '4. Socratic Technical Debate', icon: Brain },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -178,13 +103,13 @@ export default function SarvamIndicStudio() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-semibold transition-all ${
+              className={`flex items-center justify-center gap-3 p-4 rounded-xl border text-sm font-semibold transition-all ${
                 isActive 
                   ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-lg shadow-indigo-500/10' 
                   : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
               }`}
             >
-              <Icon className={`w-5 h-5 mb-1.5 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
+              <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
               <span>{tab.label}</span>
             </button>
           );
@@ -193,156 +118,13 @@ export default function SarvamIndicStudio() {
 
       {/* Main Tab Content */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 min-h-[450px]">
-        {/* FEATURE 1: Indic Job Coach */}
-        {activeTab === 'job-coach' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-indigo-400" /> Feature 1: Multilingual AI Career Coach & Job Matcher
-                </h2>
-                <p className="text-slate-400 text-sm">Translates English job postings into 22 Indian languages and computes match score via Sarvam 105B.</p>
-              </div>
-              <span className="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-3 py-1 rounded-full font-mono">Sarvam Translate + Sarvam 105B</span>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <label className="text-xs font-medium text-slate-400">Job Title</label>
-                <input 
-                  type="text" 
-                  value={jobTitle} 
-                  onChange={(e) => setJobTitle(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
-                />
-                <label className="text-xs font-medium text-slate-400">Job Description (English)</label>
-                <textarea 
-                  rows={4}
-                  value={jobDesc} 
-                  onChange={(e) => setJobDesc(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
-                />
-                <button 
-                  onClick={handleJobMatch}
-                  disabled={loading}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Translate & Match via Sarvam AI
-                </button>
-              </div>
-
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
-                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> AI Indic Match Report
-                </h3>
-                {jobResult ? (
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800">
-                      <span className="text-slate-400">AI Match Score:</span>
-                      <span className="text-lg font-bold text-emerald-400">{jobResult.matchScore}%</span>
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-slate-500 uppercase">Translated Job Card ({jobResult.targetLang}):</span>
-                      <p className="text-slate-300 text-xs mt-1 p-2.5 bg-slate-900 rounded-lg border border-slate-800 leading-relaxed">
-                        {jobResult.translatedDescription}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-slate-500 uppercase">Localized Advice:</span>
-                      <p className="text-indigo-300 text-xs mt-1 p-2.5 bg-indigo-950/40 rounded-lg border border-indigo-900/50">
-                        {jobResult.localizedAdvice}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-xs italic">Click 'Translate & Match' to view Sarvam AI translated output.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* FEATURE 2: STAR Coach */}
-        {activeTab === 'star-eval' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <Award className="w-5 h-5 text-purple-400" /> Feature 2: STAR Method Soft-Skills Simulator
-                </h2>
-                <p className="text-slate-400 text-sm">Evaluates spoken/typed behavioral answers against STAR framework with Indic audio feedback.</p>
-              </div>
-              <span className="text-xs bg-purple-950 text-purple-300 border border-purple-800 px-3 py-1 rounded-full font-mono">Saaras V3 + Bulbul V3</span>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <label className="text-xs font-medium text-slate-400">Behavioral Question</label>
-                <input 
-                  type="text" 
-                  value={starQuestion} 
-                  onChange={(e) => setStarQuestion(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
-                />
-                <label className="text-xs font-medium text-slate-400">Spoken/Typed Answer (Hinglish / Regional)</label>
-                <textarea 
-                  rows={4}
-                  value={starAnswer} 
-                  onChange={(e) => setStarAnswer(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none"
-                />
-                <button 
-                  onClick={handleStarEval}
-                  disabled={loading}
-                  className="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
-                >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />} Evaluate STAR Response
-                </button>
-              </div>
-
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
-                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-purple-400" /> STAR Evaluation Breakdown
-                </h3>
-                {starResult ? (
-                  <div className="space-y-3 text-sm">
-                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                      <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
-                        <div className="text-slate-500">Situation</div>
-                        <div className="text-purple-400 font-bold mt-1">{starResult.starScores.situationScore}%</div>
-                      </div>
-                      <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
-                        <div className="text-slate-500">Task</div>
-                        <div className="text-purple-400 font-bold mt-1">{starResult.starScores.taskScore}%</div>
-                      </div>
-                      <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
-                        <div className="text-slate-500">Action</div>
-                        <div className="text-purple-400 font-bold mt-1">{starResult.starScores.actionScore}%</div>
-                      </div>
-                      <div className="bg-slate-900 p-2 rounded-lg border border-slate-800">
-                        <div className="text-slate-500">Result</div>
-                        <div className="text-purple-400 font-bold mt-1">{starResult.starScores.resultScore}%</div>
-                      </div>
-                    </div>
-                    <div className="p-3 bg-purple-950/40 border border-purple-900/50 rounded-lg text-xs text-purple-200">
-                      <strong>AI Audio Coach Feedback:</strong> {starResult.starScores.feedback}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-xs italic">Submit an answer to see STAR framework scoring.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* FEATURE 3: Live Code Explainer */}
         {activeTab === 'code-explainer' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <Code2 className="w-5 h-5 text-pink-400" /> Feature 3: Indic Live Code Audio Explainer
+                  <Code2 className="w-5 h-5 text-pink-400" /> Feature 3: Indic Live Code Audio Explainer & Real-Time Co-Pilot
                 </h2>
                 <p className="text-slate-400 text-sm">Candidates verbalize code logic in Hinglish/Tamil while typing; AI Co-Pilot checks verbal reasoning.</p>
               </div>
@@ -448,95 +230,6 @@ export default function SarvamIndicStudio() {
                   </div>
                 ) : (
                   <p className="text-slate-500 text-xs italic">Submit your architectural stance to begin Socratic debate.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* FEATURE 5: HR Scribe */}
-        {activeTab === 'hr-scribe' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <AudioLines className="w-5 h-5 text-blue-400" /> Feature 5: Indic HR Scribe & Bilingual Report Card
-                </h2>
-                <p className="text-slate-400 text-sm">Transcribes regional interview sessions into dual-language executive reports for recruiters.</p>
-              </div>
-              <span className="text-xs bg-blue-950 text-blue-300 border border-blue-800 px-3 py-1 rounded-full font-mono">Sarvam Translate + 105B</span>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <label className="text-xs font-medium text-slate-400">Candidate Name</label>
-                <input 
-                  type="text" 
-                  value={candidateName} 
-                  onChange={(e) => setCandidateName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-medium text-slate-400">DSA Score</label>
-                    <input 
-                      type="number" 
-                      value={dsaScore} 
-                      onChange={(e) => setDsaScore(Number(e.target.value))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-400">Soft Skills Score</label>
-                    <input 
-                      type="number" 
-                      value={softSkillsScore} 
-                      onChange={(e) => setSoftSkillsScore(Number(e.target.value))}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <label className="text-xs font-medium text-slate-400">Interview Transcript Summary</label>
-                <textarea 
-                  rows={4}
-                  value={transcript} 
-                  onChange={(e) => setTranscript(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none"
-                />
-                <button 
-                  onClick={handleBilingualReport}
-                  disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
-                >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <AudioLines className="w-4 h-4" />} Generate Bilingual Executive Report
-                </button>
-              </div>
-
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
-                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                  <AudioLines className="w-4 h-4 text-blue-400" /> HR Executive Scorecard
-                </h3>
-                {reportResult ? (
-                  <div className="space-y-3 text-xs">
-                    <div className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800">
-                      <span className="text-slate-400">Recommendation:</span>
-                      <span className="text-emerald-400 font-bold text-sm">{reportResult.report.hiringRecommendation}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 font-medium uppercase">English Executive Summary:</span>
-                      <p className="p-2.5 bg-slate-900 rounded-lg border border-slate-800 text-slate-200 mt-1">
-                        {reportResult.report.englishSummary}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 font-medium uppercase">Indic Summary ({targetLang}):</span>
-                      <p className="p-2.5 bg-indigo-950/40 rounded-lg border border-indigo-900/50 text-indigo-200 mt-1">
-                        {reportResult.report.indicSummary}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-xs italic">Generate report to view HR Executive Scorecard.</p>
                 )}
               </div>
             </div>

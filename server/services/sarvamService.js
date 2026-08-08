@@ -4,7 +4,6 @@ const FormData = require('form-data');
 /**
  * SarvamService - Unified client for Sarvam AI models
  * Supports:
- * - Sarvam Translate (22 Indian languages)
  * - Saaras V3 (Speech-to-Text with code-mixing)
  * - Bulbul V3 (Text-to-Speech across 11 Indian languages)
  * - Sarvam 105B / 30B / Mayura (Multilingual LLM reasoning & prompt completion)
@@ -23,31 +22,7 @@ class SarvamService {
   }
 
   /**
-   * Feature 1 & 5: Translate text into target Indic language (Sarvam Translate)
-   */
-  async translateContent(text, targetLang = 'hi-IN') {
-    if (!this.isConfigured()) {
-      return this.getMockTranslation(text, targetLang);
-    }
-    try {
-      const response = await axios.post(
-        `${this.baseUrl}/translate`,
-        {
-          input: text,
-          target_language_code: targetLang,
-          model: 'sarvam-translate'
-        },
-        { headers: { 'api-subscription-key': this.apiKey } }
-      );
-      return response.data;
-    } catch (error) {
-      console.warn('Sarvam Translate API call failed, using fallback:', error.message);
-      return this.getMockTranslation(text, targetLang);
-    }
-  }
-
-  /**
-   * Feature 2, 3: Speech-to-Text with Code-Mixing (Saaras V3)
+   * Feature 3: Speech-to-Text with Code-Mixing (Saaras V3)
    */
   async transcribeAudio(audioBuffer, languageCode = 'hi-IN') {
     if (!this.isConfigured() || !audioBuffer) {
@@ -70,7 +45,7 @@ class SarvamService {
   }
 
   /**
-   * Feature 2, 3: Text-to-Speech (Bulbul V3)
+   * Feature 3, 4: Text-to-Speech (Bulbul V3)
    */
   async textToSpeech(text, targetLanguage = 'hi-IN', speaker = 'meera') {
     if (!this.isConfigured()) {
@@ -95,7 +70,7 @@ class SarvamService {
   }
 
   /**
-   * Feature 1, 2, 4, 5: LLM Reasoning (Sarvam 105B / 30B / Mayura)
+   * Feature 3, 4: LLM Reasoning (Sarvam 105B / 30B / Mayura)
    */
   async generateCompletion(prompt, systemInstruction = '', model = 'sarvam-105b') {
     if (!this.isConfigured()) {
@@ -122,25 +97,7 @@ class SarvamService {
   }
 
   // Fallback Helper Generators
-  getMockTranslation(text, targetLang) {
-    return {
-      translated_text: `[Sarvam Translate (${targetLang})]: ${text}`,
-      source_language: 'en-IN',
-      target_language: targetLang
-    };
-  }
-
   getMockCompletion(prompt) {
-    if (prompt.includes('STAR')) {
-      return JSON.stringify({
-        situationScore: 85,
-        taskScore: 90,
-        actionScore: 88,
-        resultScore: 82,
-        overallScore: 86,
-        feedback: 'Aapka response structured tha. Aapne situation aur action ko achha explain kiya. Result me quantified metrics add karne se score aur improve hoga.'
-      });
-    }
     if (prompt.includes('debate') || prompt.includes('Debate')) {
       return JSON.stringify({
         architectureDefenseScore: 88,

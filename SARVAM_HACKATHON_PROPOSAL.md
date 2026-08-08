@@ -8,7 +8,7 @@
 
 Building for both **Users (Job Seekers, Students)** and **Clients (Recruiters, Hiring Managers, HR Tech Platforms)** requires balancing **candidate confidence & accessible learning** with **recruiter efficiency, accuracy, and reach**.
 
-By integrating **Sarvam AI's specialized Indic model stack**, NitiAI bridges the native language gap—allowing candidates to practice interviews, explain code out loud, defend architectural choices, and audit resume skills in their comfortable regional dialect, while delivering verified, high-clarity intelligence to hiring teams in English.
+By integrating **Sarvam AI's specialized Indic model stack**, NitiAI bridges the native language gap—allowing candidates to practice live coding out loud and defend architectural choices in their comfortable regional dialect, while delivering verified, high-clarity intelligence to hiring teams.
 
 ---
 
@@ -20,44 +20,14 @@ By integrating **Sarvam AI's specialized Indic model stack**, NitiAI bridges the
 ├─────────────────────────────────────────────────────────┬───────────────────────────────┤
 │ FOR USERS (JOB SEEKERS & STUDENTS)                      │ FOR CLIENTS (RECRUITERS & HR) │
 ├─────────────────────────────────────────────────────────┼───────────────────────────────┤
-│ • Native job description translation (22 languages)     │ • Expand hiring reach to T2/T3│
-│ • Verbalize code logic in Hinglish/Tamil                │ • Real-time Socratic Tech     │
-│ • Practice technical debates & STAR method              │   Debates                     │
-│                                                         │ • Dual-language HR candidate  │
-│                                                         │   report cards                │
+│ • Verbalize code logic in Hinglish/Tamil while coding   │ • Verify code reasoning alignment│
+│ • Practice live Socratic technical debates              │ • Assess candidate trade-offs │
 └─────────────────────────────────────────────────────────┴───────────────────────────────┘
 ```
 
 ---
 
-## 💡 Final 5 Core Features
-
-### 1. 🌐 Multilingual Indic AI Career Coach & Real-Time Job Matcher
-> **User Pain Point**: Job postings on platforms like LinkedIn are written in dense, formal English, making role requirements and skill expectations intimidating or unclear to non-native English speakers.  
-> **Client Pain Point**: Top companies struggle to reach qualified talent in Tier-2 and Tier-3 Indian cities because job listings are exclusively in English.
-
-- **Product Solution**:
-  - **Localized Job Cards**: Real-time translation of LinkedIn/Adzuna job postings into 22 Indian languages. Technical terms stay intact, but key responsibilities are explained in the candidate's native tongue.
-  - **Indic Conversational AI Coach**: Candidates can ask questions like *"What skills do I need for this SDE-2 role?"* in Hindi, Tamil, or Hinglish, receiving actionable advice.
-- **Sarvam Stack Used**:
-  - **Sarvam Translate**: Translates complex job descriptions into 22 Indian languages.
-  - **Sarvam 105B**: Flagship LLM powering contextual career advising.
-  - **Mayura**: Handles colloquial regional queries and code-mixed phrasing.
-
----
-
-### 2. 🎯 Behavioral & Soft-Skills Interview Simulator (STAR Method Coach)
-> **User Pain Point**: Candidates struggle with behavioral questions ("Tell me about a time you resolved a team conflict under deadline") because they don't know how to structure answers using industry standards like the STAR method.  
-> **Client Pain Point**: Technical hires often fail in real company environments due to poor teamwork, adaptability, or communication skills.
-
-- **Product Solution**:
-  - Voice-based soft-skills coaching arena. Candidates speak their answers in regional/code-mixed language, and the AI coach scores their response on Situation, Task, Action, and Result, giving instant voice feedback.
-- **Sarvam Stack Used**:
-  - **Saaras V3**: Speech recognition for spoken candidate responses in 22 Indian languages.
-  - **Sarvam 30B**: Evaluates STAR framework compliance and soft-skill metrics.
-  - **Bulbul V3**: Delivers constructive vocal coaching in 11 Indian languages.
-
----
+## 💡 Core Features Implemented
 
 ### 3. 🎙️ Indic Live Code Audio Explainer & Real-Time Co-Pilot
 > **User Pain Point**: Candidates freeze during live coding rounds because they struggle to verbalize their thought process ("think out loud") in English while writing code.  
@@ -86,19 +56,6 @@ By integrating **Sarvam AI's specialized Indic model stack**, NitiAI bridges the
 
 ---
 
-### 5. 📝 Indic HR Scribe & Bilingual Candidate Report Card Generator
-> **User Pain Point**: Candidates rarely get detailed, actionable feedback explaining why they passed or failed an interview.  
-> **Client Pain Point**: HR teams struggle to write consistent candidate evaluation notes and send feedback to candidates.
-
-- **Product Solution**:
-  - During live interviews, Sarvam AI acts as a silent scribe. It transcribes candidate regional spoken answers via `Saaras V3` and generates a dual-language (English + Native language) **Bilingual Candidate Scorecard PDF** detailing logic score, problem-solving speed, and areas for improvement.
-- **Sarvam Stack Used**:
-  - **Saaras V3**: Real-time multi-speaker transcription.
-  - **Sarvam 105B**: Automated candidate scorecard generator.
-  - **Sarvam Translate**: Instant bilingual report translation.
-
----
-
 ## 🛠️ Unified Sarvam AI Service (`server/services/sarvamService.js`)
 
 ```javascript
@@ -111,19 +68,7 @@ class SarvamService {
     this.baseUrl = 'https://api.sarvam.ai';
   }
 
-  // 1. Job & Report Translation (Sarvam Translate)
-  async translateContent(text, targetLang = 'hi-IN') {
-    const response = await axios.post(`${this.baseUrl}/translate`, {
-      input: text,
-      target_language_code: targetLang,
-      model: 'sarvam-translate'
-    }, {
-      headers: { 'api-subscription-key': this.apiKey }
-    });
-    return response.data;
-  }
-
-  // 2. Code-Mixed Speech Recognition (Saaras V3)
+  // 1. Code-Mixed Speech Recognition (Saaras V3)
   async transcribeAudio(audioBuffer, languageCode = 'hi-IN') {
     const formData = new FormData();
     formData.append('file', audioBuffer, { filename: 'audio.wav' });
@@ -136,7 +81,7 @@ class SarvamService {
     return response.data;
   }
 
-  // 3. Expressive Voice Synthesis (Bulbul V3)
+  // 2. Expressive Voice Synthesis (Bulbul V3)
   async textToSpeech(text, targetLanguage = 'hi-IN', speaker = 'meera') {
     const response = await axios.post(`${this.baseUrl}/text-to-speech`, {
       inputs: [text],
@@ -149,7 +94,7 @@ class SarvamService {
     return response.data;
   }
 
-  // 4. Indic LLM Reasoning & Socratic Debate Engine (Sarvam 105B / 30B)
+  // 3. Indic LLM Reasoning & Socratic Debate Engine (Sarvam 105B / 30B)
   async generateCompletion(prompt, systemInstruction = '', model = 'sarvam-105b') {
     const response = await axios.post(`${this.baseUrl}/chat/completions`, {
       model: model,
@@ -171,6 +116,5 @@ module.exports = new SarvamService();
 ---
 
 ## 🏆 Pitch Strategy for Sarvam Jury
-1. **Full Sarvam Ecosystem Showcase**: Leverages the flagship models in the Sarvam stack (`Sarvam 105B`, `Sarvam 30B`, `Saaras V3`, `Bulbul V3`, `Sarvam Translate`, `Mayura`).
-2. **Product Innovation**: Combines real-time code execution, voice-based tech debates, STAR behavioral evaluation, and automated HR scorecards into a cohesive platform.
-3. **High Hackathon Feasibility**: Modular architecture allows shipping all 5 features clean using Express routes & Next.js App Router.
+1. **Targeted Sarvam Stack Showcase**: Leverages flagship models (`Sarvam 105B`, `Sarvam 30B`, `Saaras V3`, `Bulbul V3`, `Mayura`) focused on live code audio reasoning and Socratic debates.
+2. **Product Innovation**: Combines real-time code execution with voice-based technical debate simulation into a high-impact developer platform.
