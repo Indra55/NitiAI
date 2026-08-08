@@ -14,6 +14,7 @@ export default function GitHubDemoPage() {
   const [targetRole, setTargetRole] = useState<string>('Senior Backend & Systems Engineer');
   const [loading, setLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Answer Evaluation States
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
@@ -51,21 +52,33 @@ export default function GitHubDemoPage() {
 
   const runScan = async (userToScan: string) => {
     setLoading(true);
+    setErrorMsg(null);
     try {
       const res = await fetch('/api/github/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ githubUsername: userToScan, targetRole })
       });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error('Scan Error Server Response:', errText);
+        setErrorMsg(`Server returned ${res.status}: Failed to reach API backend.`);
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
         setScanResult(data);
         if (data.analysis && data.analysis.probingQuestions && data.analysis.probingQuestions.length > 0) {
           setSelectedQuestion(data.analysis.probingQuestions[0]);
         }
+      } else {
+        setErrorMsg(data.error || 'Failed to complete repository analysis.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Scan error:', e);
+      setErrorMsg(e.message || 'Network error connecting to analysis service.');
     } finally {
       setLoading(false);
     }
@@ -96,6 +109,10 @@ export default function GitHubDemoPage() {
             targetRole
           })
         });
+      }
+      if (!res.ok) {
+        console.error('Evaluate API error');
+        return;
       }
       const data = await res.json();
       setEvaluationResult(data.evaluation);
@@ -189,6 +206,19 @@ export default function GitHubDemoPage() {
                 <LogOut className="w-3.5 h-3.5" /> Re-authenticate
               </a>
             </div>
+
+            {/* Error Message Box */}
+            {errorMsg && (
+              <div className="p-4 bg-red-950/50 border border-red-800 rounded-xl text-red-200 text-xs flex items-center justify-between">
+                <span>{errorMsg}</span>
+                <button 
+                  onClick={() => runScan(username)}
+                  className="bg-red-800 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold"
+                >
+                  Retry Scan
+                </button>
+              </div>
+            )}
 
             {/* Live Loading State */}
             {loading && (
