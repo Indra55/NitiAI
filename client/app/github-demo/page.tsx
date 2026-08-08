@@ -53,6 +53,17 @@ export default function GitHubDemoPage() {
     }
   }, []);
 
+  const handleOAuthConnect = () => {
+    window.location.href = '/api/github/auth/login';
+  };
+
+  const handleReauthenticate = () => {
+    setGithubConnected(false);
+    setScanResult(null);
+    setAccessToken(null);
+    window.location.href = '/api/github/auth/login';
+  };
+
   const runScan = async (userToScan: string, token: string | null = accessToken) => {
     setLoading(true);
     setErrorMsg(null);
@@ -172,12 +183,12 @@ export default function GitHubDemoPage() {
               </p>
             </div>
 
-            <a
-              href="http://localhost:5000/api/github/auth/login"
-              className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 hover:scale-[1.02]"
+            <button
+              onClick={handleOAuthConnect}
+              className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 hover:scale-[1.02] cursor-pointer"
             >
               <Github className="w-5 h-5" /> 🚀 Connect GitHub Account (Public &amp; Private Repos)
-            </a>
+            </button>
 
             <div className="pt-6 border-t border-slate-800 flex items-center justify-center gap-3 text-xs text-slate-500">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -206,12 +217,12 @@ export default function GitHubDemoPage() {
                 </div>
               </div>
 
-              <a
-                href="http://localhost:5000/api/github/auth/login"
-                className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg transition-all"
+              <button
+                onClick={handleReauthenticate}
+                className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" /> Re-authenticate
-              </a>
+              </button>
             </div>
 
             {/* Error Message Box */}
