@@ -37,7 +37,7 @@ router.get('/auth/callback', async (req, res) => {
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
 
   if (!code) {
-    return res.redirect(`${clientUrl}/studio?githubError=no_code`);
+    return res.redirect(`${clientUrl}/github-demo?githubError=no_code`);
   }
 
   try {
@@ -54,7 +54,7 @@ router.get('/auth/callback', async (req, res) => {
 
     const accessToken = tokenResponse.data.access_token;
     if (!accessToken) {
-      return res.redirect(`${clientUrl}/studio?githubError=token_failed`);
+      return res.redirect(`${clientUrl}/github-demo?githubError=token_failed`);
     }
 
     // Fetch authenticated user profile
@@ -68,11 +68,11 @@ router.get('/auth/callback', async (req, res) => {
     const repos = await githubService.fetchUserRepositories(username, accessToken);
     await githubService.syncHybridGraph(null, username, repos);
 
-    // Redirect to frontend studio with OAuth success & username parameter
-    res.redirect(`${clientUrl}/studio?githubConnected=true&username=${username}&reposCount=${repos.length}`);
+    // Redirect to frontend demo page with OAuth success & username parameter
+    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${username}&reposCount=${repos.length}`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
-    res.redirect(`${clientUrl}/studio?githubError=${encodeURIComponent(error.message)}`);
+    res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);
   }
 });
 
