@@ -43,6 +43,7 @@ router.get('/auth/callback', async (req, res) => {
 
   try {
     // Exchange temporary OAuth code for access_token
+    console.log(`[GitHubOAuth] Exchanging temporary code for access token...`);
     const tokenResponse = await axios.post(
       'https://github.com/login/oauth/access_token',
       {
@@ -55,6 +56,12 @@ router.get('/auth/callback', async (req, res) => {
 
     const accessToken = tokenResponse.data.access_token;
     if (!accessToken) {
+      console.error('[GitHubOAuth] Token exchange response payload:', tokenResponse.data);
+      // If code was already consumed or expired, re-trigger fresh authorization login
+      if (tokenResponse.data.error === 'bad_verification_code') {
+        console.log('[GitHubOAuth] Verification code expired or already consumed. Redirecting for fresh authorization...');
+        return res.redirect('/api/github/auth/login');
+      }
       return res.redirect(`${clientUrl}/github-demo?githubError=token_failed`);
     }
 
