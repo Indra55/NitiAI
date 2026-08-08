@@ -11,6 +11,7 @@ export default function GitHubDemoPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [githubConnected, setGithubConnected] = useState<boolean>(false);
   const [username, setUsername] = useState<string>('jayyy255');
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [targetRole, setTargetRole] = useState<string>('Senior Backend & Systems Engineer');
   const [loading, setLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<any>(null);
@@ -40,11 +41,13 @@ export default function GitHubDemoPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const isConnected = urlParams.get('githubConnected') === 'true';
       const userParam = urlParams.get('username');
+      const tokenParam = urlParams.get('token');
 
       if (isConnected || userParam) {
         setGithubConnected(true);
         const activeUser = userParam || 'jayyy255';
         setUsername(activeUser);
+        if (tokenParam) setAccessToken(tokenParam);
         fetchStoredScan(activeUser);
       }
     }
@@ -79,13 +82,13 @@ export default function GitHubDemoPage() {
   };
 
   const handleOAuthConnect = () => {
-    window.location.href = '/api/github/auth/login';
+    window.location.href = 'http://localhost:5000/api/github/auth/login';
   };
 
   const handleReauthenticate = () => {
     setGithubConnected(false);
     setScanResult(null);
-    window.location.href = '/api/github/auth/login';
+    window.location.href = 'http://localhost:5000/api/github/auth/login';
   };
 
   const runScan = async (userToScan: string) => {
@@ -203,12 +206,12 @@ export default function GitHubDemoPage() {
               </p>
             </div>
 
-            <button
-              onClick={handleOAuthConnect}
+            <a
+              href="http://localhost:5000/api/github/auth/login"
               className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 hover:scale-[1.02] cursor-pointer"
             >
               <Github className="w-5 h-5" /> 🚀 Connect GitHub Account (Public &amp; Private Repos)
-            </button>
+            </a>
 
             <div className="pt-6 border-t border-slate-800 flex items-center justify-center gap-3 text-xs text-slate-500">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -237,12 +240,12 @@ export default function GitHubDemoPage() {
                 </div>
               </div>
 
-              <button
-                onClick={handleReauthenticate}
+              <a
+                href="http://localhost:5000/api/github/auth/login"
                 className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" /> Re-authenticate
-              </button>
+              </a>
             </div>
 
             {/* Error Message Box */}
