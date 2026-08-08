@@ -28,7 +28,7 @@ router.get('/auth/login', (req, res) => {
 
 /**
  * 2. GET /api/github/auth/callback
- * Handles OAuth callback code, exchanges code for access_token, and indexes all public & private repos
+ * Handles OAuth callback code, exchanges code for access_token, caches token, and indexes all public & private repos
  */
 router.get('/auth/callback', async (req, res) => {
   const { code } = req.query;
@@ -64,6 +64,9 @@ router.get('/auth/callback', async (req, res) => {
 
     const username = userResponse.data.login;
 
+    // Cache OAuth access token in githubService
+    githubService.setAccessToken(username, accessToken);
+
     // Fetch and index ALL public AND private repositories
     const repos = await githubService.fetchUserRepositories(username, accessToken);
     await githubService.syncHybridGraph(null, username, repos);
@@ -88,7 +91,7 @@ router.post('/analyze', async (req, res) => {
       return res.status(400).json({ success: false, error: 'GitHub username is required.' });
     }
 
-    // Fetch public & private repositories
+    // Fetch public & private repositories using active or cached OAuth access token
     const repos = await githubService.fetchUserRepositories(githubUsername, accessToken);
 
     // Perform 2-Tier Hybrid Graph Sync

@@ -23,6 +23,24 @@ class GitHubService {
     this.invertedIndex = new Map(); // ToolName -> Set(RepoName)
     this.repoGraphMemory = new Map(); // RepoName -> { tools, language, pushed_at }
     this.shaCache = new Map(); // RepoName -> CommitSHA/PushedAt
+    this.userTokens = new Map(); // Username -> OAuth accessToken
+  }
+
+  /**
+   * Save OAuth access token for a username
+   */
+  setAccessToken(username, token) {
+    if (username && token) {
+      this.userTokens.set(username.toLowerCase(), token);
+    }
+  }
+
+  /**
+   * Get cached OAuth access token for a username
+   */
+  getAccessToken(username) {
+    if (!username) return null;
+    return this.userTokens.get(username.toLowerCase()) || null;
   }
 
   /**
@@ -30,6 +48,7 @@ class GitHubService {
    */
   async fetchUserRepositories(username, accessToken = null) {
     try {
+      const activeToken = accessToken || this.getAccessToken(username);
       let rawRepos = [];
       let page = 1;
       const perPage = 100;
@@ -38,12 +57,12 @@ class GitHubService {
       const headers = {
         'User-Agent': 'NitiAI-Career-Studio'
       };
-      if (accessToken) {
-        headers['Authorization'] = `token ${accessToken}`;
+      if (activeToken) {
+        headers['Authorization'] = `token ${activeToken}`;
       }
 
       while (hasMore && page <= 10) { // Fetch up to 1000 repos across pages
-        const url = accessToken
+        const url = activeToken
           ? `https://api.github.com/user/repos?visibility=all&sort=updated&per_page=${perPage}&page=${page}`
           : `https://api.github.com/users/${username}/repos?sort=updated&per_page=${perPage}&page=${page}`;
 
