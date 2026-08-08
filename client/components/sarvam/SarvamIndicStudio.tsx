@@ -1,14 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Globe, Code2, Brain, Sparkles, RefreshCw, Volume2 
+  Globe, Mic, MicOff, Code2, Brain, FileText, Sparkles, RefreshCw, Volume2, 
+  CheckCircle2, AlertCircle, Play, Pause, Upload, MessageSquare, Award, ArrowRight
 } from 'lucide-react';
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { getResumeInfo } from '@/lib/api';
 
 export default function SarvamIndicStudio() {
   const [activeTab, setActiveTab] = useState<string>('code-explainer');
   const [targetLang, setTargetLang] = useState<string>('hi-IN');
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Audio Playback State
+  const [playingAudio, setPlayingAudio] = useState<boolean>(false);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+
+  // Voice Recorder Hook (25s Limit)
+  const {
+    isRecording,
+    duration,
+    maxDuration,
+    audioBlob,
+    audioUrl,
+    audioLevel,
+    startRecording,
+    stopRecording,
+    resetRecording,
+    error: recordingError
+  } = useVoiceRecorder();
 
   // States for Feature 3 (Live Code Explainer)
   const [codeSnippet, setCodeSnippet] = useState('function twoSum(nums, target) {\n  const map = new Map();\n  for(let i=0; i<nums.length; i++) {\n    let diff = target - nums[i];\n    if(map.has(diff)) return [map.get(diff), i];\n    map.set(nums[i], i);\n  }\n}');
@@ -19,36 +40,191 @@ export default function SarvamIndicStudio() {
   const [debateTopic, setDebateTopic] = useState('PostgreSQL vs MongoDB for high-throughput transactional e-commerce checkout');
   const [candidateStance, setCandidateStance] = useState('I choose PostgreSQL because e-commerce transactions require strict ACID compliance to prevent double-spending and stock overbooking.');
   const [debateResult, setDebateResult] = useState<any>(null);
+  const [debateHistory, setDebateHistory] = useState<Array<{ role: string; content: string }>>([]);
 
-  // Handler for Feature 3
+  // States for Resume Probing Arena
+  const [resumeText, setResumeText] = useState<string>('');
+  const [resumeStatus, setResumeStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
+  const [resumeQuestions, setResumeQuestions] = useState<any>(null);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0);
+
+  // Auto-play AI response audio when audio_b64 is received
+  const playBase64Audio = (audioB64: string | null) => {
+    if (!audioB64) return;
+    try {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      const audio = new Audio(`data:audio/wav;base64,${audioB64}`);
+      audioPlayerRef.current = audio;
+      setPlayingAudio(true);
+      audio.play();
+      audio.onended = () => setPlayingAudio(false);
+      audio.onerror = () => setPlayingAudio(false);
+    } catch (err) {
+      console.warn('Audio playback error:', err);
+      setPlayingAudio(false);
+    }
+  };
+
+  // Auto-load built resume from API on mount
+  useEffect(() => {
+    async function loadResume() {
+      setResumeStatus('loading');
+      try {
+        const res = await getResumeInfo();
+        if (res.data) {
+          const formattedText = `
+Name: ${res.data.personal_info?.full_name || 'Candidate'}
+Summary: ${res.data.personal_info?.summary || ''}
+Skills: ${res.data.skills?.map(s => s.name).join(', ') || ''}
+Experience: ${res.data.work_experience?.map(w => `${w.job_title} at ${w.company}: ${w.description}`).join(' | ') || ''}
+Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).join(' | ') || ''}
+          `.trim();
+          setResumeText(formattedText);
+          setResumeStatus('found');
+        } else {
+          setResumeStatus('not_found');
+        }
+      } catch (e) {
+        setResumeStatus('not_found');
+      }
+    }
+    loadResume();
+  }, []);
+
+  // Transcribe recorded microphone audio blob dynamically via Saaras V3
+  const handleTranscribeAudio = async (targetField: 'codeExplainer' | 'techDebate') => {
+    if (!audioBlob) return;
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('languageCode', targetLang);
+
+      const res = await fetch('/api/sarvam/transcribe', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success && data.transcript) {
+        if (targetField === 'codeExplainer') {
+          setVerbalExp(data.transcript);
+        } else {
+          setCandidateStance(data.transcript);
+        }
+      }
+    } catch (e) {
+      console.error('Transcription error:', e);
+    } finally {
+      setLoading(false);
+      resetRecording();
+    }
+  };
+
+  // Handler for Feature 3 (Live Code Explainer)
   const handleCodeExplainer = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/sarvam/live-code-explainer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: codeSnippet, problemTitle: 'Two Sum', candidateVerbalExplanation: verbalExp, languageCode: targetLang })
-      });
+      let res;
+      if (audioBlob) {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('code', codeSnippet);
+        formData.append('problemTitle', 'Two Sum');
+        formData.append('candidateVerbalExplanation', verbalExp);
+        formData.append('languageCode', targetLang);
+
+        res = await fetch('/api/sarvam/live-code-explainer', { method: 'POST', body: formData });
+      } else {
+        res = await fetch('/api/sarvam/live-code-explainer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: codeSnippet, problemTitle: 'Two Sum', candidateVerbalExplanation: verbalExp, languageCode: targetLang })
+        });
+      }
       const data = await res.json();
       setCodeExplainerResult(data);
+      if (data.transcript) setVerbalExp(data.transcript);
+
+      // Dictate AI response via Bulbul V3 Audio
+      if (data.audioHint && data.audioHint.audios) {
+        playBase64Audio(data.audioHint.audios[0]);
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+      resetRecording();
     }
   };
 
-  // Handler for Feature 4
+  // Handler for Feature 4 (Socratic Tech Debate & Follow-Ups)
   const handleTechDebate = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/sarvam/tech-debate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: debateTopic, candidateStance, languageCode: targetLang })
-      });
+      const updatedHistory = [...debateHistory, { role: 'user', content: candidateStance }];
+      setDebateHistory(updatedHistory);
+
+      let res;
+      if (audioBlob) {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('topic', debateTopic);
+        formData.append('candidateStance', candidateStance);
+        formData.append('resumeContext', resumeText);
+        formData.append('debateHistory', JSON.stringify(updatedHistory));
+        formData.append('languageCode', targetLang);
+
+        res = await fetch('/api/sarvam/tech-debate', { method: 'POST', body: formData });
+      } else {
+        res = await fetch('/api/sarvam/tech-debate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic: debateTopic,
+            candidateStance,
+            resumeContext: resumeText,
+            debateHistory: updatedHistory,
+            languageCode: targetLang
+          })
+        });
+      }
       const data = await res.json();
       setDebateResult(data);
+      if (data.transcript) setCandidateStance(data.transcript);
+
+      if (data.debateResponse && data.debateResponse.socraticPushback) {
+        setDebateHistory([...updatedHistory, { role: 'assistant', content: data.debateResponse.socraticPushback }]);
+      }
+
+      // Dictate Senior Architect voice pushback via Bulbul V3
+      if (data.voicePushback && data.voicePushback.audios) {
+        playBase64Audio(data.voicePushback.audios[0]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+      resetRecording();
+    }
+  };
+
+  // Handler for Resume Probing Questions
+  const handleFetchResumeQuestions = async () => {
+    if (!resumeText) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/sarvam/resume-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeText, languageCode: targetLang })
+      });
+      const data = await res.json();
+      setResumeQuestions(data.result);
+      if (data.firstQuestionAudio && data.firstQuestionAudio.audios) {
+        playBase64Audio(data.firstQuestionAudio.audios[0]);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -68,7 +244,7 @@ export default function SarvamIndicStudio() {
             NitiAI Indic Career & Interview Studio
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Live Code Explainer and Socratic Technical Debate Simulator for Indian Languages.
+            Real Voice Explainer, Socratic Technical Debate, and Resume Probing Powered by Sarvam AI.
           </p>
         </div>
 
@@ -92,10 +268,11 @@ export default function SarvamIndicStudio() {
       </div>
 
       {/* Feature Tabs Navigation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {[
-          { id: 'code-explainer', label: '3. Indic Live Code Audio Explainer', icon: Code2 },
-          { id: 'tech-debate', label: '4. Socratic Technical Debate', icon: Brain },
+          { id: 'code-explainer', label: '3. Live Code Explainer', icon: Code2 },
+          { id: 'tech-debate', label: '4. Socratic Tech Debate', icon: Brain },
+          { id: 'resume-audit', label: 'Resume Probing Arena', icon: FileText },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -116,6 +293,57 @@ export default function SarvamIndicStudio() {
         })}
       </div>
 
+      {/* Shared Voice Recorder Widget */}
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`p-3 rounded-full flex items-center justify-center transition-all shadow-lg ${
+              isRecording 
+                ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse' 
+                : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+            }`}
+          >
+            {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </button>
+          <div>
+            <div className="text-xs font-semibold text-slate-200">
+              {isRecording ? `Recording... (${duration}s / ${maxDuration}s limit)` : 'Microphone Ready'}
+            </div>
+            <div className="text-xs text-slate-400">
+              {isRecording ? 'Enforcing 25s max limit to optimize resources' : 'Click mic when ready to record your spoken response'}
+            </div>
+          </div>
+        </div>
+
+        {/* Real-time Audio Waveform Bar */}
+        {isRecording && (
+          <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-4 py-2 rounded-lg">
+            <div className="text-xs text-indigo-400 font-mono">Audio Level:</div>
+            <div className="w-32 bg-slate-800 rounded-full h-2 overflow-hidden">
+              <div 
+                className="bg-indigo-400 h-full transition-all duration-75"
+                style={{ width: `${Math.min(100, audioLevel * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Audio Blob Preview & Transcribe Action */}
+        {audioBlob && !isRecording && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-emerald-400 font-medium">Recording Captured ({duration}s)</span>
+            <button
+              onClick={() => handleTranscribeAudio(activeTab === 'code-explainer' ? 'codeExplainer' : 'techDebate')}
+              disabled={loading}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5"
+            >
+              {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Transcribe via Saaras V3
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Main Tab Content */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 min-h-[450px]">
         {/* FEATURE 3: Live Code Explainer */}
@@ -126,9 +354,9 @@ export default function SarvamIndicStudio() {
                 <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
                   <Code2 className="w-5 h-5 text-pink-400" /> Feature 3: Indic Live Code Audio Explainer & Real-Time Co-Pilot
                 </h2>
-                <p className="text-slate-400 text-sm">Candidates verbalize code logic in Hinglish/Tamil while typing; AI Co-Pilot checks verbal reasoning.</p>
+                <p className="text-slate-400 text-sm">Record or type your verbal thought process in Hinglish; Sarvam AI verifies reasoning & dictates hints.</p>
               </div>
-              <span className="text-xs bg-pink-950 text-pink-300 border border-pink-800 px-3 py-1 rounded-full font-mono">Sarvam Co-Pilot</span>
+              <span className="text-xs bg-pink-950 text-pink-300 border border-pink-800 px-3 py-1 rounded-full font-mono">Saaras V3 + Bulbul V3</span>
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
@@ -140,7 +368,7 @@ export default function SarvamIndicStudio() {
                   onChange={(e) => setCodeSnippet(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-pink-300 focus:outline-none"
                 />
-                <label className="text-xs font-medium text-slate-400">Verbal Thought Process (Hinglish Mic Input)</label>
+                <label className="text-xs font-medium text-slate-400">Verbal Thought Process (Spoken Audio or Typed)</label>
                 <input 
                   type="text" 
                   value={verbalExp} 
@@ -152,7 +380,7 @@ export default function SarvamIndicStudio() {
                   disabled={loading}
                   className="w-full bg-pink-600 hover:bg-pink-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
                 >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />} Analyze Code Reasoning
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />} Analyze Reasoning & Dictate Voice Hint
                 </button>
               </div>
 
@@ -168,41 +396,45 @@ export default function SarvamIndicStudio() {
                         {codeExplainerResult.evaluation.logicMatchesCode ? 'Verified Alignment' : 'Discrepancy Found'}
                       </span>
                     </div>
-                    <div className="p-3 bg-pink-950/40 border border-pink-900/50 rounded-lg text-xs text-pink-200">
-                      <strong>AI Audio Hint:</strong> {codeExplainerResult.evaluation.audioHintText}
+                    <div className="p-3 bg-pink-950/40 border border-pink-900/50 rounded-lg text-xs text-pink-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <strong>AI Spoken Hint (Bulbul V3 Dictation):</strong>
+                        {playingAudio && <span className="text-xs text-pink-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Playing Voice...</span>}
+                      </div>
+                      <p>{codeExplainerResult.evaluation.audioHintText}</p>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-slate-500 text-xs italic">Enter verbal code reasoning to get AI Co-pilot feedback.</p>
+                  <p className="text-slate-500 text-xs italic">Record or enter verbal code reasoning to test Sarvam AI audio explainer.</p>
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* FEATURE 4: Socratic Tech Debate */}
+        {/* FEATURE 4: Socratic Tech Debate & Dynamic Multi-Turn Follow-Ups */}
         {activeTab === 'tech-debate' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-emerald-400" /> Feature 4: Socratic Technical Debate Simulator
+                  <Brain className="w-5 h-5 text-emerald-400" /> Feature 4: Socratic Technical Debate & Dynamic Follow-Ups
                 </h2>
-                <p className="text-slate-400 text-sm">Sarvam AI acts as a Principal Architect challenging architectural trade-offs in regional languages.</p>
+                <p className="text-slate-400 text-sm">Principal Architect challenges candidate trade-offs and dynamically generates follow-up questions.</p>
               </div>
-              <span className="text-xs bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full font-mono">Sarvam 105B</span>
+              <span className="text-xs bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full font-mono">Sarvam 105B + Bulbul V3</span>
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-3">
-                <label className="text-xs font-medium text-slate-400">Debate Topic</label>
+                <label className="text-xs font-medium text-slate-400">Debate Topic / Tech Choice</label>
                 <input 
                   type="text" 
                   value={debateTopic} 
                   onChange={(e) => setDebateTopic(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
                 />
-                <label className="text-xs font-medium text-slate-400">Candidate Architecture Stance</label>
+                <label className="text-xs font-medium text-slate-400">Candidate Stance / Answer (Spoken or Typed)</label>
                 <textarea 
                   rows={4}
                   value={candidateStance} 
@@ -214,22 +446,120 @@ export default function SarvamIndicStudio() {
                   disabled={loading}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
                 >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />} Challenge Stance via Socratic AI
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />} Challenge Stance & Generate Follow-Up
                 </button>
               </div>
 
               <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
-                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                  <Brain className="w-4 h-4 text-emerald-400" /> Architect Socratic Pushback
+                <h3 className="text-sm font-semibold text-slate-300 flex items-center justify-between">
+                  <span className="flex items-center gap-2"><Brain className="w-4 h-4 text-emerald-400" /> Socratic Architect Pushback & Dictation</span>
+                  {playingAudio && <span className="text-xs text-emerald-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Speaking Voice...</span>}
                 </h3>
                 {debateResult ? (
                   <div className="space-y-3 text-sm">
-                    <div className="p-3 bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs text-emerald-200">
-                      <strong>Principal Architect Counter-Question:</strong> {debateResult.debateResponse.socraticPushback}
+                    <div className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs">
+                      <span className="text-slate-400">Composure & Trade-off Score:</span>
+                      <span className="text-emerald-400 font-bold text-sm">{debateResult.debateResponse.architecturalScore}%</span>
+                    </div>
+                    <div className="p-3 bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs text-emerald-200 space-y-2">
+                      <strong>Principal Architect Counter-Question:</strong>
+                      <p>{debateResult.debateResponse.socraticPushback}</p>
+                    </div>
+                    {debateResult.debateResponse.followupQuestion && (
+                      <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs text-indigo-300">
+                        <strong>Dynamic Follow-up Question:</strong> {debateResult.debateResponse.followupQuestion}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-xs italic">Submit your architectural stance to begin multi-turn Socratic debate.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* RESUME PROBING ARENA */}
+        {activeTab === 'resume-audit' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-400" /> Resume Probing & Interview Question Generator
+                </h2>
+                <p className="text-slate-400 text-sm">Generates deep technical probing questions based on your resume claims (e.g. MongoDB vs PostgreSQL, Caching).</p>
+              </div>
+              <span className="text-xs bg-indigo-950 text-indigo-300 border border-indigo-800 px-3 py-1 rounded-full font-mono">Resume Screening</span>
+            </div>
+
+            {/* Resume Source Detection Banner */}
+            {resumeStatus === 'not_found' && (
+              <div className="p-4 bg-amber-950/40 border border-amber-800/60 rounded-xl flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-400" />
+                  <span className="text-xs text-amber-200">
+                    No active resume detected from system. Please paste your resume text below or create one with NitiAI Resume Builder.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {resumeStatus === 'found' && (
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl flex items-center gap-2 text-xs text-emerald-300">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>Automatically loaded user's stored resume profile from NitiAI system.</span>
+              </div>
+            )}
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <label className="text-xs font-medium text-slate-400">Resume Text Content</label>
+                <textarea 
+                  rows={8}
+                  value={resumeText} 
+                  onChange={(e) => setResumeText(e.target.value)}
+                  placeholder="Paste candidate resume text or tech stack here..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-indigo-200 focus:outline-none"
+                />
+                <button 
+                  onClick={handleFetchResumeQuestions}
+                  disabled={loading || !resumeText}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Extract Technical Claims & Generate Probing Questions
+                </button>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
+                <h3 className="text-sm font-semibold text-slate-300 flex items-center justify-between">
+                  <span className="flex items-center gap-2"><Award className="w-4 h-4 text-indigo-400" /> Generated Resume Probing Questions</span>
+                  {playingAudio && <span className="text-xs text-indigo-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Dictating...</span>}
+                </h3>
+
+                {resumeQuestions && resumeQuestions.questions ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs">
+                      <span className="text-slate-400">Overall Resume Technical Score:</span>
+                      <span className="text-indigo-400 font-bold text-sm">{resumeQuestions.overallResumeScore}%</span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {resumeQuestions.questions.map((q: any, idx: number) => (
+                        <div key={idx} className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-xs space-y-1.5">
+                          <div className="flex items-center justify-between text-indigo-300 font-semibold">
+                            <span>{idx + 1}. {q.topic}</span>
+                            <span className="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 px-2 py-0.5 rounded-full">{q.whyAsked || 'Resume Claim'}</span>
+                          </div>
+                          <p className="text-slate-200 font-medium">{q.question}</p>
+                          <div className="text-[11px] text-slate-400">
+                            <strong>Expected Concepts:</strong> {q.expectedConcepts ? q.expectedConcepts.join(', ') : 'Architecture depth'}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-slate-500 text-xs italic">Submit your architectural stance to begin Socratic debate.</p>
+                  <p className="text-slate-500 text-xs italic">Generate questions to see personalized probing technical queries extracted from your resume.</p>
                 )}
               </div>
             </div>
