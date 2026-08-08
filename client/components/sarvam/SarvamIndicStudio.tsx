@@ -46,7 +46,6 @@ export default function SarvamIndicStudio() {
   const [resumeText, setResumeText] = useState<string>('');
   const [resumeStatus, setResumeStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
   const [resumeQuestions, setResumeQuestions] = useState<any>(null);
-  const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0);
 
   // Auto-play AI response audio when audio_b64 is received
   const playBase64Audio = (audioB64: string | null) => {
@@ -108,6 +107,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
       });
       const data = await res.json();
       if (data.success && data.transcript) {
+        if (data.languageCode) setTargetLang(data.languageCode);
         if (targetField === 'codeExplainer') {
           setVerbalExp(data.transcript);
         } else {
@@ -146,8 +146,9 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
       const data = await res.json();
       setCodeExplainerResult(data);
       if (data.transcript) setVerbalExp(data.transcript);
+      if (data.detectedLanguage) setTargetLang(data.detectedLanguage);
 
-      // Dictate AI response via Bulbul V3 Audio
+      // Dictate AI response in the detected/spoken language via Bulbul V3 Audio
       if (data.audioHint && data.audioHint.audios) {
         playBase64Audio(data.audioHint.audios[0]);
       }
@@ -159,7 +160,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
     }
   };
 
-  // Handler for Feature 4 (Socratic Tech Debate & Follow-Ups)
+  // Handler for Feature 4 (Socratic Tech Debate & Dynamic Follow-Ups)
   const handleTechDebate = async () => {
     setLoading(true);
     try {
@@ -193,12 +194,13 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
       const data = await res.json();
       setDebateResult(data);
       if (data.transcript) setCandidateStance(data.transcript);
+      if (data.detectedLanguage) setTargetLang(data.detectedLanguage);
 
       if (data.debateResponse && data.debateResponse.socraticPushback) {
         setDebateHistory([...updatedHistory, { role: 'assistant', content: data.debateResponse.socraticPushback }]);
       }
 
-      // Dictate Senior Architect voice pushback via Bulbul V3
+      // Dictate Senior Architect voice pushback in user's spoken language via Bulbul V3
       if (data.voicePushback && data.voicePushback.audios) {
         playBase64Audio(data.voicePushback.audios[0]);
       }
@@ -293,12 +295,12 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
         })}
       </div>
 
-      {/* Shared Voice Recorder Widget */}
+      {/* Shared Voice Recorder Widget with Explicit Timer (0s / 25s) */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             onClick={isRecording ? stopRecording : startRecording}
-            className={`p-3 rounded-full flex items-center justify-center transition-all shadow-lg ${
+            className={`p-3.5 rounded-full flex items-center justify-center transition-all shadow-lg ${
               isRecording 
                 ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse' 
                 : 'bg-indigo-600 hover:bg-indigo-500 text-white'
@@ -307,19 +309,22 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
             {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
           </button>
           <div>
-            <div className="text-xs font-semibold text-slate-200">
-              {isRecording ? `Recording... (${duration}s / ${maxDuration}s limit)` : 'Microphone Ready'}
+            <div className="text-xs font-bold text-slate-100 flex items-center gap-2">
+              <span>{isRecording ? 'Recording in progress...' : 'Microphone Ready'}</span>
+              <span className="font-mono bg-slate-950 border border-slate-800 text-indigo-400 px-2 py-0.5 rounded text-[11px]">
+                {duration}s / {maxDuration}s
+              </span>
             </div>
-            <div className="text-xs text-slate-400">
-              {isRecording ? 'Enforcing 25s max limit to optimize resources' : 'Click mic when ready to record your spoken response'}
+            <div className="text-xs text-slate-400 mt-0.5">
+              {isRecording ? 'Recording will auto-stop at 25s' : 'Click mic button whenever you are ready to speak your answer'}
             </div>
           </div>
         </div>
 
         {/* Real-time Audio Waveform Bar */}
         {isRecording && (
-          <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-4 py-2 rounded-lg">
-            <div className="text-xs text-indigo-400 font-mono">Audio Level:</div>
+          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-4 py-2 rounded-lg">
+            <div className="text-xs text-indigo-400 font-mono">Volume:</div>
             <div className="w-32 bg-slate-800 rounded-full h-2 overflow-hidden">
               <div 
                 className="bg-indigo-400 h-full transition-all duration-75"
@@ -332,7 +337,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
         {/* Audio Blob Preview & Transcribe Action */}
         {audioBlob && !isRecording && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-emerald-400 font-medium">Recording Captured ({duration}s)</span>
+            <span className="text-xs text-emerald-400 font-medium font-mono">Recorded: {duration}s / {maxDuration}s</span>
             <button
               onClick={() => handleTranscribeAudio(activeTab === 'code-explainer' ? 'codeExplainer' : 'techDebate')}
               disabled={loading}
@@ -354,7 +359,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                 <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
                   <Code2 className="w-5 h-5 text-pink-400" /> Feature 3: Indic Live Code Audio Explainer & Real-Time Co-Pilot
                 </h2>
-                <p className="text-slate-400 text-sm">Record or type your verbal thought process in Hinglish; Sarvam AI verifies reasoning & dictates hints.</p>
+                <p className="text-slate-400 text-sm">Record or type your verbal thought process; Sarvam AI verifies reasoning & dictates response in your spoken language.</p>
               </div>
               <span className="text-xs bg-pink-950 text-pink-300 border border-pink-800 px-3 py-1 rounded-full font-mono">Saaras V3 + Bulbul V3</span>
             </div>
@@ -398,8 +403,8 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                     </div>
                     <div className="p-3 bg-pink-950/40 border border-pink-900/50 rounded-lg text-xs text-pink-200 space-y-2">
                       <div className="flex items-center justify-between">
-                        <strong>AI Spoken Hint (Bulbul V3 Dictation):</strong>
-                        {playingAudio && <span className="text-xs text-pink-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Playing Voice...</span>}
+                        <strong>AI Spoken Hint (Dictated in {targetLang}):</strong>
+                        {playingAudio && <span className="text-xs text-pink-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Playing Spoken Voice...</span>}
                       </div>
                       <p>{codeExplainerResult.evaluation.audioHintText}</p>
                     </div>
@@ -420,7 +425,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                 <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
                   <Brain className="w-5 h-5 text-emerald-400" /> Feature 4: Socratic Technical Debate & Dynamic Follow-Ups
                 </h2>
-                <p className="text-slate-400 text-sm">Principal Architect challenges candidate trade-offs and dynamically generates follow-up questions.</p>
+                <p className="text-slate-400 text-sm">Principal Architect challenges candidate trade-offs and dictates voice follow-ups in your spoken language.</p>
               </div>
               <span className="text-xs bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full font-mono">Sarvam 105B + Bulbul V3</span>
             </div>
@@ -446,14 +451,14 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                   disabled={loading}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
                 >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />} Challenge Stance & Generate Follow-Up
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />} Challenge Stance & Dictate Voice Pushback
                 </button>
               </div>
 
               <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
                 <h3 className="text-sm font-semibold text-slate-300 flex items-center justify-between">
                   <span className="flex items-center gap-2"><Brain className="w-4 h-4 text-emerald-400" /> Socratic Architect Pushback & Dictation</span>
-                  {playingAudio && <span className="text-xs text-emerald-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Speaking Voice...</span>}
+                  {playingAudio && <span className="text-xs text-emerald-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Dictating Voice ({targetLang})...</span>}
                 </h3>
                 {debateResult ? (
                   <div className="space-y-3 text-sm">
@@ -462,7 +467,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                       <span className="text-emerald-400 font-bold text-sm">{debateResult.debateResponse.architecturalScore}%</span>
                     </div>
                     <div className="p-3 bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs text-emerald-200 space-y-2">
-                      <strong>Principal Architect Counter-Question:</strong>
+                      <strong>Principal Architect Counter-Question (Dictated in {targetLang}):</strong>
                       <p>{debateResult.debateResponse.socraticPushback}</p>
                     </div>
                     {debateResult.debateResponse.followupQuestion && (
@@ -533,7 +538,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
               <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
                 <h3 className="text-sm font-semibold text-slate-300 flex items-center justify-between">
                   <span className="flex items-center gap-2"><Award className="w-4 h-4 text-indigo-400" /> Generated Resume Probing Questions</span>
-                  {playingAudio && <span className="text-xs text-indigo-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Dictating...</span>}
+                  {playingAudio && <span className="text-xs text-indigo-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Dictating in {targetLang}...</span>}
                 </h3>
 
                 {resumeQuestions && resumeQuestions.questions ? (
