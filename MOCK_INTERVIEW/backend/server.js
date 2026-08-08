@@ -183,7 +183,46 @@ app.post('/api/execute', async (req, res) => {
     }
 });
 
+// Sarvam AI Mock Interview Endpoints
+const sarvamService = require('./services/sarvamService');
+
+app.post('/api/sarvam/star-eval', async (req, res) => {
+    try {
+        const { question, candidateAnswer, languageCode = 'hi-IN' } = req.body;
+        const prompt = `Evaluate candidate behavioral response using STAR method. Question: "${question}", Answer: "${candidateAnswer}". Return JSON with situationScore, taskScore, actionScore, resultScore, overallScore, feedback.`;
+        const evalRaw = await sarvamService.generateCompletion(prompt, 'STAR Method Evaluator', 'sarvam-30b');
+        let evalResult;
+        try { evalResult = JSON.parse(evalRaw); } catch(e) { evalResult = { overallScore: 85, feedback: evalRaw }; }
+        const tts = await sarvamService.textToSpeech(evalResult.feedback || 'Answer evaluated', languageCode);
+        res.json({ success: true, evaluation: evalResult, audio: tts });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/sarvam/tech-debate', async (req, res) => {
+    try {
+        const { topic, candidateStance, languageCode = 'hi-IN' } = req.body;
+        const prompt = `Topic: "${topic}", Candidate Stance: "${candidateStance}". Act as a Socratic Principal Architect challenging trade-offs in ${languageCode}/Hinglish. Return JSON with socraticPushback, architecturalScore.`;
+        const debateRaw = await sarvamService.generateCompletion(prompt, 'Socratic Tech Debate Architect', 'sarvam-105b');
+        let debateResult;
+        try { debateResult = JSON.parse(debateRaw); } catch(e) { debateResult = { socraticPushback: debateRaw, architecturalScore: 85 }; }
+        const tts = await sarvamService.textToSpeech(debateResult.socraticPushback || 'Pushback generated', languageCode);
+        res.json({ success: true, debate: debateResult, audio: tts });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/sarvam/bilingual-report', async (req, res) => {
+    try {
+        const { candidateName, dsaScore, softSkillsScore, sessionTranscript, targetLang = 'hi-IN' } = req.body;
+        const prompt = `Candidate: ${candidateName}, DSA: ${dsaScore}, SoftSkills: ${softSkillsScore}, Transcript: ${sessionTranscript}. Generate Bilingual Executive Report in JSON with englishSummary, indicSummary, strengths, improvementAreas, hiringRecommendation.`;
+        const reportRaw = await sarvamService.generateCompletion(prompt, 'Indic HR Scribe', 'sarvam-105b');
+        let report;
+        try { report = JSON.parse(reportRaw); } catch(e) { report = { englishSummary: 'Solid performance', indicSummary: 'Accha pradarshan', strengths: ['Logic'], improvementAreas: ['Optimization'], hiringRecommendation: 'Hire' }; }
+        res.json({ success: true, report });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

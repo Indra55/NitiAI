@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+.DS_Store
+*.log
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Hackathon Proposal Document
+SARVAM_HACKATHON_PROPOSAL.md
