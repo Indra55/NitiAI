@@ -7,3 +7,8 @@ node_modules/
 .env
 .env.local
 .env.production
+
+# Internal Hackathon Documentation & Proposals (Do not commit to git)
+CHANGES_AND_IMPLEMENTATION.md
+GITHUB_ANALYSIS_FEATURE_PROPOSAL.md
+SARVAM_HACKATHON_PROPOSAL.md
