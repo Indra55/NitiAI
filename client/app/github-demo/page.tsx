@@ -3,15 +3,33 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Github, ShieldCheck, CheckCircle2, Sparkles, RefreshCw, Layers, Target, 
-  Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award
+  Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff
 } from 'lucide-react';
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 export default function GitHubDemoPage() {
   const [githubConnected, setGithubConnected] = useState<boolean>(false);
-  const [username, setUsername] = useState<string>('jaydalvi');
+  const [username, setUsername] = useState<string>('jayyy255');
   const [targetRole, setTargetRole] = useState<string>('Senior Backend & Systems Engineer');
   const [loading, setLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<any>(null);
+
+  // Answer Evaluation States
+  const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
+  const [candidateAnswer, setCandidateAnswer] = useState<string>('');
+  const [evaluating, setEvaluating] = useState<boolean>(false);
+  const [evaluationResult, setEvaluationResult] = useState<any>(null);
+
+  // Voice Recorder Hook
+  const {
+    isRecording,
+    duration,
+    maxDuration,
+    audioBlob,
+    startRecording,
+    stopRecording,
+    resetRecording
+  } = useVoiceRecorder();
 
   // Parse URL query params on redirect from GitHub OAuth callback
   useEffect(() => {
@@ -22,9 +40,10 @@ export default function GitHubDemoPage() {
 
       if (isConnected) {
         setGithubConnected(true);
-        if (userParam) setUsername(userParam);
+        const activeUser = userParam || 'jayyy255';
+        setUsername(activeUser);
         // Automatically run scan for connected OAuth user
-        runScan(userParam || username);
+        runScan(activeUser);
       }
     }
   }, []);
@@ -40,11 +59,51 @@ export default function GitHubDemoPage() {
       const data = await res.json();
       if (data.success) {
         setScanResult(data);
+        if (data.analysis && data.analysis.probingQuestions && data.analysis.probingQuestions.length > 0) {
+          setSelectedQuestion(data.analysis.probingQuestions[0]);
+        }
       }
     } catch (e) {
       console.error('Scan error:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEvaluateAnswer = async () => {
+    if (!selectedQuestion) return;
+    setEvaluating(true);
+    try {
+      let res;
+      if (audioBlob) {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('question', selectedQuestion.question);
+        formData.append('candidateAnswer', candidateAnswer);
+        formData.append('repoName', selectedQuestion.repoName);
+        formData.append('targetRole', targetRole);
+
+        res = await fetch('/api/github/evaluate-answer', { method: 'POST', body: formData });
+      } else {
+        res = await fetch('/api/github/evaluate-answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: selectedQuestion.question,
+            candidateAnswer,
+            repoName: selectedQuestion.repoName,
+            targetRole
+          })
+        });
+      }
+      const data = await res.json();
+      setEvaluationResult(data.evaluation);
+      if (data.transcript) setCandidateAnswer(data.transcript);
+    } catch (e) {
+      console.error('Evaluate error:', e);
+    } finally {
+      setEvaluating(false);
+      resetRecording();
     }
   };
 
@@ -54,7 +113,7 @@ export default function GitHubDemoPage() {
         {/* Header Banner */}
         <div className="text-center space-y-3 pb-6 border-b border-slate-800">
           <div className="inline-flex items-center gap-2 bg-purple-950/80 border border-purple-800 px-4 py-1.5 rounded-full text-xs font-semibold text-purple-300">
-            <Sparkles className="w-4 h-4 text-purple-400" /> NitiAI GitHub OAuth & 2-Tier Indexing Engine
+            <Sparkles className="w-4 h-4 text-purple-400" /> NitiAI GitHub OAuth &amp; 2-Tier Indexing Engine
           </div>
           <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             GitHub Repository Analysis Live Demo
@@ -73,7 +132,7 @@ export default function GitHubDemoPage() {
               </h2>
               {githubConnected ? (
                 <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[11px] px-3 py-1 rounded-full font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> OAuth Connected
+                  <CheckCircle2 className="w-3.5 h-3.5" /> OAuth Connected (@{username})
                 </span>
               ) : (
                 <span className="bg-amber-950 text-amber-400 border border-amber-800 text-[11px] px-3 py-1 rounded-full font-semibold flex items-center gap-1">
@@ -83,24 +142,24 @@ export default function GitHubDemoPage() {
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed">
-              Authorizing NitiAI via GitHub OAuth grants read access to fetch <strong>all public & private repositories</strong> without API rate limits.
+              Authorizing NitiAI via GitHub OAuth grants read access to fetch <strong>all public &amp; private repositories</strong> without API rate limits.
             </p>
 
             <a
               href="http://localhost:5000/api/github/auth/login"
               className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20"
             >
-              <Github className="w-5 h-5" /> 🚀 Connect GitHub Account (Public & Private Repos)
+              <Github className="w-5 h-5" /> 🚀 Connect GitHub Account (Public &amp; Private Repos)
             </a>
 
             <div className="pt-4 border-t border-slate-800 space-y-3">
-              <label className="text-xs font-semibold text-slate-400 block">Or Test Public Scan Directly by Username</label>
+              <label className="text-xs font-semibold text-slate-400 block">Or Test Scan Directly by Username</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. Indra55, SujalChoudhari, jayyy255"
+                  placeholder="e.g. jayyy255, SujalChoudhari, Indra55"
                   className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
                 />
                 <button
@@ -141,8 +200,19 @@ export default function GitHubDemoPage() {
           </div>
         </div>
 
+        {/* Live Loading State */}
+        {loading && (
+          <div className="p-12 bg-slate-900/90 border border-purple-900/60 rounded-2xl text-center space-y-4 shadow-2xl">
+            <RefreshCw className="w-10 h-10 text-purple-400 animate-spin mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-slate-100">Scanning &amp; Indexing Repositories...</h3>
+              <p className="text-xs text-slate-400">Fetching public &amp; private repositories for @{username} into 2-Tier Hybrid Engine.</p>
+            </div>
+          </div>
+        )}
+
         {/* Live Scan Results Section */}
-        {scanResult && (
+        {scanResult && !loading && (
           <div className="space-y-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
               <div>
@@ -176,26 +246,96 @@ export default function GitHubDemoPage() {
               </div>
             </div>
 
-            {/* Dynamic Probing Questions Range */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-200 flex items-center justify-between">
-                <span>Dynamic Probing Questions Generated from Relational Graph ({scanResult.analysis.probingQuestions ? scanResult.analysis.probingQuestions.length : 0} Questions):</span>
-                <span className="text-xs text-slate-500 font-normal">Zero Sarvam API Credits Used</span>
-              </h3>
+            {/* Dynamic Probing Questions & Spoken Answer Tester */}
+            <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-slate-800">
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-200">
+                  Role-Tailored Probing Questions ({scanResult.analysis.probingQuestions ? scanResult.analysis.probingQuestions.length : 0} Questions)
+                </h3>
+                <div className="space-y-3">
+                  {scanResult.analysis.probingQuestions && scanResult.analysis.probingQuestions.map((q: any, idx: number) => {
+                    const isSelected = selectedQuestion?.id === q.id;
+                    return (
+                      <div 
+                        key={idx}
+                        onClick={() => setSelectedQuestion(q)}
+                        className={`p-4 rounded-xl border transition-all cursor-pointer space-y-2 ${
+                          isSelected
+                            ? 'bg-purple-950/50 border-purple-500 shadow-md'
+                            : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-xs text-purple-300 font-semibold">
+                          <span>Q{idx + 1}. {q.toolComparison || 'Repo Probing'}</span>
+                          <span className="bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px]">{q.repoName}</span>
+                        </div>
+                        <p className="text-xs text-slate-200 font-medium leading-relaxed">{q.question}</p>
+                        <div className="text-[11px] text-slate-400">
+                          <strong>Expected Concepts:</strong> {q.expectedConcepts ? q.expectedConcepts.join(', ') : 'Architecture depth'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                {scanResult.analysis.probingQuestions && scanResult.analysis.probingQuestions.map((q: any, idx: number) => (
-                  <div key={idx} className="p-4 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl space-y-2 transition-all">
-                    <div className="flex items-center justify-between text-xs text-indigo-400 font-semibold">
-                      <span>Q{idx + 1}. {q.toolComparison || 'Repo Probing'}</span>
-                      <span className="bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px]">{q.repoName}</span>
+              {/* Answer Evaluation Box */}
+              <div className="space-y-4 bg-slate-950 border border-slate-800 rounded-xl p-5">
+                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-indigo-400" /> Test Candidate Spoken / Typed Answer
+                </h3>
+
+                {selectedQuestion ? (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-1">
+                      <span className="text-indigo-400 font-semibold block">Question ({selectedQuestion.repoName}):</span>
+                      <p className="text-slate-200">{selectedQuestion.question}</p>
                     </div>
-                    <p className="text-xs text-slate-200 font-medium leading-relaxed">{q.question}</p>
-                    <div className="text-[11px] text-slate-400">
-                      <strong>Expected Concepts:</strong> {q.expectedConcepts ? q.expectedConcepts.join(', ') : 'Architecture depth'}
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-slate-400">Candidate Answer</label>
+                        <button
+                          onClick={isRecording ? stopRecording : startRecording}
+                          className={`text-xs px-2.5 py-1 rounded-md font-semibold flex items-center gap-1 transition-all ${
+                            isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                          {isRecording ? `${duration}s Stop` : 'Record Mic'}
+                        </button>
+                      </div>
+
+                      <textarea
+                        rows={4}
+                        value={candidateAnswer}
+                        onChange={(e) => setCandidateAnswer(e.target.value)}
+                        placeholder="Type or record your architectural trade-off justification..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none"
+                      />
                     </div>
+
+                    <button
+                      onClick={handleEvaluateAnswer}
+                      disabled={evaluating || !candidateAnswer}
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {evaluating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Evaluate Answer Depth
+                    </button>
+
+                    {evaluationResult && (
+                      <div className="p-4 bg-indigo-950/40 border border-indigo-900/60 rounded-xl space-y-2 text-xs">
+                        <div className="flex items-center justify-between font-bold text-indigo-300">
+                          <span>Technical Depth Score:</span>
+                          <span className="text-emerald-400 font-bold text-sm">{evaluationResult.technicalScore}%</span>
+                        </div>
+                        <p className="text-slate-200 leading-relaxed">{evaluationResult.logicFeedback}</p>
+                      </div>
+                    )}
                   </div>
-                ))}
+                ) : (
+                  <p className="text-slate-500 text-xs italic">Select a question to evaluate candidate responses.</p>
+                )}
               </div>
             </div>
           </div>
