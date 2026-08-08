@@ -135,8 +135,8 @@ export default function GitHubDemoPage() {
 
             <div className="p-3.5 bg-indigo-950/40 border border-indigo-900/60 rounded-xl space-y-1 text-xs text-indigo-200">
               <div className="font-semibold text-indigo-300">2-Tier Hybrid Indexing Engine:</div>
-              <div>• Tier 1: In-Memory SHA Cache & Inverted Map (< 10ms lookup)</div>
-              <div>• Tier 2: Neon PostgreSQL Relational Property Graph (< 2ms traversal)</div>
+              <div>• Tier 1: In-Memory SHA Cache &amp; Inverted Map (&lt; 10ms lookup)</div>
+              <div>• Tier 2: Neon PostgreSQL Relational Property Graph (&lt; 2ms traversal)</div>
             </div>
           </div>
         </div>
