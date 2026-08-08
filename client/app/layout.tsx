@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist, Geist_Mono, Poppins } from "next/font/google"
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
@@ -8,7 +8,7 @@ import { ToasterProvider } from "@/components/ui/toaster-provider"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
-const _poppins = Poppins({ subsets: ["latin"], weight: ["300", "400", "500", "600", "700"], variable: "--font-poppins" })
+const _instrumentSerif = Instrument_Serif({ subsets: ["latin"], weight: "400", variable: "--font-instrument-serif" })
 
 export const metadata: Metadata = {
   title: "NITI AI - AI Career Guidance Platform",
@@ -34,7 +34,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning={true}
-        className={`font-sans antialiased ${_poppins.variable}`}
+        className={`font-sans antialiased ${_geist.className} ${_instrumentSerif.variable}`}
       >
         <AuthProvider>
           {children}

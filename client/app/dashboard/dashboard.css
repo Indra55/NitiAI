@@ -1,293 +1,44 @@
-/* Dashboard-specific styles with research platform design - EXACT IMPLEMENTATION */
+.dashboard-theme { --background: #fcf9f5; --foreground: #171716; --card: #ffffff; --card-foreground: #171716; --popover: #ffffff; --popover-foreground: #171716; --primary: #ef4a18; --primary-foreground: #ffffff; --secondary: #f3f0ec; --secondary-foreground: #171716; --muted: #f3f0ec; --muted-foreground: #77716b; --accent: #fff0eb; --accent-foreground: #171716; --border: #e8e1da; --input: #e8e1da; --ring: #ef4a18; background: #fcf9f5; color: #171716; font-family: Arial, Helvetica, sans-serif; }
+.dashboard-theme h1 { font-family: var(--font-instrument-serif), Georgia, serif; font-weight: 400; }
+.dashboard-theme [data-slot="dropdown-menu-content"], .dashboard-theme [role="menu"] { background: #ffffff !important; color: #171716 !important; }
+.dashboard-theme [data-slot="card"] { border: 1px solid #e8e1da; border-radius: 20px; background: #fff; box-shadow: 0 8px 28px rgba(63, 43, 32, .045); }
+.dashboard-theme [data-slot="card"]:hover { box-shadow: 0 14px 32px rgba(63, 43, 32, .08); }
+.dashboard-theme [data-slot="button"][class*="bg-primary"] { box-shadow: 0 8px 20px rgba(239, 74, 24, .18); }
+.dashboard-theme [data-slot="button"] { border-radius: 12px; }
+.dashboard-theme [data-slot="input"], .dashboard-theme textarea, .dashboard-theme input:not([type="checkbox"]):not([type="radio"]) { border-color: #e8e1da; background: #fff; border-radius: 12px; }
+.dashboard-theme [role="tablist"] { border-radius: 14px; background: #f3f0ec; padding: 4px; }
+.dashboard-theme [role="tab"] { border-radius: 10px; }
+.dashboard-theme [data-state="active"][role="tab"] { background: #fff; color: #ef4a18; box-shadow: 0 2px 8px rgba(63, 43, 32, .08); }
+.dashboard-theme [data-slot="badge"] { border-radius: 999px; }
+.dashboard-theme [data-slot="dialog-content"] { border-color: #e8e1da; border-radius: 24px; background: #fff; box-shadow: 0 24px 80px rgba(33, 25, 20, .18); }
+.dashboard-theme .bg-card\/50, .dashboard-theme .bg-card\/80 { background-color: rgba(255,255,255,.88); }
+/* Keep status decoration quiet: the product has one visual accent, not a rainbow of icon chips. */
+.dashboard-theme [class*="p-2"][class*="rounded-lg"][class*="bg-emerald"], .dashboard-theme [class*="p-2"][class*="rounded-lg"][class*="bg-blue"], .dashboard-theme [class*="p-2"][class*="rounded-lg"][class*="bg-purple"], .dashboard-theme [class*="p-2"][class*="rounded-lg"][class*="bg-amber"] { background: transparent !important; border-radius: 0 !important; padding: 0 !important; color: #ef4a18 !important; }
+.dashboard-theme [class*="text-emerald-"], .dashboard-theme [class*="text-blue-"], .dashboard-theme [class*="text-purple-"], .dashboard-theme [class*="text-amber-"] { color: #ef4a18 !important; }
 
-.dashboard-theme {
-  /* Warm white background theme for dashboard */
-  --background: oklch(0.99 0.005 50);
-  --foreground: oklch(0.15 0.01 270);
-  --card: oklch(1 0.003 50);
-  --card-foreground: oklch(0.15 0.01 270);
-  --popover: oklch(1 0.003 50);
-  --popover-foreground: oklch(0.15 0.01 270);
-  /* Updated primary to vibrant warm orange with better contrast */
-  --primary: oklch(0.62 0.22 35);
-  --primary-foreground: oklch(0.98 0.005 60);
-  /* Updated secondary to modern teal for better complementary feel */
-  --secondary: oklch(0.65 0.12 170);
-  --secondary-foreground: oklch(0.15 0.01 270);
-  --muted: oklch(0.96 0.008 50);
-  --muted-foreground: oklch(0.45 0.02 250);
-  --accent: oklch(0.58 0.16 15);
-  --accent-foreground: oklch(0.98 0.005 60);
-  --destructive: oklch(0.55 0.2 25);
-  --destructive-foreground: oklch(0.98 0.005 60);
-  --border: oklch(0.92 0.008 50);
-  --input: oklch(0.95 0.008 48);
-  --ring: oklch(0.62 0.22 35);
-  --chart-1: oklch(0.62 0.22 35);
-  --chart-2: oklch(0.65 0.12 170);
-  --chart-3: oklch(0.58 0.16 15);
-  --chart-4: oklch(0.68 0.15 120);
-  --chart-5: oklch(0.6 0.14 280);
-  --glass-bg: rgba(255, 255, 255, 0.6);
-  --glass-bg-strong: rgba(255, 255, 255, 0.9);
-
-  /* Fix cursor - dashboard should have normal cursor */
-  cursor: auto;
-
-  /* Warm white background */
-  background-color: var(--background) !important;
-}
-
-/* White dropdown menus for dashboard */
-.dashboard-theme [data-slot="dropdown-menu-content"],
-.dashboard-theme [role="menu"],
-.dashboard-theme [data-radix-popper-content-wrapper] {
-  background-color: #ffffff !important;
-  border-color: var(--border) !important;
-  color: var(--foreground) !important;
-}
-
-.dashboard-theme [data-slot="dropdown-menu-item"],
-.dashboard-theme [role="menuitem"] {
-  color: var(--foreground) !important;
-}
-
-.dashboard-theme [data-slot="dropdown-menu-item"]:hover,
-.dashboard-theme [role="menuitem"]:hover {
-  background-color: var(--muted) !important;
-}
-
-.dashboard-theme * {
-  cursor: inherit;
-}
-
-.dashboard-theme button,
-.dashboard-theme a,
-.dashboard-theme [role="button"],
-.dashboard-theme [type="button"],
-.dashboard-theme input[type="submit"],
-.dashboard-theme input[type="button"] {
-  cursor: pointer !important;
-}
-
-.dashboard-theme input:not([type="button"]):not([type="submit"]),
-.dashboard-theme textarea,
-.dashboard-theme select {
-  cursor: text !important;
-}
-
-.dark .dashboard-theme {
-  --background: oklch(0.12 0.01 270);
-  --foreground: oklch(0.95 0.01 60);
-  --card: oklch(0.15 0.015 270);
-  --card-foreground: oklch(0.95 0.01 60);
-  --popover: oklch(0.14 0.015 270);
-  --popover-foreground: oklch(0.95 0.01 60);
-  /* Updated dark mode primary */
-  --primary: oklch(0.7 0.22 35);
-  --primary-foreground: oklch(0.12 0.01 270);
-  /* Updated dark mode secondary */
-  --secondary: oklch(0.62 0.12 170);
-  --secondary-foreground: oklch(0.95 0.01 60);
-  --muted: oklch(0.2 0.02 260);
-  --muted-foreground: oklch(0.6 0.01 250);
-  --accent: oklch(0.65 0.16 15);
-  --accent-foreground: oklch(0.12 0.01 270);
-  --destructive: oklch(0.55 0.2 25);
-  --destructive-foreground: oklch(0.95 0.01 60);
-  --border: oklch(0.25 0.02 260);
-  --input: oklch(0.22 0.02 260);
-  --ring: oklch(0.7 0.22 35);
-  --chart-1: oklch(0.7 0.22 35);
-  --chart-2: oklch(0.62 0.12 170);
-  --chart-3: oklch(0.65 0.16 15);
-  --chart-4: oklch(0.7 0.15 120);
-  --chart-5: oklch(0.62 0.14 280);
-  --glass-bg: oklch(0.15 0.015 270 / 0.6);
-  --glass-bg-strong: oklch(0.15 0.015 270 / 0.8);
-}
-
-.dashboard-theme {
-  font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
-  letter-spacing: -0.3px;
-  line-height: 1.6;
-  color: var(--foreground);
-  background-color: var(--background);
-}
-
-.dashboard-theme h1,
-.dashboard-theme h2,
-.dashboard-theme h3,
-.dashboard-theme h4,
-.dashboard-theme h5,
-.dashboard-theme h6 {
-  font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-  line-height: 1.3;
-  color: var(--foreground);
-}
-
-.dashboard-theme h1 {
-  font-size: 2.25rem;
-}
-
-.dashboard-theme h2 {
-  font-size: 1.875rem;
-}
-
-.dashboard-theme h3 {
-  font-size: 1.5rem;
-}
-
-.dashboard-theme p {
-  line-height: 1.75;
-  color: var(--foreground);
-}
-
-/* Ensure Poppins font for all dashboard elements */
-.dashboard-theme,
-.dashboard-theme *,
-.dashboard-theme input,
-.dashboard-theme textarea,
-.dashboard-theme select,
-.dashboard-theme button,
-.dashboard-theme a,
-.dashboard-theme span,
-.dashboard-theme p,
-.dashboard-theme div {
-  font-family: "Poppins", system-ui, -apple-system, sans-serif !important;
-}
-
-/* Consistent box shadows across all dashboard elements */
-.dashboard-theme [class*="Card"],
-.dashboard-theme .card,
-.dashboard-theme [class*="card"],
-.dashboard-theme [data-card],
-.dashboard-theme [data-slot="card"],
-.dashboard-theme article,
-.dashboard-theme [class*="shadow"] {
-  box-shadow: none !important;
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
-  border: none !important;
-}
-
-.dashboard-theme [class*="Card"]:not(.no-zoom):hover,
-.dashboard-theme .card:not(.no-zoom):hover,
-.dashboard-theme [class*="card"]:not(.no-zoom):hover,
-.dashboard-theme [data-card]:not(.no-zoom):hover,
-.dashboard-theme [data-slot="card"]:not(.no-zoom):hover,
-.dashboard-theme article:not(.no-zoom):hover {
-  box-shadow: none !important;
-  transform: translateY(-2px);
-}
-
-.no-zoom:hover {
-  transform: none !important;
-}
-
-/* Override Tailwind shadow classes */
-.dashboard-theme .shadow-sm,
-.dashboard-theme .shadow,
-.dashboard-theme .shadow-md,
-.dashboard-theme .shadow-lg {
-  box-shadow: none !important;
-}
-
-/* Explicitly target border-none and shadow-none for total eradication */
-.dashboard-theme .border-none {
-  border: none !important;
-}
-
-.dashboard-theme .shadow-none {
-  box-shadow: none !important;
-}
-
-/* Ensure main containers have warm white background */
-.dashboard-theme main,
-.dashboard-theme [role="main"],
-.dashboard-theme .min-h-screen {
-  background-color: var(--background) !important;
-}
-
-/* Navbar specific fixes for dashboard - ensure visibility */
-.dashboard-theme nav,
-nav.dashboard-theme {
-  color: var(--foreground) !important;
-}
-
-.dashboard-theme nav *,
-nav.dashboard-theme * {
-  color: inherit;
-}
-
-.dashboard-theme nav button,
-.dashboard-theme nav a,
-nav.dashboard-theme button,
-nav.dashboard-theme a {
-  color: var(--foreground) !important;
-}
-
-.dashboard-theme nav .text-muted-foreground,
-nav.dashboard-theme .text-muted-foreground {
-  color: var(--muted-foreground) !important;
-}
-
-.dashboard-theme nav span,
-nav.dashboard-theme span {
-  color: var(--foreground) !important;
-}
-
-.dashboard-theme nav svg,
-nav.dashboard-theme svg {
-  color: inherit;
-}
-
-/* Premium animations and effects for dashboard */
-@keyframes gradient-shift {
-
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  }
-
-  50% {
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.15);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-.dashboard-theme .gradient-shift {
-  animation: gradient-shift 3s ease infinite;
-}
-
-.dashboard-theme .glow {
-  animation: glow 2s ease-in-out infinite;
-}
-
-.dashboard-theme .shimmer {
-  animation: shimmer 2s infinite;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  background-size: 1000px 100%;
-}
+/* Resume Studio: a deliberate workspace, not a collection of utility panels. */
+.resume-studio { background: #f8f4ef !important; }
+.resume-studio main { max-width: 1500px !important; padding-top: 24px !important; }
+.resume-studio main > div { gap: 18px !important; }
+.resume-studio .resume-toolbar { min-height: 72px; border-radius: 18px; padding: 13px 18px !important; }
+.resume-studio .resume-toolbar [role="tablist"] { background: #f1ece6; }
+.resume-studio .resume-toolbar [data-state="active"][role="tab"] { color: #ef4a18; }
+.resume-studio .resume-preview-stage { background: #e9e2da !important; border-color: #ded5cb !important; border-radius: 22px !important; position: relative; }
+.resume-studio .resume-preview-stage::before { content: "LIVE PREVIEW"; position: sticky; top: 16px; left: 18px; z-index: 2; display: block; width: fit-content; margin-bottom: -24px; padding: 6px 9px; border-radius: 999px; background: rgba(255,255,255,.72); color: #81786f; font-size: 9px; font-weight: 700; letter-spacing: .14em; }
+.resume-studio .resume-preview-stage > div { padding: 42px 48px !important; }
+.resume-studio .resume-preview-stage > div > div { box-shadow: 0 18px 35px rgba(48,35,27,.18) !important; }
+.resume-studio .resume-editor { border-radius: 22px !important; background: #211d1a !important; border-color: #211d1a !important; color: #fbf8f3; }
+.resume-studio .resume-editor > div:first-child { padding: 22px 22px 19px !important; border-color: rgba(255,255,255,.12) !important; background: linear-gradient(135deg, #2a2420, #211d1a) !important; }
+.resume-studio .resume-editor > div:first-child h2 { color: #fff !important; font-size: 18px; letter-spacing: -.03em; }
+.resume-studio .resume-editor > div:first-child p { color: rgba(255,255,255,.58) !important; }
+.resume-studio .resume-editor > div:nth-child(2) { padding: 17px 22px !important; border-color: rgba(255,255,255,.1) !important; background: rgba(255,255,255,.035) !important; }
+.resume-studio .resume-editor > div:nth-child(2) > p { color: rgba(255,255,255,.5) !important; text-transform: uppercase; letter-spacing: .12em; font-size: 10px; }
+.resume-studio .resume-editor > div:nth-child(2) [data-slot="button"] { border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.07); color: #fff; }
+.resume-studio .resume-editor > div:nth-child(2) [data-slot="button"]:hover { background: #ef4a18; border-color: #ef4a18; }
+.resume-studio .resume-editor [data-radix-scroll-area-viewport] { color: rgba(255,255,255,.88); }
+.resume-studio .resume-editor [data-radix-scroll-area-viewport] [class*="bg-muted"], .resume-studio .resume-editor [data-radix-scroll-area-viewport] [class*="bg-emerald"], .resume-studio .resume-editor [data-radix-scroll-area-viewport] [class*="bg-amber"] { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.12) !important; color: #fff !important; }
+.resume-studio .resume-editor > div:last-child { border-color: rgba(255,255,255,.1) !important; background: #211d1a !important; }
+.resume-studio .resume-editor textarea { min-height: 98px !important; border-color: #4a4039 !important; background: #2a2420 !important; color: #fff !important; }
+.resume-studio .resume-editor textarea::placeholder { color: rgba(255,255,255,.42); }
+.resume-studio .resume-editor textarea + button { background: #ef4a18 !important; color: #fff !important; }
+.resume-studio .resume-editor p { color: rgba(255,255,255,.58); }

@@ -11,6 +11,7 @@ interface UseVoiceRecorderReturn {
   audioLevel: number
   startRecording: () => Promise<void>
   stopRecording: () => void
+  cancelRecording: () => void
   resetRecording: () => void
   error: string | null
 }
@@ -33,12 +34,17 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
   const streamRef = useRef<MediaStream | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const discardOnStopRef = useRef(false)
+  const speechStartedRef = useRef(false)
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const recordingStartedAtRef = useRef(0)
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current)
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
@@ -63,7 +69,27 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
         sum += sample * sample
       }
       const rms = Math.sqrt(sum / dataArray.length)
-      setAudioLevel(Math.min(1, rms * 3)) // Amplify for visual effect
+      const level = Math.min(1, rms * 3)
+      setAudioLevel(level) // Amplify for visual effect
+
+      // In call mode, finish a turn naturally after the speaker pauses.
+      // A short grace period prevents the recorder from stopping during mic warm-up.
+      if (level > 0.04) {
+        speechStartedRef.current = true
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current)
+          silenceTimerRef.current = null
+        }
+      } else if (
+        speechStartedRef.current &&
+        Date.now() - recordingStartedAtRef.current > 900 &&
+        !silenceTimerRef.current
+      ) {
+        silenceTimerRef.current = setTimeout(() => {
+          if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop()
+          silenceTimerRef.current = null
+        }, 1200)
+      }
 
       animationFrameRef.current = requestAnimationFrame(updateLevel)
     }
@@ -77,6 +103,8 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
       setAudioBlob(null)
       setAudioUrl(null)
       chunksRef.current = []
+      speechStartedRef.current = false
+      recordingStartedAtRef.current = Date.now()
 
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -115,9 +143,17 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mimeType })
-        setAudioBlob(blob)
-        const url = URL.createObjectURL(blob)
-        setAudioUrl(url)
+        if (!discardOnStopRef.current) {
+          setAudioBlob(blob)
+          const url = URL.createObjectURL(blob)
+          setAudioUrl(url)
+        }
+        discardOnStopRef.current = false
+        speechStartedRef.current = false
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current)
+          silenceTimerRef.current = null
+        }
         setIsRecording(false)
         setAudioLevel(0)
 
@@ -164,6 +200,24 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+  }, [])
+
+  const cancelRecording = useCallback(() => {
+    discardOnStopRef.current = true
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop()
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    setAudioBlob(null)
+    setDuration(0)
+    speechStartedRef.current = false
   }, [])
 
   const resetRecording = useCallback(() => {
@@ -188,6 +242,7 @@ export function useVoiceRecorder(): UseVoiceRecorderReturn {
     audioLevel,
     startRecording,
     stopRecording,
+    cancelRecording,
     resetRecording,
     error,
   }

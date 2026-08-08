@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "motion/react"
-import { Mic, Square, Volume2, VolumeX, Globe, Loader2, AlertCircle, ArrowRight, User, Bot, RotateCcw, FileText } from "lucide-react"
+import { Mic, MicOff, PhoneOff, Volume2, VolumeX, Globe, Loader2, AlertCircle, ArrowRight, User, Bot, RotateCcw, FileText } from "lucide-react"
 import { DynamicNavbar } from "@/components/dynamic-navbar"
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder"
 import {
@@ -56,12 +56,31 @@ export default function VoiceResumePage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
+  const [callActive, setCallActive] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const [callDuration, setCallDuration] = useState(0)
   
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [chatHistory, isProcessing])
+
+  useEffect(() => {
+    if (!callActive) return
+    const timer = window.setInterval(() => setCallDuration((value) => value + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [callActive])
+
+  const beginListening = useCallback(async () => {
+    if (callActive && !isMuted && !isProcessing && !isPlayingAudio && !recorder.isRecording && !recorder.audioBlob) {
+      await recorder.startRecording()
+    }
+  }, [callActive, isMuted, isProcessing, isPlayingAudio, recorder])
+
+  useEffect(() => {
+    if (phase === "interview") beginListening()
+  }, [phase, callActive, isMuted, isProcessing, isPlayingAudio, recorder.audioBlob, beginListening])
 
   const playBase64Audio = useCallback((base64: string) => {
     try {
@@ -88,23 +107,46 @@ export default function VoiceResumePage() {
         role: "ai",
         content: result.data.aiResponse
       }
-      setChatHistory([firstMsg])
-      setPhase("interview")
-      
       if (enableTTS && result.data.aiResponseAudio) {
         playBase64Audio(result.data.aiResponseAudio)
       }
+      setChatHistory([firstMsg])
+      // Set the phase after starting TTS so the auto-listener cannot begin while the recruiter is speaking.
+      setPhase("interview")
+      setCallActive(true)
+      setIsMuted(false)
+      setCallDuration(0)
     } else {
       setError(result.error || "Failed to start session")
     }
   }, [language, enableTTS, playBase64Audio])
+
+  const toggleMute = useCallback(() => {
+    if (isMuted) {
+      setIsMuted(false)
+      return
+    }
+    setIsMuted(true)
+    if (recorder.isRecording) recorder.cancelRecording()
+  }, [isMuted, recorder])
+
+  const endCall = useCallback(() => {
+    setCallActive(false)
+    setIsMuted(true)
+    if (recorder.isRecording) recorder.cancelRecording()
+    if (audioRef.current) audioRef.current.pause()
+    setIsPlayingAudio(false)
+    setSessionId(null)
+    setPhase("welcome")
+  }, [recorder])
 
   const handleProcessAudio = useCallback(async () => {
     if (!recorder.audioBlob) return
     setIsProcessing(true)
     setError(null)
 
-    const payloadHistory = chatHistory.map(msg => ({ role: msg.role, content: msg.content }))
+    // The service only needs recent turns; sending the full transcript makes every turn slower as a call continues.
+    const payloadHistory = chatHistory.slice(-6).map(msg => ({ role: msg.role, content: msg.content }))
 
     const result = await processVoiceAudio(
       recorder.audioBlob,
@@ -145,7 +187,7 @@ export default function VoiceResumePage() {
   }, [recorder.isRecording, recorder.audioBlob, phase, isProcessing, handleProcessAudio])
 
   return (
-    <div className="h-screen bg-white text-gray-900 overflow-hidden flex flex-col font-sans selection:bg-gray-900 selection:text-white">
+    <div className="dashboard-theme voice-resume h-screen bg-[#fcf9f5] text-gray-900 overflow-hidden flex flex-col font-sans selection:bg-[#ef4a18] selection:text-white">
       <DynamicNavbar />
       
       <main className="relative z-10 flex-1 flex min-h-0 pt-28 pb-8 px-4 w-full max-w-7xl mx-auto gap-8">
@@ -154,14 +196,14 @@ export default function VoiceResumePage() {
         <AnimatePresence mode="wait">
           {phase === "welcome" && (
             <motion.div key="welcome" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute inset-0 flex flex-col items-center justify-center z-50 bg-white">
+              className="absolute inset-0 flex flex-col items-center justify-center z-50 bg-[#fcf9f5]">
               <div className="text-center space-y-10 max-w-2xl px-6">
                 
                 <div className="space-y-6">
-                  <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 leading-[1.1]">
+                  <p className="mb-4 text-sm font-medium text-[#ef4a18]">VOICE RESUME</p><h1 className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 leading-[1.1]">
                     Build Your Resume.
                     <br />
-                    <span className="text-gray-400">Conversational Style.</span>
+                    <span className="text-[#ef4a18]">Conversational Style.</span>
                   </h1>
                   <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed">
                     Simply chat with our AI recruiter in your native language. Correct mistakes on the fly and watch your document structure itself automatically.
@@ -177,8 +219,8 @@ export default function VoiceResumePage() {
                     {Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => (
                       <button key={code} onClick={() => setLanguage(code)}
                         className={`px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 border ${language === code
-                          ? "bg-gray-900 border-gray-900 text-white shadow-md"
-                          : "bg-white border-gray-200 text-gray-600 hover:border-gray-900 hover:text-gray-900"
+                          ? "bg-[#ef4a18] border-[#ef4a18] text-white shadow-[0_8px_18px_rgba(239,74,24,.2)]"
+                          : "bg-white border-[#e8e1da] text-gray-600 hover:border-[#ef4a18] hover:text-[#ef4a18]"
                         }`}>
                         {name}
                       </button>
@@ -199,7 +241,7 @@ export default function VoiceResumePage() {
                 {/* Start button */}
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   onClick={handleStartSession}
-                  className="inline-flex items-center gap-3 px-10 py-5 rounded-full bg-gray-900 text-white font-medium text-lg hover:bg-gray-800 transition-colors shadow-xl shadow-gray-900/10">
+                  className="inline-flex items-center gap-3 px-10 py-5 rounded-full bg-[#ef4a18] text-white font-medium text-lg hover:bg-[#d93d10] transition-colors shadow-xl shadow-[#ef4a18]/20">
                   Begin Interview
                   <ArrowRight className="w-5 h-5" />
                 </motion.button>
@@ -218,7 +260,7 @@ export default function VoiceResumePage() {
             <>
               {/* Left Column: Chat & Voice Interface */}
               <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="w-full lg:w-1/2 flex flex-col h-full bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                className="w-full lg:w-1/2 flex flex-col h-full bg-white border border-[#e8e1da] rounded-[24px] overflow-hidden shadow-[0_12px_32px_rgba(61,41,30,.08)]">
                 
                 {/* Header */}
                 <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -280,42 +322,13 @@ export default function VoiceResumePage() {
                     ))}
                   </div>
 
-                  {/* Main Interaction Button */}
-                  <div className="flex flex-col items-center gap-4">
-                    <motion.button
-                      disabled={isProcessing}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={recorder.isRecording ? recorder.stopRecording : recorder.startRecording}
-                      className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                        recorder.isRecording
-                          ? "bg-red-500"
-                          : isProcessing 
-                            ? "bg-gray-100 border border-gray-200"
-                            : "bg-gray-900 hover:bg-gray-800 shadow-xl shadow-gray-900/20"
-                      }`}>
-                      {recorder.isRecording && (
-                        <motion.div animate={{ scale: [1, 1.4, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}
-                          className="absolute inset-0 rounded-full bg-red-500/20" />
-                      )}
-                      {recorder.isRecording ? (
-                        <Square className="w-8 h-8 text-white relative z-10" fill="currentColor" />
-                      ) : isProcessing ? (
-                        <Loader2 className="w-8 h-8 text-gray-400 relative z-10 animate-spin" />
-                      ) : (
-                        <Mic className="w-8 h-8 text-white relative z-10" />
-                      )}
-                    </motion.button>
-                    
-                    <p className="text-gray-500 text-sm font-medium tracking-wide">
-                      {recorder.isRecording 
-                        ? `RECORDING... ${recorder.duration}S / 25S` 
-                        : isProcessing
-                          ? "THINKING..."
-                          : recorder.error 
-                            ? recorder.error.toUpperCase()
-                            : "TAP TO SPEAK"
-                      }
-                    </p>
+                  {/* Persistent call controls — speech resumes automatically between turns. */}
+                  <div className="w-full rounded-2xl border border-[#eadfd7] bg-[#fffaf7] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3"><span className={`grid size-10 place-items-center rounded-full ${isMuted ? "bg-[#f3ece7] text-[#8a837b]" : "bg-[#fff0eb] text-[#ef4a18]"}`}>{isProcessing ? <Loader2 className="size-4 animate-spin" /> : isMuted ? <MicOff className="size-4" /> : <Mic className="size-4" />}</span><div><p className="text-sm font-semibold text-[#252321]">Niti AI recruiter</p><p className="text-xs text-[#7c756e]">{isProcessing ? "Preparing your next question" : isMuted ? "You’re muted" : recorder.isRecording ? "Listening" : isPlayingAudio ? "Speaking" : "Connecting"} · {Math.floor(callDuration / 60)}:{String(callDuration % 60).padStart(2, "0")}</p></div></div>
+                      <span className={`size-2 rounded-full ${isMuted ? "bg-[#b8b1a9]" : "bg-[#ef4a18] animate-pulse"}`} />
+                    </div>
+                    <div className="mt-4 flex items-center justify-center gap-2"><button onClick={toggleMute} disabled={isProcessing} className={`grid size-11 place-items-center rounded-full transition ${isMuted ? "bg-[#ef4a18] text-white" : "bg-white text-[#252321] border border-[#e6ded7]"}`} aria-label={isMuted ? "Unmute" : "Mute"}>{isMuted ? <MicOff className="size-4" /> : <Mic className="size-4" />}</button><span className="px-2 text-xs text-[#8a837b]">{recorder.isRecording ? "Speak naturally — I’ll detect when you finish" : "Listening will resume automatically"}</span><button onClick={endCall} className="grid size-11 place-items-center rounded-full bg-[#252321] text-white transition hover:bg-[#ef4a18]" aria-label="End call"><PhoneOff className="size-4" /></button></div>
                   </div>
                   
                   {error && <div className="text-red-600 text-xs font-medium flex items-center gap-1.5 bg-red-50 px-4 py-2 rounded-lg border border-red-100"><AlertCircle className="w-4 h-4" /> {error}</div>}
@@ -324,7 +337,7 @@ export default function VoiceResumePage() {
 
               {/* Right Column: Live Resume Preview */}
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className="hidden lg:flex w-1/2 flex-col h-full bg-white rounded-2xl overflow-hidden shadow-xl border border-gray-200">
+                className="hidden lg:flex w-1/2 flex-col h-full bg-white rounded-[24px] overflow-hidden shadow-[0_12px_32px_rgba(61,41,30,.08)] border border-[#e8e1da]">
                 
                 <div className="p-5 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
                   <h3 className="font-semibold text-gray-900 flex items-center gap-2"><FileText className="w-5 h-5 text-gray-400" /> Document Preview</h3>
