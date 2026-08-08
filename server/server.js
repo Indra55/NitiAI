@@ -49,6 +49,7 @@ app.use("/api/resume", require("./routes/resume"))
 app.use("/api/planner", require("./routes/planner"))
 app.use("/api/execute", require("./routes/execute"))
 app.use("/api/sarvam", require("./routes/sarvamRoutes"))
+app.use("/api/github", require("./routes/githubRoutes"))
 
 // Health check endpoint
 app.get("/", (req, res) => {
