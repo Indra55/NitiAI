@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { 
-  Globe, Mic, Code2, Brain, FileText, Camera, Award, Sparkles, AudioLines, 
-  CheckCircle2, RefreshCw, Volume2, Upload, AlertCircle, ChevronRight 
+  Globe, Mic, Code2, Brain, Award, Sparkles, AudioLines, 
+  CheckCircle2, RefreshCw, Volume2 
 } from 'lucide-react';
 
 export default function SarvamIndicStudio() {
@@ -31,14 +31,7 @@ export default function SarvamIndicStudio() {
   const [candidateStance, setCandidateStance] = useState('I choose PostgreSQL because e-commerce transactions require strict ACID compliance to prevent double-spending and stock overbooking.');
   const [debateResult, setDebateResult] = useState<any>(null);
 
-  // States for Feature 5 (Resume Skill Audit)
-  const [resumeText, setResumeText] = useState('Full Stack Developer. Experienced with Node.js, Redis caching, Docker containerization, PostgreSQL indexing, and Kafka message streaming.');
-  const [auditResult, setAuditResult] = useState<any>(null);
-
-  // States for Feature 6 (Handwritten Code OCR)
-  const [handwrittenResult, setHandwrittenResult] = useState<any>(null);
-
-  // States for Feature 7 (Bilingual HR Report)
+  // States for Feature 5 (Bilingual HR Report)
   const [candidateName, setCandidateName] = useState('Jay Sharma');
   const [dsaScore, setDsaScore] = useState(88);
   const [softSkillsScore, setSoftSkillsScore] = useState(92);
@@ -118,42 +111,6 @@ export default function SarvamIndicStudio() {
   };
 
   // Handler for Feature 5
-  const handleSkillAudit = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/sarvam/resume-skill-audit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeText, claimedSkills: ['Redis', 'Docker', 'PostgreSQL', 'Kafka'] })
-      });
-      const data = await res.json();
-      setAuditResult(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handler for Feature 6
-  const handleHandwrittenOCR = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/sarvam/handwritten-code-ocr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetLang })
-      });
-      const data = await res.json();
-      setHandwrittenResult(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handler for Feature 7
   const handleBilingualReport = async () => {
     setLoading(true);
     try {
@@ -201,21 +158,19 @@ export default function SarvamIndicStudio() {
             <option value="te-IN" className="bg-slate-900 text-white">Telugu (తెలుగు)</option>
             <option value="mr-IN" className="bg-slate-900 text-white">Marathi (मराठी)</option>
             <option value="bn-IN" className="bg-slate-900 text-white">Bengali (বাংলা)</option>
-            <option value="kn-IN" className="bg-slate-900 text-white">Kannada (கன்னட)</option>
+            <option value="kn-IN" className="bg-slate-900 text-white">Kannada (ಕನ್ನಡ)</option>
           </select>
         </div>
       </div>
 
       {/* Feature Tabs Navigation */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         {[
           { id: 'job-coach', label: '1. Indic Job Coach', icon: Globe },
           { id: 'star-eval', label: '2. STAR Coach', icon: Award },
           { id: 'code-explainer', label: '3. Code Explainer', icon: Code2 },
           { id: 'tech-debate', label: '4. Tech Debate', icon: Brain },
-          { id: 'skill-audit', label: '5. Skill Audit', icon: FileText },
-          { id: 'handwritten-ocr', label: '6. Paper Code OCR', icon: Camera },
-          { id: 'hr-scribe', label: '7. HR Bilingual Scribe', icon: AudioLines },
+          { id: 'hr-scribe', label: '5. HR Bilingual Scribe', icon: AudioLines },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -315,7 +270,7 @@ export default function SarvamIndicStudio() {
                 <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
                   <Award className="w-5 h-5 text-purple-400" /> Feature 2: STAR Method Soft-Skills Simulator
                 </h2>
-                <p className="text-slate-400 text-sm">Evaluates Situation, Task, Action, Result in regional/code-mixed speech via Saaras V3 & Bulbul V3.</p>
+                <p className="text-slate-400 text-sm">Evaluates spoken/typed behavioral answers against STAR framework with Indic audio feedback.</p>
               </div>
               <span className="text-xs bg-purple-950 text-purple-300 border border-purple-800 px-3 py-1 rounded-full font-mono">Saaras V3 + Bulbul V3</span>
             </div>
@@ -405,7 +360,7 @@ export default function SarvamIndicStudio() {
                 />
                 <label className="text-xs font-medium text-slate-400">Verbal Thought Process (Hinglish Mic Input)</label>
                 <input 
-                  type="text"
+                  type="text" 
                   value={verbalExp} 
                   onChange={(e) => setVerbalExp(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
@@ -428,7 +383,7 @@ export default function SarvamIndicStudio() {
                     <div className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs">
                       <span className="text-slate-400">Logic Matches Code:</span>
                       <span className="text-emerald-400 font-bold">
-                        {codeExplainerResult.evaluation.logicMatchesCode ? '✓ Verified Alignment' : '❌ Discrepancy Found'}
+                        {codeExplainerResult.evaluation.logicMatchesCode ? 'Verified Alignment' : 'Discrepancy Found'}
                       </span>
                     </div>
                     <div className="p-3 bg-pink-950/40 border border-pink-900/50 rounded-lg text-xs text-pink-200">
@@ -465,7 +420,7 @@ export default function SarvamIndicStudio() {
                   onChange={(e) => setDebateTopic(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
                 />
-                <label className="text-xs font-medium text-slate-400">Your Technical Stance</label>
+                <label className="text-xs font-medium text-slate-400">Candidate Architecture Stance</label>
                 <textarea 
                   rows={4}
                   value={candidateStance} 
@@ -487,137 +442,25 @@ export default function SarvamIndicStudio() {
                 </h3>
                 {debateResult ? (
                   <div className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs">
-                      <span className="text-slate-400">Architectural Defense Score:</span>
-                      <span className="text-emerald-400 font-bold">{debateResult.debateResponse.architecturalScore}%</span>
-                    </div>
                     <div className="p-3 bg-emerald-950/40 border border-emerald-900/50 rounded-lg text-xs text-emerald-200">
                       <strong>Principal Architect Counter-Question:</strong> {debateResult.debateResponse.socraticPushback}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-slate-500 text-xs italic">Submit your architectural stance to initiate debate.</p>
+                  <p className="text-slate-500 text-xs italic">Submit your architectural stance to begin Socratic debate.</p>
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* FEATURE 5: Resume Skill Audit */}
-        {activeTab === 'skill-audit' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-cyan-400" /> Feature 5: Indic Resume Skill Gap Auditor
-                </h2>
-                <p className="text-slate-400 text-sm">Extracts technical claims from resumes and launches interactive voice skill probing calls.</p>
-              </div>
-              <span className="text-xs bg-cyan-950 text-cyan-300 border border-cyan-800 px-3 py-1 rounded-full font-mono">Sarvam 30B</span>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <label className="text-xs font-medium text-slate-400">Resume Technical Content</label>
-                <textarea 
-                  rows={6}
-                  value={resumeText} 
-                  onChange={(e) => setResumeText(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none"
-                />
-                <button 
-                  onClick={handleSkillAudit}
-                  disabled={loading}
-                  className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
-                >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} Audit Resume Technical Claims
-                </button>
-              </div>
-
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
-                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-cyan-400" /> Voice Skill Audit Probing Questions
-                </h3>
-                {auditResult ? (
-                  <div className="space-y-3 text-xs">
-                    {auditResult.auditQuestions.map((q: any, idx: number) => (
-                      <div key={idx} className="p-3 bg-slate-900 border border-slate-800 rounded-lg space-y-1">
-                        <div className="flex items-center justify-between text-cyan-400 font-semibold">
-                          <span>Claimed Skill: {q.skill}</span>
-                        </div>
-                        <p className="text-slate-200 mt-1">{q.question}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-xs italic">Submit resume content to generate probing questions.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* FEATURE 6: Handwritten Code OCR */}
-        {activeTab === 'handwritten-ocr' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-amber-400" /> Feature 6: Handwritten Code OCR & Logic Evaluator
-                </h2>
-                <p className="text-slate-400 text-sm">Extracts paper-written code using Sarvam Vision 3B VLM and provides Indic audio evaluation.</p>
-              </div>
-              <span className="text-xs bg-amber-950 text-amber-300 border border-amber-800 px-3 py-1 rounded-full font-mono">Sarvam Vision</span>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <div className="border-2 border-dashed border-slate-800 rounded-xl p-6 text-center space-y-3 bg-slate-950">
-                  <Upload className="w-8 h-8 text-amber-400 mx-auto" />
-                  <div className="text-xs text-slate-400">
-                    Upload photo of handwritten paper code or college placement sheet
-                  </div>
-                  <button 
-                    onClick={handleHandwrittenOCR}
-                    disabled={loading}
-                    className="bg-amber-600 hover:bg-amber-500 text-white font-medium py-2 px-4 rounded-xl text-sm transition-all inline-flex items-center gap-2"
-                  >
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />} Run Sarvam Vision OCR
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
-                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-amber-400" /> Extracted Code & Analysis
-                </h3>
-                {handwrittenResult ? (
-                  <div className="space-y-3 text-xs">
-                    <div>
-                      <span className="text-slate-500 font-medium">Extracted Code (Sarvam Vision):</span>
-                      <pre className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-amber-300 font-mono mt-1 overflow-x-auto">
-                        {handwrittenResult.ocrResult.extractedText}
-                      </pre>
-                    </div>
-                    <div className="p-3 bg-amber-950/40 border border-amber-900/50 rounded-lg text-amber-200">
-                      <strong>Logic & Syntax Feedback:</strong> {handwrittenResult.codeAnalysis.logicFeedback}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-xs italic">Upload an image to test handwritten paper code OCR.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* FEATURE 7: HR Scribe */}
+        {/* FEATURE 5: HR Scribe */}
         {activeTab === 'hr-scribe' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  <AudioLines className="w-5 h-5 text-blue-400" /> Feature 7: Indic HR Scribe & Bilingual Report Card
+                  <AudioLines className="w-5 h-5 text-blue-400" /> Feature 5: Indic HR Scribe & Bilingual Report Card
                 </h2>
                 <p className="text-slate-400 text-sm">Transcribes regional interview sessions into dual-language executive reports for recruiters.</p>
               </div>

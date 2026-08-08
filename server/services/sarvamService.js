@@ -8,7 +8,6 @@ const FormData = require('form-data');
  * - Saaras V3 (Speech-to-Text with code-mixing)
  * - Bulbul V3 (Text-to-Speech across 11 Indian languages)
  * - Sarvam 105B / 30B / Mayura (Multilingual LLM reasoning & prompt completion)
- * - Sarvam Vision (3B Vision-Language OCR model)
  */
 class SarvamService {
   constructor() {
@@ -24,7 +23,7 @@ class SarvamService {
   }
 
   /**
-   * Feature 1 & 7: Translate text into target Indic language (Sarvam Translate)
+   * Feature 1 & 5: Translate text into target Indic language (Sarvam Translate)
    */
   async translateContent(text, targetLang = 'hi-IN') {
     if (!this.isConfigured()) {
@@ -48,7 +47,7 @@ class SarvamService {
   }
 
   /**
-   * Feature 2, 3, 5: Speech-to-Text with Code-Mixing (Saaras V3)
+   * Feature 2, 3: Speech-to-Text with Code-Mixing (Saaras V3)
    */
   async transcribeAudio(audioBuffer, languageCode = 'hi-IN') {
     if (!this.isConfigured() || !audioBuffer) {
@@ -71,7 +70,7 @@ class SarvamService {
   }
 
   /**
-   * Feature 2, 3, 5, 6: Text-to-Speech (Bulbul V3)
+   * Feature 2, 3: Text-to-Speech (Bulbul V3)
    */
   async textToSpeech(text, targetLanguage = 'hi-IN', speaker = 'meera') {
     if (!this.isConfigured()) {
@@ -122,36 +121,6 @@ class SarvamService {
     }
   }
 
-  /**
-   * Feature 6: Handwritten Code OCR (Sarvam Vision)
-   */
-  async parseHandwrittenCode(imageBuffer) {
-    if (!this.isConfigured() || !imageBuffer) {
-      return {
-        extractedText: 'function twoSum(nums, target) {\n  let map = new Map();\n  for(let i=0; i<nums.length; i++) {\n    let diff = target - nums[i];\n    if(map.has(diff)) return [map.get(diff), i];\n    map.set(nums[i], i);\n  }\n}',
-        confidence: 0.94,
-        marginNotes: 'Check boundary condition when nums is empty'
-      };
-    }
-    try {
-      const formData = new FormData();
-      formData.append('file', imageBuffer, { filename: 'handwritten_code.png' });
-      formData.append('model', 'sarvam-vision');
-
-      const response = await axios.post(`${this.baseUrl}/vision/ocr`, formData, {
-        headers: { ...formData.getHeaders(), 'api-subscription-key': this.apiKey }
-      });
-      return response.data;
-    } catch (error) {
-      console.warn('Sarvam Vision OCR failed, using fallback:', error.message);
-      return {
-        extractedText: 'function example() { console.log("Extracted handwritten code"); }',
-        confidence: 0.88,
-        marginNotes: 'Extracted via fallback OCR'
-      };
-    }
-  }
-
   // Fallback Helper Generators
   getMockTranslation(text, targetLang) {
     return {
@@ -178,15 +147,6 @@ class SarvamService {
         socraticPushback: 'Aapne PostgreSQL choose kiya, lekin high-throughput real-time write workloads ke liye Redis ya Cassandra kyu prefer nahi kiya?',
         strengths: ['Clear data integrity reasoning', 'ACID compliance justification'],
         areasToImprove: ['Address horizontal scalability bottlenecks']
-      });
-    }
-    if (prompt.includes('skill') || prompt.includes('Resume')) {
-      return JSON.stringify({
-        extractedSkills: ['Redis', 'Node.js', 'PostgreSQL', 'Docker'],
-        probingQuestions: [
-          { skill: 'Redis', question: 'Aapne resume me Redis caching likha hai. Aapne cache eviction policy (LRU vs LFU) kaise choose ki thi?' },
-          { skill: 'Docker', question: 'Production multi-stage Docker builds me image size reduce karne ke liye aapne kya steps follow kiye?' }
-        ]
       });
     }
     return `[Sarvam AI Response]: Focused Indic technical analysis for your query. Key recommendation: Focus on core logic and time complexity.`;

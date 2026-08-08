@@ -1,12 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const sarvamService = require('../services/sarvamService');
 
-const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
-
 /**
- * FEATURE 1: 🌐 Multilingual Indic AI Career Coach & Job Matcher
+ * FEATURE 1: Multilingual Indic AI Career Coach & Job Matcher
  * POST /api/sarvam/job-translate-and-match
  */
 router.post('/job-translate-and-match', async (req, res) => {
@@ -49,7 +46,7 @@ Provide match score (0-100), key matching skills, missing skills, and localized 
 });
 
 /**
- * FEATURE 2: 🎭 Behavioral & Soft-Skills Interview Simulator (STAR Method Coach)
+ * FEATURE 2: Behavioral & Soft-Skills Interview Simulator (STAR Method Coach)
  * POST /api/sarvam/star-eval
  */
 router.post('/star-eval', async (req, res) => {
@@ -87,7 +84,7 @@ Provide JSON with keys: situationScore, taskScore, actionScore, resultScore, ove
 });
 
 /**
- * FEATURE 3: ⚡ Indic Live Code Audio Explainer & Real-Time Co-Pilot
+ * FEATURE 3: Indic Live Code Audio Explainer & Real-Time Co-Pilot
  * POST /api/sarvam/live-code-explainer
  */
 router.post('/live-code-explainer', async (req, res) => {
@@ -125,7 +122,7 @@ Verify if the spoken logic matches the actual code. Is the verbal reasoning corr
 });
 
 /**
- * FEATURE 4: 🧠 Real-Time Technical Debate & Counter-Argument Simulator
+ * FEATURE 4: Real-Time Technical Debate & Counter-Argument Simulator
  * POST /api/sarvam/tech-debate
  */
 router.post('/tech-debate', async (req, res) => {
@@ -164,85 +161,7 @@ Act as a tough Socratic Senior Principal Architect. Challenge the candidate's te
 });
 
 /**
- * FEATURE 5: 📜 Indic Resume-to-Interview Voice Agent & Skill Gap Auditor
- * POST /api/sarvam/resume-skill-audit
- */
-router.post('/resume-skill-audit', async (req, res) => {
-  try {
-    const { resumeText, claimedSkills = [] } = req.body;
-
-    const prompt = `Resume Content: "${resumeText.substring(0, 2000)}"
-Claimed Skills: ${JSON.stringify(claimedSkills)}
-
-Identify top technical claims from this resume. Generate 3 deep probing interview questions in Hinglish/Indic tone to audit authentic skill depth (e.g. asking about cache eviction policies if Redis is listed, or image size optimization if Docker is listed). Return JSON array of objects with keys: skill, question, expectedKeyConcepts.`;
-
-    const auditRaw = await sarvamService.generateCompletion(prompt, 'You are a Resume Skill Auditor AI.', 'sarvam-30b');
-    let auditQuestions;
-    try {
-      auditQuestions = JSON.parse(auditRaw);
-    } catch (e) {
-      auditQuestions = [
-        { skill: claimedSkills[0] || 'Technical Stack', question: 'Aapne resume me is project ka architecture describe kiya hai. Aapne database bottleneck kaise resolve kiya tha?', expectedKeyConcepts: ['Indexing', 'Caching'] }
-      ];
-    }
-
-    res.json({
-      success: true,
-      auditQuestions
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * FEATURE 6: 📑 Handwritten Code OCR & Vernacular Logic Evaluator
- * POST /api/sarvam/handwritten-code-ocr
- */
-router.post('/handwritten-code-ocr', upload.single('file'), async (req, res) => {
-  try {
-    const imageBuffer = req.file ? req.file.buffer : null;
-    const targetLang = req.body.targetLang || 'hi-IN';
-
-    // 1. Run Sarvam Vision 3B VLM OCR
-    const ocrResult = await sarvamService.parseHandwrittenCode(imageBuffer);
-
-    // 2. Analyze extracted code via Sarvam 30B
-    const prompt = `Extracted Handwritten Code: \`\`\`${ocrResult.extractedText}\`\`\`
-Margin Notes: "${ocrResult.marginNotes || 'None'}"
-
-Evaluate code logic, syntax correctness, time complexity, and edge cases. Provide feedback in ${targetLang}/Hinglish. Return JSON with keys: isCorrect (boolean), timeComplexity, spaceComplexity, logicFeedback, syntaxFixes.`;
-
-    const analysisRaw = await sarvamService.generateCompletion(prompt, 'You are a Handwritten Code OCR Evaluator powered by Sarvam Vision & Sarvam 30B.', 'sarvam-30b');
-    let analysis;
-    try {
-      analysis = JSON.parse(analysisRaw);
-    } catch (e) {
-      analysis = {
-        isCorrect: true,
-        timeComplexity: 'O(N)',
-        spaceComplexity: 'O(N)',
-        logicFeedback: analysisRaw,
-        syntaxFixes: []
-      };
-    }
-
-    // 3. Audio feedback via Bulbul V3
-    const ttsResult = await sarvamService.textToSpeech(analysis.logicFeedback, targetLang);
-
-    res.json({
-      success: true,
-      ocrResult,
-      codeAnalysis: analysis,
-      audioFeedback: ttsResult
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * FEATURE 7: 📊 Indic HR Scribe & Bilingual Candidate Report Card Generator
+ * FEATURE 5: Indic HR Scribe & Bilingual Candidate Report Card Generator
  * POST /api/sarvam/bilingual-report
  */
 router.post('/bilingual-report', async (req, res) => {
