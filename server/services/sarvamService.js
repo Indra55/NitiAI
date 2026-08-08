@@ -47,7 +47,7 @@ class SarvamService {
   /**
    * Feature 3, 4: Text-to-Speech (Bulbul V3)
    */
-  async textToSpeech(text, targetLanguage = 'hi-IN', speaker = 'meera') {
+  async textToSpeech(text, targetLanguage = 'hi-IN', speaker = 'priya') {
     if (!this.isConfigured()) {
       return { audio_b64: null, message: 'Bulbul V3 TTS fallback active (Configure SARVAM_API_KEY for live audio streaming)' };
     }
@@ -58,7 +58,7 @@ class SarvamService {
           inputs: [text],
           target_language_code: targetLanguage,
           speaker: speaker,
-          model: 'bulbul-v3'
+          model: 'bulbul:v3'
         },
         { headers: { 'api-subscription-key': this.apiKey } }
       );
@@ -78,9 +78,9 @@ class SarvamService {
     }
     try {
       const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
+        `${this.baseUrl}/v1/chat/completions`,
         {
-          model: model,
+          model: model === 'sarvam-30b' ? 'sarvam-105b' : model,
           messages: [
             { role: 'system', content: systemInstruction || 'You are Sarvam AI, an Indic career and coding mentor.' },
             { role: 'user', content: prompt }
@@ -106,7 +106,11 @@ class SarvamService {
         areasToImprove: ['Address horizontal scalability bottlenecks']
       });
     }
-    return `[Sarvam AI Response]: Focused Indic technical analysis for your query. Key recommendation: Focus on core logic and time complexity.`;
+    return JSON.stringify({
+      logicMatchesCode: true,
+      codeQualityScore: 88,
+      audioHintText: 'Aapki spoken logic code ke sath align kar rahi hai. Loop termination condition check karein.'
+    });
   }
 }
 
