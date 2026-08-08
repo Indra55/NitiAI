@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Globe, Mic, MicOff, Code2, Brain, FileText, Sparkles, RefreshCw, Volume2, 
-  CheckCircle2, AlertCircle, Play, Pause, Upload, MessageSquare, Award, ArrowRight
+  CheckCircle2, AlertCircle, Play, Pause, Upload, MessageSquare, Award, ArrowRight,
+  GitBranch, Github, Layers, Target, ShieldCheck
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { getResumeInfo } from '@/lib/api';
@@ -44,8 +45,14 @@ export default function SarvamIndicStudio() {
 
   // States for Resume Probing Arena
   const [resumeText, setResumeText] = useState<string>('');
+  const [targetRole, setTargetRole] = useState<string>('Senior Full Stack Engineer');
   const [resumeStatus, setResumeStatus] = useState<'idle' | 'loading' | 'found' | 'not_found'>('idle');
   const [resumeQuestions, setResumeQuestions] = useState<any>(null);
+
+  // States for GitHub Role-Based Analysis Tab
+  const [githubUsername, setGithubUsername] = useState<string>('jaydalvi');
+  const [githubRole, setGithubRole] = useState<string>('Senior Backend Engineer');
+  const [githubAnalysis, setGithubAnalysis] = useState<any>(null);
 
   // Auto-play AI response audio when audio_b64 is received
   const playBase64Audio = (audioB64: string | null) => {
@@ -148,7 +155,6 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
       if (data.transcript) setVerbalExp(data.transcript);
       if (data.detectedLanguage) setTargetLang(data.detectedLanguage);
 
-      // Dictate AI response in the detected/spoken language via Bulbul V3 Audio
       if (data.audioHint && data.audioHint.audios) {
         playBase64Audio(data.audioHint.audios[0]);
       }
@@ -200,7 +206,6 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
         setDebateHistory([...updatedHistory, { role: 'assistant', content: data.debateResponse.socraticPushback }]);
       }
 
-      // Dictate Senior Architect voice pushback in user's spoken language via Bulbul V3
       if (data.voicePushback && data.voicePushback.audios) {
         playBase64Audio(data.voicePushback.audios[0]);
       }
@@ -220,7 +225,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
       const res = await fetch('/api/sarvam/resume-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeText, languageCode: targetLang })
+        body: JSON.stringify({ resumeText, targetRole, languageCode: targetLang })
       });
       const data = await res.json();
       setResumeQuestions(data.result);
@@ -229,6 +234,28 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler for GitHub Role-Based Analysis & Dynamic 3-6 Probing Questions
+  const handleGitHubRoleAnalyze = async () => {
+    if (!githubUsername) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/sarvam/github-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ githubUsername, targetRole: githubRole, languageCode: targetLang })
+      });
+      const data = await res.json();
+      setGithubAnalysis(data.analysis);
+      if (data.firstQuestionAudio && data.firstQuestionAudio.audios) {
+        playBase64Audio(data.firstQuestionAudio.audios[0]);
+      }
+    } catch (e) {
+      console.error('GitHub role analyze error:', e);
     } finally {
       setLoading(false);
     }
@@ -246,7 +273,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
             NitiAI Indic Career & Interview Studio
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Real Voice Explainer, Socratic Technical Debate, and Resume Probing Powered by Sarvam AI.
+            Real Voice Explainer, Socratic Tech Debate, Resume Probing, and GitHub Role-Based Codebase Audit.
           </p>
         </div>
 
@@ -270,11 +297,12 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
       </div>
 
       {/* Feature Tabs Navigation */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { id: 'code-explainer', label: '3. Live Code Explainer', icon: Code2 },
           { id: 'tech-debate', label: '4. Socratic Tech Debate', icon: Brain },
           { id: 'resume-audit', label: 'Resume Probing Arena', icon: FileText },
+          { id: 'github-audit', label: 'GitHub Role Audit & Probing', icon: Github },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -282,13 +310,13 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center justify-center gap-3 p-4 rounded-xl border text-sm font-semibold transition-all ${
+              className={`flex items-center justify-center gap-2.5 p-3.5 rounded-xl border text-xs font-semibold transition-all ${
                 isActive 
                   ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-lg shadow-indigo-500/10' 
                   : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
+              <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-slate-500'}`} />
               <span>{tab.label}</span>
             </button>
           );
@@ -518,9 +546,17 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
 
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-3">
+                <label className="text-xs font-medium text-slate-400">Target Role Applied For</label>
+                <input 
+                  type="text" 
+                  value={targetRole} 
+                  onChange={(e) => setTargetRole(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
+                />
+
                 <label className="text-xs font-medium text-slate-400">Resume Text Content</label>
                 <textarea 
-                  rows={8}
+                  rows={6}
                   value={resumeText} 
                   onChange={(e) => setResumeText(e.target.value)}
                   placeholder="Paste candidate resume text or tech stack here..."
@@ -531,7 +567,7 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                   disabled={loading || !resumeText}
                   className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Extract Technical Claims & Generate Probing Questions
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Extract Claims & Generate Dynamic Probing (3-6 Range)
                 </button>
               </div>
 
@@ -544,8 +580,8 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                 {resumeQuestions && resumeQuestions.questions ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800 text-xs">
-                      <span className="text-slate-400">Overall Resume Technical Score:</span>
-                      <span className="text-indigo-400 font-bold text-sm">{resumeQuestions.overallResumeScore}%</span>
+                      <span className="text-slate-400">Role Fit Verdict ({targetRole}):</span>
+                      <span className="text-indigo-400 font-bold text-sm">{resumeQuestions.roleFitVerdict || `${resumeQuestions.overallResumeScore}% Match`}</span>
                     </div>
 
                     <div className="space-y-3">
@@ -565,6 +601,90 @@ Education: ${res.data.education?.map(e => `${e.degree} in ${e.field_of_study}`).
                   </div>
                 ) : (
                   <p className="text-slate-500 text-xs italic">Generate questions to see personalized probing technical queries extracted from your resume.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GITHUB ROLE-BASED ANALYSIS TAB */}
+        {activeTab === 'github-audit' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                  <Github className="w-5 h-5 text-indigo-400" /> GitHub Repository Role Audit & Probing Arena
+                </h2>
+                <p className="text-slate-400 text-sm">Analyzes GitHub repos for target role fit and generates dynamic 3–6 probing questions comparing project tools.</p>
+              </div>
+              <span className="text-xs bg-purple-950 text-purple-300 border border-purple-800 px-3 py-1 rounded-full font-mono">Sarvam 105B + Saaras V3</span>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <label className="text-xs font-medium text-slate-400">GitHub Username</label>
+                <input 
+                  type="text" 
+                  value={githubUsername} 
+                  onChange={(e) => setGithubUsername(e.target.value)}
+                  placeholder="e.g. jaydalvi"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
+                />
+                <label className="text-xs font-medium text-slate-400">Target Role Applied For</label>
+                <input 
+                  type="text" 
+                  value={githubRole} 
+                  onChange={(e) => setGithubRole(e.target.value)}
+                  placeholder="e.g. Senior Backend Engineer"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none"
+                />
+                <button 
+                  onClick={handleGitHubRoleAnalyze}
+                  disabled={loading || !githubUsername}
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Github className="w-4 h-4" />} Audit GitHub Repos & Generate Probing Range (3-6)
+                </button>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
+                <h3 className="text-sm font-semibold text-slate-300 flex items-center justify-between">
+                  <span className="flex items-center gap-2"><Target className="w-4 h-4 text-purple-400" /> GitHub Role Alignment Report</span>
+                  {playingAudio && <span className="text-xs text-purple-400 animate-pulse flex items-center gap-1"><Volume2 className="w-3.5 h-3.5" /> Dictating in {targetLang}...</span>}
+                </h3>
+
+                {githubAnalysis ? (
+                  <div className="space-y-4 text-xs">
+                    <div className="flex items-center justify-between bg-slate-900 p-3 rounded-lg border border-slate-800">
+                      <span className="text-slate-400">Role Match Score ({githubRole}):</span>
+                      <span className="text-emerald-400 font-bold text-sm">{githubAnalysis.roleMatchScore}%</span>
+                    </div>
+
+                    <div className="p-3 bg-purple-950/40 border border-purple-900/50 rounded-lg text-purple-200 font-medium">
+                      {githubAnalysis.roleFitVerdict}
+                    </div>
+
+                    {githubAnalysis.missingRoleSkills && (
+                      <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800 text-slate-300">
+                        <strong>Identified Roadmap Gaps for Role:</strong> {githubAnalysis.missingRoleSkills.join(', ')}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <span className="text-xs font-semibold text-slate-400 uppercase">Role-Tailored Probing Questions ({githubAnalysis.probingQuestions ? githubAnalysis.probingQuestions.length : 0} Questions):</span>
+                      {githubAnalysis.probingQuestions && githubAnalysis.probingQuestions.map((q: any, idx: number) => (
+                        <div key={idx} className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1">
+                          <div className="flex items-center justify-between text-purple-300 font-semibold">
+                            <span>{idx + 1}. {q.toolComparison || q.repoName}</span>
+                            <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded-full">{q.repoName}</span>
+                          </div>
+                          <p className="text-slate-200 font-medium">{q.question}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-xs italic">Analyze a GitHub handle to view role compatibility and generated repo questions.</p>
                 )}
               </div>
             </div>
