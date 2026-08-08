@@ -31,7 +31,9 @@ class GitHubService {
    */
   setAccessToken(username, token) {
     if (username && token) {
-      this.userTokens.set(username.toLowerCase(), token);
+      const key = username.toLowerCase().trim();
+      this.userTokens.set(key, token);
+      console.log(`[GitHubService] Cached OAuth token for user: "${key}" (Token length: ${token.length})`);
     }
   }
 
@@ -40,7 +42,10 @@ class GitHubService {
    */
   getAccessToken(username) {
     if (!username) return null;
-    return this.userTokens.get(username.toLowerCase()) || null;
+    const key = username.toLowerCase().trim();
+    const token = this.userTokens.get(key) || null;
+    console.log(`[GitHubService] Get token for "${key}": ${token ? 'FOUND' : 'NOT FOUND (Public fallback)'}`);
+    return token;
   }
 
   /**
@@ -55,17 +60,22 @@ class GitHubService {
       let hasMore = true;
 
       const headers = {
-        'User-Agent': 'NitiAI-Career-Studio'
+        'User-Agent': 'NitiAI-Career-Studio',
+        'Accept': 'application/vnd.github.v3+json'
       };
+
       if (activeToken) {
-        headers['Authorization'] = `token ${activeToken}`;
+        headers['Authorization'] = `Bearer ${activeToken}`;
       }
+
+      console.log(`[GitHubService] Fetching repos for "${username}". Using OAuth token: ${activeToken ? 'YES (Private + Public)' : 'NO (Public only)'}`);
 
       while (hasMore && page <= 10) { // Fetch up to 1000 repos across pages
         const url = activeToken
-          ? `https://api.github.com/user/repos?visibility=all&sort=updated&per_page=${perPage}&page=${page}`
+          ? `https://api.github.com/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&sort=updated&per_page=${perPage}&page=${page}`
           : `https://api.github.com/users/${username}/repos?sort=updated&per_page=${perPage}&page=${page}`;
 
+        console.log(`[GitHubService] API Query [Page ${page}]: ${url}`);
         const response = await axios.get(url, { headers });
         const pageData = response.data;
 
@@ -75,6 +85,7 @@ class GitHubService {
         }
 
         rawRepos = rawRepos.concat(pageData);
+        console.log(`[GitHubService] Page ${page} returned ${pageData.length} repos. Total accumulated: ${rawRepos.length}`);
 
         if (pageData.length < perPage) {
           hasMore = false;
@@ -126,9 +137,14 @@ class GitHubService {
         };
       });
 
+      console.log(`[GitHubService] Summarized ${repoSummaries.length} total repos for "${username}". Private count: ${repoSummaries.filter(r => r.private).length}, Public count: ${repoSummaries.filter(r => !r.private).length}`);
+
       return repoSummaries;
     } catch (error) {
       console.error(`GitHub REST API fetch error for user ${username}:`, error.message);
+      if (error.response) {
+        console.error(`GitHub API Status: ${error.response.status}, Data:`, error.response.data);
+      }
       throw new Error(`Failed to fetch GitHub repositories for ${username}: ${error.message}`);
     }
   }

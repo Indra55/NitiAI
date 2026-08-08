@@ -11,6 +11,7 @@ export default function GitHubDemoPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [githubConnected, setGithubConnected] = useState<boolean>(false);
   const [username, setUsername] = useState<string>('jayyy255');
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [targetRole, setTargetRole] = useState<string>('Senior Backend & Systems Engineer');
   const [loading, setLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<any>(null);
@@ -40,24 +41,30 @@ export default function GitHubDemoPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const isConnected = urlParams.get('githubConnected') === 'true';
       const userParam = urlParams.get('username');
+      const tokenParam = urlParams.get('token');
 
-      if (isConnected) {
+      if (isConnected || tokenParam) {
         setGithubConnected(true);
         const activeUser = userParam || 'jayyy255';
         setUsername(activeUser);
-        runScan(activeUser);
+        if (tokenParam) setAccessToken(tokenParam);
+        runScan(activeUser, tokenParam);
       }
     }
   }, []);
 
-  const runScan = async (userToScan: string) => {
+  const runScan = async (userToScan: string, token: string | null = accessToken) => {
     setLoading(true);
     setErrorMsg(null);
     try {
       const res = await fetch('/api/github/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ githubUsername: userToScan, targetRole })
+        body: JSON.stringify({ 
+          githubUsername: userToScan, 
+          targetRole,
+          accessToken: token || accessToken
+        })
       });
 
       if (!res.ok) {
@@ -243,7 +250,7 @@ export default function GitHubDemoPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="bg-slate-950 border border-slate-800 text-indigo-400 text-xs px-3 py-1.5 rounded-xl font-mono font-bold">
-                      {scanResult.reposCount} Repositories Indexed
+                      {scanResult.reposCount} Repositories Indexed ({scanResult.privateReposCount || 0} Private, {scanResult.publicReposCount || scanResult.reposCount} Public)
                     </span>
                     <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs px-3 py-1.5 rounded-xl font-bold">
                       {scanResult.analysis.roleMatchScore}% Role Match

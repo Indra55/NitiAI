@@ -71,8 +71,8 @@ router.get('/auth/callback', async (req, res) => {
     const repos = await githubService.fetchUserRepositories(username, accessToken);
     await githubService.syncHybridGraph(null, username, repos);
 
-    // Redirect to frontend demo page with OAuth success & username parameter
-    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${username}&reposCount=${repos.length}`);
+    // Redirect to frontend demo page with OAuth token & username parameter
+    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${username}&token=${accessToken}&reposCount=${repos.length}`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
     res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);
@@ -105,10 +105,12 @@ router.post('/analyze', async (req, res) => {
       githubUsername,
       targetRole,
       reposCount: repos.length,
+      privateReposCount: repos.filter(r => r.private).length,
+      publicReposCount: repos.filter(r => !r.private).length,
       syncResult,
       analysis: {
         roleMatchScore: 88,
-        roleFitVerdict: `Strong polyglot alignment for ${targetRole} across ${repos.length} repositories`,
+        roleFitVerdict: `Strong polyglot alignment for ${targetRole} across ${repos.length} repositories (${repos.filter(r => r.private).length} Private, ${repos.filter(r => !r.private).length} Public)`,
         matchingRepos: repos.slice(0, 10).map(r => r.name),
         missingRoleSkills: ['Kafka / System Streaming', 'Kubernetes Orchestration'],
         probingQuestions: graphQuestions
