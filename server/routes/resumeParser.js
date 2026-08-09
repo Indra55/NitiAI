@@ -510,12 +510,13 @@ Provide exactly 5 recommended career paths, 4 trending roles, 3 fast-growing ind
   /**
    * Tailor resume based on Job Description
    */
-  async tailorResume(resumeText, jobDescription) {
+  async tailorResume(resumeText, jobDescription, githubProjectsText = "") {
     const prompt = `You are an expert resume writer. Tailor the following resume to match the provided Job Description (JD).
     
     Resume:
     ${resumeText.substring(0, 10000)}
     
+    ${githubProjectsText ? `Candidate's GitHub Projects (for extra context to enhance tailoring):\n${githubProjectsText.substring(0, 5000)}\n` : ''}
     Job Description:
     ${jobDescription.substring(0, 5000)}
     
@@ -567,7 +568,7 @@ Provide exactly 5 recommended career paths, 4 trending roles, 3 fast-growing ind
    * Match resume against a Job Description
    * Returns: match percentage, matched skills, missing skills, improvement suggestions
    */
-  async matchAnalysis(resumeText, jobDescription) {
+  async matchAnalysis(resumeText, jobDescription, githubProjectsText = "") {
     const prompt = `You are an expert ATS (Applicant Tracking System) and hiring analyst.
     
 Analyze how well this resume matches the provided Job Description (JD).
@@ -575,6 +576,7 @@ Analyze how well this resume matches the provided Job Description (JD).
 Resume:
 ${resumeText.substring(0, 10000)}
 
+${githubProjectsText ? `Candidate's GitHub Projects (use this to find additional technical context):\n${githubProjectsText.substring(0, 5000)}\n` : ''}
 Job Description:
 ${jobDescription.substring(0, 5000)}
 

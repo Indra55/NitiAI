@@ -5,6 +5,7 @@ const axios = require('axios');
 const pool = require('../config/dbConfig');
 const githubService = require('../services/githubService');
 const sarvamService = require('../services/sarvamService');
+const { authenticateToken } = require('../middleware/auth');
 
 const audioUpload = multer({
   storage: multer.memoryStorage(),
@@ -124,7 +125,7 @@ router.get('/auth/login', (req, res) => {
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
     const targetUser = username || 'Indra55';
     console.log(`[GitHubOAuth] GITHUB_CLIENT_ID not configured. Directing candidate @${targetUser} to public repo scan mode.`);
-    return res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUser)}`);
+    return res.redirect(`${clientUrl}/profile?githubConnected=true&username=${encodeURIComponent(targetUser)}`);
   }
 
   let githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user&prompt=consent`;
@@ -180,7 +181,7 @@ router.get('/auth/callback', async (req, res) => {
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
 
   if (!code) {
-    return res.redirect(`${clientUrl}/github-demo?githubError=no_code`);
+    return res.redirect(`${clientUrl}/profile?githubError=no_code`);
   }
 
   try {
@@ -202,7 +203,7 @@ router.get('/auth/callback', async (req, res) => {
         const stateParam = state ? `?username=${encodeURIComponent(state)}&forceReauth=true` : '?forceReauth=true';
         return res.redirect(`/api/github/auth/login${stateParam}`);
       }
-      return res.redirect(`${clientUrl}/github-demo?githubError=token_failed`);
+      return res.redirect(`${clientUrl}/profile?githubError=token_failed`);
     }
 
     // Fetch authenticated user profile directly from GitHub API
@@ -245,18 +246,19 @@ router.get('/auth/callback', async (req, res) => {
     console.log(`[GitHubOAuth] Successfully stored token in DB for candidate: "@${targetUsername}" (Authenticated GitHub user: "@${authenticatedUsername}")`);
 
     // Redirect back to production studio with pre-seeded candidate profile details
-    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUsername)}&name=${encodeURIComponent(ghUser.name || targetUsername)}&email=${encodeURIComponent(ghUser.email || '')}&avatar=${encodeURIComponent(ghUser.avatar_url || '')}`);
+    res.redirect(`${clientUrl}/profile?githubConnected=true&username=${encodeURIComponent(targetUsername)}&name=${encodeURIComponent(ghUser.name || targetUsername)}&email=${encodeURIComponent(ghUser.email || '')}&avatar=${encodeURIComponent(ghUser.avatar_url || '')}`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
-    res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);
+    res.redirect(`${clientUrl}/profile?githubError=${encodeURIComponent(error.message)}`);
   }
 });
 
 /**
  * 7. GET /api/github/scan-results
  * Retrieves stored scan results for a username directly from PostgreSQL DB / Tier 1 Cache
+ * and ranks them based on candidate's profile/resume.
  */
-router.get('/scan-results', async (req, res) => {
+router.get('/scan-results', authenticateToken, async (req, res) => {
   try {
     const { username } = req.query;
     if (!username) {
@@ -266,6 +268,28 @@ router.get('/scan-results', async (req, res) => {
     const scanData = await githubService.getScanFromDb(username);
     if (!scanData) {
       return res.status(404).json({ success: false, error: `No stored scan found for user ${username}` });
+    }
+
+    // Try to rank projects against candidate's resume
+    let rankedRepos = scanData.repos || [];
+    try {
+      const resumeResult = await pool.query(
+          "SELECT resume_text FROM resume_info WHERE user_id = $1",
+          [req.user.id]
+      );
+      if (resumeResult.rows.length > 0 && resumeResult.rows[0].resume_text) {
+          const resumeText = resumeResult.rows[0].resume_text;
+          rankedRepos = await githubService.rankProjectsAgainstProfile(username, scanData.repos, resumeText);
+          
+          // Optionally save ranked repos back to DB
+          scanData.repos = rankedRepos;
+          await pool.query(
+            "UPDATE github_scans SET scan_json = $1 WHERE LOWER(username) = $2",
+            [JSON.stringify(scanData), username.toLowerCase().trim()]
+          );
+      }
+    } catch (dbErr) {
+      console.warn("[GitHubRoutes] Ranking failed, using original repos", dbErr);
     }
 
     res.json({

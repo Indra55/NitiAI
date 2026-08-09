@@ -25,6 +25,33 @@ class GitHubService {
   }
 
   /**
+   * Initialize AI Training Data Table
+   */
+  async initTrainingTable() {
+    if (process.env.DATABASE_URL) {
+      try {
+        const client = await pool.connect();
+        try {
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS ai_training_data (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              user_id UUID,
+              feature_name VARCHAR(100) NOT NULL,
+              input_context JSONB NOT NULL,
+              ai_output JSONB NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+        } finally {
+          client.release();
+        }
+      } catch (dbErr) {
+        console.warn(`[GitHubService] PostgreSQL training table init warning:`, dbErr.message);
+      }
+    }
+  }
+
+  /**
    * Save / update OAuth access token for a username in memory and PostgreSQL DB
    */
   async setAccessToken(username, token) {
@@ -201,7 +228,9 @@ class GitHubService {
         name: r.name,
         private: r.private,
         language: r.language,
-        detected_tools: r.detected_tools
+        detected_tools: r.detected_tools,
+        impact_score: r.impact_score || 0,
+        impact_reason: r.impact_reason || ''
       })),
       analysis,
       updated_at: new Date().toISOString()
@@ -398,7 +427,30 @@ class GitHubService {
         };
       });
 
-      console.log(`[GitHubService] Summarized ${repoSummaries.length} total repos for "${username}". Private count: ${repoSummaries.filter(r => r.private).length}, Public count: ${repoSummaries.filter(r => !r.private).length}`);
+      // Sort repoSummaries by engagement for README fetching (Top 10)
+      repoSummaries.sort((a, b) => {
+        const scoreA = (a.stars || 0) * 2 + (a.forks || 0);
+        const scoreB = (b.stars || 0) * 2 + (b.forks || 0);
+        return scoreB - scoreA;
+      });
+
+      // Fetch READMEs for top 10 engaged repositories
+      const topReposForReadme = repoSummaries.slice(0, 10);
+      await Promise.allSettled(topReposForReadme.map(async (repo) => {
+        try {
+          const readmeUrl = `https://api.github.com/repos/${username}/${repo.name}/readme`;
+          const readmeRes = await axios.get(readmeUrl, { headers });
+          if (readmeRes.data && readmeRes.data.content) {
+            const decodedReadme = Buffer.from(readmeRes.data.content, 'base64').toString('utf-8');
+            // Append a 1000 character snippet of the README
+            repo.description = `${repo.description}\n\nREADME Snippet:\n${decodedReadme.substring(0, 1000)}`;
+          }
+        } catch (e) {
+          // Ignore errors, likely 404 no readme
+        }
+      }));
+
+      console.log(`[GitHubService] Summarized ${repoSummaries.length} total repos for "${username}". Fetched READMEs for up to 10. Private count: ${repoSummaries.filter(r => r.private).length}, Public count: ${repoSummaries.filter(r => !r.private).length}`);
 
       return repoSummaries;
     } catch (error) {
@@ -719,6 +771,102 @@ Return ONLY valid JSON format matching:
       ]
     };
   }
+
+  /**
+   * Ranks candidate's GitHub projects based on relevance to their Resume profile
+   * Uses Sarvam AI if available, otherwise heuristic fallback.
+   */
+  async rankProjectsAgainstProfile(username, repos, resumeText) {
+    const apiKey = process.env.SARVAM_API_KEY;
+    if (!apiKey || !resumeText || repos.length === 0) {
+      // Heuristic fallback: sort by stars, forks, then private/public
+      return [...repos].sort((a, b) => {
+        const scoreA = (a.stars || 0) * 2 + (a.forks || 0) + (a.private ? 0 : 1);
+        const scoreB = (b.stars || 0) * 2 + (b.forks || 0) + (b.private ? 0 : 1);
+        return scoreB - scoreA;
+      }).map((repo, i) => ({
+        ...repo,
+        impact_score: Math.max(100 - i * 10, 10),
+        impact_reason: "Ranked based on repository engagement (stars/forks)."
+      }));
+    }
+
+    const reposData = repos.map(r => ({ name: r.name, description: r.description, language: r.language, tools: r.detected_tools }));
+    const prompt = `
+You are an expert tech recruiter and principal engineer. 
+I have a candidate's resume and a list of their GitHub repositories.
+I need you to score and rank these repositories (from 0 to 100) based on how impactful and relevant they are to the candidate's stated experience and skills in their resume.
+
+Candidate Resume Excerpt:
+"""
+${resumeText.substring(0, 3000)}
+"""
+
+GitHub Repositories:
+${JSON.stringify(reposData)}
+
+Return ONLY a valid JSON array of objects, with each object containing:
+- "name": repository name
+- "impact_score": integer from 0 to 100
+- "impact_reason": brief 1-sentence explanation of why it fits their profile.
+Do NOT include markdown formatting wrappers, just the raw JSON array.
+`;
+
+    try {
+      const sarvamRes = await axios.post("https://api.sarvam.ai/v1/chat/completions", {
+        model: "sarvam-105b",
+        messages: [
+          { role: "system", content: "You are an expert tech lead. Return ONLY valid JSON format." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.2
+      }, {
+        headers: {
+          "api-subscription-key": apiKey,
+          "Content-Type": "application/json"
+        },
+        timeout: 25000
+      });
+
+      let content = sarvamRes.data?.choices?.[0]?.message?.content;
+      if (content) {
+        // Strip markdown code block wrappers if present
+        content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        const rankings = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+        
+        // Merge rankings into repos
+        const rankedRepos = repos.map(repo => {
+          const rankInfo = rankings.find(r => r.name === repo.name);
+          return {
+            ...repo,
+            impact_score: rankInfo?.impact_score || 50,
+            impact_reason: rankInfo?.impact_reason || "Analyzed for profile fit."
+          };
+        });
+
+        // Sort by impact score descending
+        rankedRepos.sort((a, b) => (b.impact_score || 0) - (a.impact_score || 0));
+        return rankedRepos;
+      }
+    } catch (err) {
+      console.warn(`[GitHubService] Sarvam AI ranking error for ${username}:`, err.message);
+    }
+    
+    // Fallback if Sarvam fails
+    return [...repos].sort((a, b) => {
+        const scoreA = (a.stars || 0) * 2 + (a.forks || 0);
+        const scoreB = (b.stars || 0) * 2 + (b.forks || 0);
+        return scoreB - scoreA;
+      }).map((repo, i) => ({
+        ...repo,
+        impact_score: Math.max(100 - i * 10, 10),
+        impact_reason: "Ranked based on repository engagement."
+    }));
+  }
 }
 
-module.exports = new GitHubService();
+// Initialize tables on startup
+const service = new GitHubService();
+service.initTrainingTable();
+module.exports = service;

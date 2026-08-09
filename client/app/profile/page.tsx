@@ -1,5 +1,6 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
 import { DynamicNavbar } from "@/components/dynamic-navbar"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/lib/auth-context"
@@ -96,6 +97,8 @@ interface ProfileFormData {
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth()
+  const searchParams = useSearchParams()
+  const urlUsername = searchParams.get('username')
   const [resumeInfo, setResumeInfo] = useState<ResumeInfo | null>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -107,12 +110,15 @@ export default function ProfilePage() {
     }
     return null
   })
-  const [loading, setLoading] = useState(!resumeInfo)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [applications, setApplications] = useState<JobApplication[]>([])
   const [loadingApplications, setLoadingApplications] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [githubProjects, setGithubProjects] = useState<any[]>([])
+  const [githubConnected, setGithubConnected] = useState(false)
+  const [isScanningGithub, setIsScanningGithub] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Edit Profile Dialog State
@@ -196,6 +202,74 @@ export default function ProfilePage() {
     }
     fetchApplications()
   }, [])
+
+  // Fetch GitHub projects
+  useEffect(() => {
+    async function fetchGithub() {
+      try {
+        // Use URL username if present, otherwise fallback
+        const targetUsername = urlUsername || profileData.username || user?.username;
+        if (!targetUsername) return;
+        
+        const token = localStorage.getItem("token");
+        
+        const statusRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/check-status?username=${targetUsername}`);
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          if (statusData.isOAuthAuthorized || statusData.isAuthorized) {
+            setGithubConnected(true);
+            
+            // The actual GitHub username from the authorized token
+            const actualGithubUsername = statusData.profile?.login || targetUsername;
+            
+            // Try fetching existing scan
+            const scanRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/scan-results?username=${actualGithubUsername}`, {
+              headers: { "Authorization": `Bearer ${token}` }
+            });
+            
+            if (scanRes.ok) {
+              const scanData = await scanRes.json();
+              if (scanData.success && scanData.scanResult && scanData.scanResult.repos) {
+                setGithubProjects(scanData.scanResult.repos);
+              }
+            } else if (scanRes.status === 404) {
+              // Auto-trigger scan if it doesn't exist
+              setIsScanningGithub(true);
+              try {
+                const analyzeRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/analyze`, {
+                  method: 'POST',
+                  headers: { 
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({ githubUsername: actualGithubUsername })
+                });
+                if (analyzeRes.ok) {
+                  // Re-fetch scan-results to get the ranked projects (since analyze doesn't rank them)
+                  const finalScanRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/scan-results?username=${actualGithubUsername}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                  });
+                  if (finalScanRes.ok) {
+                    const finalScanData = await finalScanRes.json();
+                    if (finalScanData.success && finalScanData.scanResult && finalScanData.scanResult.repos) {
+                      setGithubProjects(finalScanData.scanResult.repos);
+                    }
+                  }
+                }
+              } finally {
+                setIsScanningGithub(false);
+              }
+            }
+          } else {
+            setGithubConnected(false);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch github", err);
+      }
+    }
+    fetchGithub();
+  }, [profileData.username, user?.username, urlUsername]);
 
   // Handle resume upload
   const handleResumeUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -723,6 +797,63 @@ export default function ProfilePage() {
                           <p className="text-muted-foreground">No projects found</p>
                         </Card>
                       )}
+                    </div>
+
+                    {/* GitHub Projects */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between px-2">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
+                          <Globe className="w-5 h-5 text-primary" /> GitHub Portfolio
+                        </h3>
+                        {!githubConnected && (
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={`/api/github/auth/login?username=${profileData.username || user?.username || ''}`}>
+                              Connect GitHub
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {isScanningGithub ? (
+                        <Card className="p-8 border-dashed border-2 border-border/50 bg-transparent text-center">
+                          <div className="flex flex-col items-center justify-center space-y-3">
+                            <div className="size-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <p className="text-muted-foreground">Scanning and analyzing repositories with Sarvam AI...</p>
+                          </div>
+                        </Card>
+                      ) : githubConnected && githubProjects.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                          {githubProjects.map((repo: any, i: number) => (
+                            <Card key={i} className="p-6 border-border/50 bg-card/40 backdrop-blur-md hover:bg-card/60 transition-colors flex flex-col h-full relative overflow-hidden">
+                              <div className="absolute top-0 right-0 bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-bl-lg">
+                                Impact: {repo.impact_score || 0}
+                              </div>
+                              <div className="flex items-start justify-between mb-3 mt-2">
+                                <h4 className="text-lg font-bold">{repo.name}</h4>
+                              </div>
+                              <p className="text-muted-foreground text-sm mb-2 grow line-clamp-2">
+                                {repo.description || "No description provided."}
+                              </p>
+                              {repo.impact_reason && (
+                                <p className="text-xs text-emerald-500 mb-4 line-clamp-1 italic">
+                                  {repo.impact_reason}
+                                </p>
+                              )}
+                              <div className="flex flex-wrap gap-2 mt-auto">
+                                {repo.detected_tools?.slice(0, 4).map((tech: string, j: number) => (
+                                  <span key={j} className="text-xs bg-secondary/50 px-2 py-1 rounded text-secondary-foreground">
+                                    {tech}
+                                  </span>
+                                ))}
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : githubConnected ? (
+                        <Card className="p-8 border-dashed border-2 border-border/50 bg-transparent text-center">
+                          <p className="text-muted-foreground">No GitHub projects found</p>
+                        </Card>
+                      ) : null}
                     </div>
 
                     {/* Education */}

@@ -484,10 +484,36 @@ router.post("/match-analysis", authenticateToken, async (req, res) => {
 
         const resumeText = resumeResult.rows[0].resume_text;
 
+        // Fetch GitHub Projects for context
+        let githubProjectsText = "";
+        try {
+            const userResult = await pool.query("SELECT username FROM users WHERE id = $1", [req.user.id]);
+            if (userResult.rows.length > 0 && userResult.rows[0].username) {
+                const username = userResult.rows[0].username;
+                const scanResult = await pool.query("SELECT scan_json FROM github_scans WHERE LOWER(username) = $1", [username.toLowerCase().trim()]);
+                if (scanResult.rows.length > 0 && scanResult.rows[0].scan_json) {
+                    const repos = scanResult.rows[0].scan_json.repos || [];
+                    githubProjectsText = repos.map(r => `${r.name}: ${r.description || ''} (Tools: ${(r.detected_tools||[]).join(', ')})`).join('\\n');
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to fetch github context", e);
+        }
+
         console.log("Performing resume-JD match analysis...");
         const startTime = Date.now();
-        const analysis = await resumeService.matchAnalysis(resumeText, jobDescription);
+        const analysis = await resumeService.matchAnalysis(resumeText, jobDescription, githubProjectsText);
         console.log(`Match analysis completed in ${Date.now() - startTime}ms`);
+
+        // Log to training data
+        try {
+            await pool.query(
+                `INSERT INTO ai_training_data (user_id, feature_name, input_context, ai_output) VALUES ($1, $2, $3, $4)`,
+                [req.user.id, 'match-analysis', JSON.stringify({ resumeText, jobDescription, githubProjectsText }), JSON.stringify(analysis)]
+            );
+        } catch (dbErr) {
+            console.warn("Could not log training data", dbErr.message);
+        }
 
         res.json({
             ...analysis,
@@ -525,8 +551,34 @@ router.post("/tailor", authenticateToken, async (req, res) => {
 
         const resumeText = resumeResult.rows[0].resume_text;
 
+        // Fetch GitHub Projects for context
+        let githubProjectsText = "";
+        try {
+            const userResult = await pool.query("SELECT username FROM users WHERE id = $1", [req.user.id]);
+            if (userResult.rows.length > 0 && userResult.rows[0].username) {
+                const username = userResult.rows[0].username;
+                const scanResult = await pool.query("SELECT scan_json FROM github_scans WHERE LOWER(username) = $1", [username.toLowerCase().trim()]);
+                if (scanResult.rows.length > 0 && scanResult.rows[0].scan_json) {
+                    const repos = scanResult.rows[0].scan_json.repos || [];
+                    githubProjectsText = repos.map(r => `${r.name}: ${r.description || ''} (Tools: ${(r.detected_tools||[]).join(', ')})`).join('\\n');
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to fetch github context", e);
+        }
+
         console.log("Tailoring resume...");
-        const tailoredResult = await resumeService.tailorResume(resumeText, jobDescription);
+        const tailoredResult = await resumeService.tailorResume(resumeText, jobDescription, githubProjectsText);
+
+        // Log to training data
+        try {
+            await pool.query(
+                `INSERT INTO ai_training_data (user_id, feature_name, input_context, ai_output) VALUES ($1, $2, $3, $4)`,
+                [req.user.id, 'tailor-resume', JSON.stringify({ resumeText, jobDescription, githubProjectsText }), JSON.stringify(tailoredResult)]
+            );
+        } catch (dbErr) {
+            console.warn("Could not log training data", dbErr.message);
+        }
 
         // Save to DB so tailored changes persist
         if (tailoredResult && tailoredResult.tailored_resume_data) {
