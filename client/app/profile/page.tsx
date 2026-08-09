@@ -222,42 +222,26 @@ export default function ProfilePage() {
             // The actual GitHub username from the authorized token
             const actualGithubUsername = statusData.profile?.login || targetUsername;
             
-            // Try fetching existing scan
-            const scanRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/scan-results?username=${actualGithubUsername}`, {
-              headers: { "Authorization": `Bearer ${token}` }
-            });
-            
-            if (scanRes.ok) {
-              const scanData = await scanRes.json();
-              if (scanData.success && scanData.scanResult && scanData.scanResult.repos) {
-                setGithubProjects(scanData.scanResult.repos);
-              }
-            } else if (scanRes.status === 404) {
-              // Auto-trigger scan if it doesn't exist
-              setIsScanningGithub(true);
-              try {
-                const analyzeRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/analyze`, {
-                  method: 'POST',
-                  headers: { 
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                  },
-                  body: JSON.stringify({ githubUsername: actualGithubUsername })
-                });
-                if (analyzeRes.ok) {
-                  // Re-fetch scan-results to get the ranked projects (since analyze doesn't rank them)
-                  const finalScanRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/scan-results?username=${actualGithubUsername}`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                  });
-                  if (finalScanRes.ok) {
-                    const finalScanData = await finalScanRes.json();
-                    if (finalScanData.success && finalScanData.scanResult && finalScanData.scanResult.repos) {
-                      setGithubProjects(finalScanData.scanResult.repos);
-                    }
-                  }
+            // Fetch deep audit repos with README descriptions & private badges
+            try {
+              const auditRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/deep-audit?username=${actualGithubUsername}`);
+              if (auditRes.ok) {
+                const auditData = await auditRes.json();
+                if (auditData.success && auditData.audit && auditData.audit.repositories) {
+                  setGithubProjects(auditData.audit.repositories);
                 }
-              } finally {
-                setIsScanningGithub(false);
+              }
+            } catch (auditErr) {
+              console.warn("Deep audit fetch notice:", auditErr);
+              // Fallback to scan-results
+              const scanRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/scan-results?username=${actualGithubUsername}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+              });
+              if (scanRes.ok) {
+                const scanData = await scanRes.json();
+                if (scanData.success && scanData.scanResult && scanData.scanResult.repos) {
+                  setGithubProjects(scanData.scanResult.repos);
+                }
               }
             }
           } else {
@@ -824,24 +808,32 @@ export default function ProfilePage() {
                       ) : githubConnected && githubProjects.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                           {githubProjects.map((repo: any, i: number) => (
-                            <Card key={i} className="p-6 border-border/50 bg-card/40 backdrop-blur-md hover:bg-card/60 transition-colors flex flex-col h-full relative overflow-hidden">
-                              <div className="absolute top-0 right-0 bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded-bl-lg">
-                                Impact: {repo.impact_score || 0}
+                            <Card key={i} className="p-6 border-border/50 bg-card/40 backdrop-blur-md hover:bg-card/60 transition-colors flex flex-col h-full relative overflow-hidden space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="text-lg font-bold text-foreground">{repo.name}</h4>
+                                <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full border shrink-0 ${
+                                  repo.isPrivate || repo.private
+                                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                                    : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                }`}>
+                                  {repo.isPrivate || repo.private ? 'Private 🔒' : 'Public 🌐'}
+                                </span>
                               </div>
-                              <div className="flex items-start justify-between mb-3 mt-2">
-                                <h4 className="text-lg font-bold">{repo.name}</h4>
-                              </div>
-                              <p className="text-muted-foreground text-sm mb-2 grow line-clamp-2">
-                                {repo.description || "No description provided."}
+
+                              <p className="text-muted-foreground text-xs leading-relaxed grow">
+                                {repo.description && repo.description !== "No description provided"
+                                  ? repo.description
+                                  : "No description provided for this repository"}
                               </p>
-                              {repo.impact_reason && (
-                                <p className="text-xs text-emerald-500 mb-4 line-clamp-1 italic">
-                                  {repo.impact_reason}
-                                </p>
-                              )}
-                              <div className="flex flex-wrap gap-2 mt-auto">
-                                {repo.detected_tools?.slice(0, 4).map((tech: string, j: number) => (
-                                  <span key={j} className="text-xs bg-secondary/50 px-2 py-1 rounded text-secondary-foreground">
+
+                              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40 mt-auto">
+                                {repo.language && (
+                                  <span className="text-xs font-mono font-bold bg-primary/10 text-primary px-2.5 py-0.5 rounded">
+                                    {repo.language}
+                                  </span>
+                                )}
+                                {(repo.detectedTools || repo.detected_tools || []).slice(0, 5).map((tech: string, j: number) => (
+                                  <span key={j} className="text-xs bg-secondary/50 px-2 py-0.5 rounded text-secondary-foreground font-mono">
                                     {tech}
                                   </span>
                                 ))}
