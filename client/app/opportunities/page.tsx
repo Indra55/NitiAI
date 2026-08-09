@@ -18,11 +18,6 @@
  } from "recharts"
  import {
    Sparkles,
-   Target,
-   TrendingUp,
-   DollarSign,
-   Clock,
-   Layers,
    AlertCircle,
    ArrowRight,
  } from "lucide-react"
@@ -81,7 +76,7 @@ import { toaster } from "@/lib/toaster"
     name: path.title.length > 20 ? path.title.substring(0, 18) + "..." : path.title,
     fullName: path.title,
     matchScore: path.match_score,
-    fill: path.match_score >= 90 ? "#10b981" : path.match_score >= 80 ? "#3b82f6" : "#f59e0b",
+    fill: "#ef4a18",
   })) || []
 
   return (
@@ -114,22 +109,20 @@ import { toaster } from "@/lib/toaster"
             ) : careerDashboard?.recommended_career_paths && careerDashboard.recommended_career_paths.length > 0 ? (
               <>
                 {/* Career Match Chart (moved from dashboard) */}
-                <Card className="p-6 border-border/40 bg-card/50 backdrop-blur-sm mb-10">
+                <Card className="mb-10 rounded-[26px] border-[#e8e1da] bg-white p-7 shadow-[0_10px_28px_rgba(61,41,30,.05)]">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-emerald-500/10">
-                        <Sparkles className="w-5 h-5 text-emerald-500" />
-                      </div>
+                      <Sparkles className="w-4 h-4 text-primary" />
                       <h3 className="text-lg font-semibold text-foreground">Match Score Analysis</h3>
                     </div>
-                    <span className="px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> AI-Powered
+                    <span className="px-3 py-1 text-[11px] font-semibold bg-[#fff0eb] text-primary rounded-full">
+                      AI-powered
                     </span>
                   </div>
                   <div className="h-[250px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={careerPathsData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--color-border))" horizontal={true} vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--color-border))" horizontal={false} vertical={false} />
                         <XAxis type="number" domain={[0, 100]} hide />
                         <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 12, fill: "hsl(var(--color-muted-foreground))" }} />
                         <Tooltip
@@ -162,10 +155,8 @@ import { toaster } from "@/lib/toaster"
                   {careerDashboard.recommended_career_paths.map((path, idx) => (
                     <Card
                       key={idx}
-                      className="p-6 border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300 hover:shadow-lg group relative overflow-hidden"
+                      className="rounded-[24px] border-[#e8e1da] bg-white p-7 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_14px_32px_rgba(61,41,30,.08)] group"
                     >
-                      <div className="absolute top-0 left-0 w-1 h-full bg-linear-to-b from-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
                       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
@@ -173,7 +164,7 @@ import { toaster } from "@/lib/toaster"
                               {path.title}
                             </h3>
                             {idx === 0 && (
-                              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-primary/20 text-primary border border-primary/20">
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#fff0eb] text-primary">
                                 Top Pick
                               </span>
                             )}
@@ -181,50 +172,37 @@ import { toaster } from "@/lib/toaster"
                           <p className="text-sm text-muted-foreground mb-4">{path.reasoning}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2 min-w-[120px]">
-                          <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold ${path.match_score >= 90 ? 'bg-emerald-500/10 text-emerald-600' :
-                            path.match_score >= 80 ? 'bg-blue-500/10 text-blue-600' :
-                              'bg-amber-500/10 text-amber-600'
-                            }`}>
-                            <Target className="w-4 h-4" />
-                            {path.match_score}% Match
+                          <div className="rounded-full border border-primary/20 bg-[#fffaf7] px-3 py-1.5 text-sm font-semibold text-primary">
+                            {path.match_score}% match
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 p-4 rounded-xl bg-muted/30">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-emerald-500/10">
-                            <DollarSign className="w-4 h-4 text-emerald-500" />
-                          </div>
+                      <div className="mb-5 grid grid-cols-1 border-y border-[#eee8e2] sm:grid-cols-3 sm:divide-x sm:divide-[#eee8e2]">
+                        <div className="py-4 sm:px-4 sm:first:pl-0">
                           <div>
-                            <p className="text-xs text-muted-foreground">Salary Range</p>
-                            <p className="text-sm font-semibold text-foreground">{path.salary_range}</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">Salary range</p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">{path.salary_range}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-blue-500/10">
-                            <Clock className="w-4 h-4 text-blue-500" />
-                          </div>
+                        <div className="py-4 sm:px-4">
                           <div>
-                            <p className="text-xs text-muted-foreground">Transition Time</p>
-                            <p className="text-sm font-semibold text-foreground">{path.estimated_transition_time}</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">Transition time</p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">{path.estimated_transition_time}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10">
-                            <TrendingUp className="w-4 h-4 text-primary" />
-                          </div>
+                        <div className="py-4 sm:px-4 sm:pr-0">
                           <div>
-                            <p className="text-xs text-muted-foreground">Growth Outlook</p>
-                            <p className="text-sm font-semibold text-foreground">{path.growth_outlook}</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground">Growth outlook</p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">{path.growth_outlook}</p>
                           </div>
                         </div>
                       </div>
 
                       {path.skill_gaps && path.skill_gaps.length > 0 && (
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                            <Layers className="w-3 h-3" /> Skills to Develop:
+                          <p className="mb-2 text-xs font-medium text-muted-foreground">
+                            Skills to develop
                           </p>
                           <div className="flex flex-wrap gap-2">
                             {path.skill_gaps.map((skill, sIdx) => (

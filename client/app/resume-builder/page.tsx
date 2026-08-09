@@ -203,7 +203,7 @@ export default function ResumeBuilderPage() {
 
   return (
     <ProtectedRoute>
-      <div className="dashboard-theme min-h-screen bg-background">
+      <div className="dashboard-theme resume-studio min-h-screen bg-background">
         <DynamicNavbar />
         <main className="pt-20 pb-4 px-4 sm:px-6 lg:px-8 max-w-[1800px] mx-auto w-full" style={{ height: 'calc(100vh - 0px)' }}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
@@ -211,7 +211,7 @@ export default function ResumeBuilderPage() {
             {/* Left Panel: Resume Preview (8 cols) */}
             <div className="lg:col-span-8 flex flex-col gap-4 h-full min-h-0">
               {/* Header Bar */}
-              <Card className="shrink-0 p-4 border-border/40 bg-card/50 backdrop-blur-sm">
+              <Card className="resume-toolbar shrink-0 rounded-2xl p-4 border-[#e8e1da] bg-white shadow-[0_8px_24px_rgba(61,41,30,.05)]">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <FileText className="w-5 h-5 text-primary" />
@@ -260,7 +260,7 @@ export default function ResumeBuilderPage() {
               </Card>
 
               {/* Resume Preview Area */}
-              <div className="flex-1 min-h-0 bg-gray-100/80 rounded-lg border border-border/40 overflow-auto shadow-inner">
+              <div className="resume-preview-stage flex-1 min-h-0 bg-[#f3f0ec] rounded-2xl border border-[#e8e1da] overflow-auto shadow-inner">
                 <div className="min-h-full flex justify-center p-8">
                   <div
                     className="transition-transform duration-200 ease-in-out shadow-2xl origin-top"
@@ -286,9 +286,9 @@ export default function ResumeBuilderPage() {
             </div>
 
             {/* Right Panel: AI Editor (4 cols) */}
-            <Card className="lg:col-span-4 flex flex-col h-full min-h-0 overflow-hidden border-border/40 bg-card/50 backdrop-blur-sm shadow-lg">
+            <Card className="resume-editor lg:col-span-4 flex flex-col h-full min-h-0 overflow-hidden rounded-2xl border-[#e8e1da] bg-white shadow-[0_12px_30px_rgba(61,41,30,.08)]">
               {/* Header */}
-              <div className="shrink-0 p-4 border-b border-border/40 bg-linear-to-r from-primary/5 to-accent/5">
+              <div className="shrink-0 p-4 border-b border-[#f0ddd4] bg-[#fff7f3]">
                 <h2 className="font-semibold flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-primary" />
                   AI Resume Editor

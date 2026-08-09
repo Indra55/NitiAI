@@ -10,6 +10,7 @@
 
 const axios = require("axios");
 const FormData = require("form-data");
+const { spawn } = require("child_process");
 
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY;
 const SARVAM_BASE_URL = "https://api.sarvam.ai";
@@ -117,10 +118,27 @@ class VoiceResumeService {
    */
   async transcribeAudio(audioBuffer, filename = "audio.webm", languageCode = "unknown", mode = "transcribe") {
     try {
+      // Ensure the audio is in WAV format since Sarvam STT struggles with WebM
+      let finalBuffer = audioBuffer;
+      let finalFilename = filename;
+      let finalMime = this._getMimeType(filename);
+
+      if (!filename.toLowerCase().endsWith(".wav") && !filename.toLowerCase().endsWith(".mp3")) {
+        console.log(`🎙️ Converting ${filename} to WAV for STT...`);
+        try {
+          finalBuffer = await this._convertToWav(audioBuffer);
+          finalFilename = "audio.wav";
+          finalMime = "audio/wav";
+          console.log(`✅ Conversion successful (${finalBuffer.length} bytes)`);
+        } catch (err) {
+          console.warn("⚠️ Audio conversion failed, proceeding with original buffer:", err.message);
+        }
+      }
+
       const formData = new FormData();
-      formData.append("file", audioBuffer, {
-        filename: filename,
-        contentType: this._getMimeType(filename),
+      formData.append("file", finalBuffer, {
+        filename: finalFilename,
+        contentType: finalMime,
       });
       formData.append("model", "saaras:v3");
       formData.append("mode", mode);
@@ -236,7 +254,7 @@ You will be provided with:
 
 Your job is to return a JSON object containing TWO things:
 1. "extracted_data": A JSON object containing ANY new or corrected resume fields extracted from the user's latest transcript. If the user corrects something (e.g. "change my title to X"), output the corrected data. If there is no new data, return an empty object {}.
-2. "ai_response": Your natural, conversational spoken reply to the user. Acknowledge what they said, and naturally guide them to provide the next missing piece of information (Name/Email/Phone/Location, Professional Summary, Education, Experience, Skills, Projects). Keep it brief, conversational, and encouraging. DO NOT use markdown or bullet points in the spoken response.
+2. "ai_response": Your natural, conversational spoken reply to the user. Acknowledge what they said, then ask for the next missing piece of information (Name/Email/Phone/Location, Professional Summary, Education, Experience, Skills, Projects). Use one concise sentence, maximum 24 words. DO NOT use markdown or bullet points.
 
 IMPORTANT:
 - Output strictly JSON.
@@ -255,10 +273,10 @@ Return format:
 }`;
 
     const userPrompt = `CURRENT RESUME DATA:
-${JSON.stringify(currentResumeData, null, 2)}
+${JSON.stringify(currentResumeData)}
 
 RECENT CONVERSATION HISTORY:
-${JSON.stringify(conversationHistory.slice(-6), null, 2)}
+${JSON.stringify(conversationHistory.slice(-6))}
 
 LATEST USER TRANSCRIPT:
 "${transcript}"`;
@@ -272,9 +290,8 @@ LATEST USER TRANSCRIPT:
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
           ],
-          response_format: { type: "json_object" },
           temperature: 0.1,
-          max_tokens: 2000,
+          max_tokens: 600,
         },
         {
           headers: this.getHeaders(),
@@ -282,10 +299,15 @@ LATEST USER TRANSCRIPT:
         }
       );
 
-      const content = response.data.choices[0]?.message?.content;
+      const message = response.data.choices?.[0]?.message;
+      const rawContent = message?.content ?? response.data.choices?.[0]?.text ?? response.data.output_text;
+      const content = Array.isArray(rawContent)
+        ? rawContent.map((part) => typeof part === "string" ? part : part?.text || "").join("")
+        : rawContent;
       if (!content) throw new Error("Empty response from chat completion");
 
-      const parsed = JSON.parse(content);
+      const jsonContent = String(content).replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+      const parsed = JSON.parse(jsonContent);
       return parsed;
     } catch (error) {
       console.error("❌ Conversational AI Error Details:");
@@ -295,10 +317,20 @@ LATEST USER TRANSCRIPT:
       } else {
         console.error(error.message);
       }
-      // Fallback response if LLM structuring fails
+      // Keep the call moving even if the model returns an empty/malformed completion.
+      // Capture the common personal-info patterns locally so the current answer is not lost.
+      const fallbackData = {};
+      const nameMatch = transcript.match(/(?:my\s+)?(?:full\s+)?name\s+is\s+([a-z][a-z .'-]{1,80})/i);
+      const emailMatch = transcript.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i);
+      const phoneMatch = transcript.match(/(?:\+?\d[\d\s().-]{7,}\d)/);
+      if (nameMatch) fallbackData.name = nameMatch[1].trim().replace(/[.,]$/, "");
+      if (emailMatch) fallbackData.email = emailMatch[0];
+      if (phoneMatch) fallbackData.phone = phoneMatch[0].trim();
       return {
-        extracted_data: { raw_input: transcript },
-        ai_response: "I heard you, but I had a little trouble processing that perfectly. Could you tell me a bit more or verify the resume preview?"
+        extracted_data: fallbackData,
+        ai_response: fallbackData.name
+          ? `Thanks, ${fallbackData.name}. What email address should I use for your resume?`
+          : "Thanks, I got that. Tell me a little more about your experience."
       };
     }
   }
@@ -363,6 +395,36 @@ LATEST USER TRANSCRIPT:
   }
 
   // ==================== Private Helpers ====================
+
+  /**
+   * Convert an audio buffer to a WAV buffer (16kHz, mono) using ffmpeg
+   * 
+   * @param {Buffer} inputBuffer - The original audio buffer
+   * @returns {Promise<Buffer>} - The converted WAV buffer
+   */
+  _convertToWav(inputBuffer) {
+    return new Promise((resolve, reject) => {
+      const ffmpeg = spawn("ffmpeg", [
+        "-i", "pipe:0",
+        "-f", "wav",
+        "-ar", "16000",
+        "-ac", "1",
+        "pipe:1"
+      ]);
+      const chunks = [];
+      ffmpeg.stdout.on("data", (chunk) => chunks.push(chunk));
+      ffmpeg.on("close", (code) => {
+        if (code === 0) {
+          resolve(Buffer.concat(chunks));
+        } else {
+          reject(new Error(`ffmpeg exited with code ${code}`));
+        }
+      });
+      ffmpeg.on("error", (err) => reject(err));
+      ffmpeg.stdin.write(inputBuffer);
+      ffmpeg.stdin.end();
+    });
+  }
 
   _getMimeType(filename) {
     const ext = filename.split(".").pop()?.toLowerCase();
