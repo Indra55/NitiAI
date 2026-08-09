@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Github, ShieldCheck, CheckCircle2, Sparkles, RefreshCw, Layers, Target, 
   Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff, LogOut,
-  AlertCircle, Play, Check, FolderGit2, Globe, Search, Link2, LogIn
+  AlertCircle, Play, Check, FolderGit2, Globe, Search, Link2, LogIn, UserCheck
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
@@ -299,7 +299,7 @@ export default function GitHubDemoPage() {
         {/* Header Banner */}
         <div className="text-center space-y-3 pb-6 border-b border-slate-800">
           <div className="inline-flex items-center gap-2 bg-purple-950/80 border border-purple-800 px-4 py-1.5 rounded-full text-xs font-semibold text-purple-300">
-            <Sparkles className="w-4 h-4 text-purple-400" /> NitiAI GitHub OAuth &amp; 2-Tier Indexing Engine
+            <Sparkles className="w-4 h-4 text-purple-400" /> NitiAI GitHub OAuth &amp; Multi-Tenant DB Persistence
           </div>
           <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             GitHub Repository Analysis &amp; Roadmap Studio
@@ -325,10 +325,10 @@ export default function GitHubDemoPage() {
             {activeUsername && (
               <button
                 onClick={handleLogout}
-                className="text-xs bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1 transition-all cursor-pointer"
-                title="Logout and reset session for another candidate"
+                className="text-xs bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                title="Switch candidate (preserves all tokens in DB)"
               >
-                <LogOut className="w-3.5 h-3.5" /> Logout &amp; Reset
+                <UserCheck className="w-3.5 h-3.5 text-indigo-400" /> Switch Candidate
               </button>
             )}
           </div>
@@ -363,9 +363,9 @@ export default function GitHubDemoPage() {
               </div>
               <button
                 onClick={handleLogout}
-                className="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer"
+                className="text-xs text-slate-400 hover:text-indigo-300 underline cursor-pointer"
               >
-                Switch Candidate / Logout
+                Switch Candidate
               </button>
             </div>
           )}
@@ -404,7 +404,7 @@ export default function GitHubDemoPage() {
 
             <div className="space-y-2">
               <span className="bg-amber-950 border border-amber-800 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold">
-                No OAuth Token Found in Database for @{activeUsername}
+                New Candidate: No Token in Database for @{activeUsername}
               </span>
               <h2 className="text-2xl font-bold text-slate-100 mt-2">Authorization Required</h2>
               <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
@@ -424,7 +424,7 @@ export default function GitHubDemoPage() {
                 onClick={handleLogout}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3.5 px-5 rounded-xl text-sm transition-all border border-slate-700 cursor-pointer"
               >
-                <LogOut className="w-4 h-4 text-red-400" /> Cancel &amp; Switch Candidate
+                <UserCheck className="w-4 h-4 text-indigo-400" /> Switch Candidate
               </button>
             </div>
 
@@ -464,7 +464,7 @@ export default function GitHubDemoPage() {
                 onClick={handleLogout}
                 className="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3.5 px-5 rounded-xl text-sm transition-all border border-slate-700 cursor-pointer"
               >
-                <LogOut className="w-4 h-4 text-red-400" /> Logout &amp; Reset
+                <UserCheck className="w-4 h-4 text-indigo-400" /> Switch Candidate
               </button>
             </div>
           </div>
@@ -501,10 +501,10 @@ export default function GitHubDemoPage() {
 
                 <button
                   onClick={handleLogout}
-                  className="text-xs bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                  title="Logout and reset session to test another candidate"
+                  className="text-xs bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                  title="Switch candidate (preserves all tokens in DB)"
                 >
-                  <LogOut className="w-3.5 h-3.5" /> Logout &amp; Reset
+                  <UserCheck className="w-3.5 h-3.5 text-indigo-400" /> Switch Candidate
                 </button>
               </div>
             </div>

@@ -12,7 +12,7 @@ const audioUpload = multer({
 
 /**
  * 1. GET /api/github/check-status
- * Checks if user exists in PostgreSQL DB and has a valid authorized OAuth token
+ * Checks if candidate username exists in PostgreSQL DB and has a valid authorized OAuth token
  */
 router.get('/check-status', async (req, res) => {
   try {
@@ -64,7 +64,6 @@ router.get('/auth/login', (req, res) => {
     return res.status(400).send('GITHUB_CLIENT_ID is not configured in server environment.');
   }
 
-  // Always force prompt=consent so GitHub forces account confirmation
   let githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user&prompt=consent`;
   
   if (username) {
@@ -76,27 +75,18 @@ router.get('/auth/login', (req, res) => {
 
 /**
  * 3. POST /api/github/logout
- * Deletes candidate's OAuth token & scan data from PostgreSQL DB and resets session
+ * Resets local UI session without deleting stored candidate tokens from database
  */
 router.post('/logout', async (req, res) => {
-  try {
-    const { username } = req.body;
-    if (username) {
-      await githubService.deleteUserToken(username);
-    }
-    res.json({
-      success: true,
-      message: `Session reset and token deleted for ${username || 'current user'}.`
-    });
-  } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
+  res.json({
+    success: true,
+    message: 'Session reset successfully. Candidate tokens remain preserved in database.'
+  });
 });
 
 /**
  * 4. POST /api/github/reauthorize
- * Deletes candidate's previous OAuth token from DB and returns fresh authorization URL
+ * Deletes candidate's previous OAuth token from DB ONLY on explicit re-authorization request
  */
 router.post('/reauthorize', async (req, res) => {
   try {
@@ -107,7 +97,7 @@ router.post('/reauthorize', async (req, res) => {
     const stateParam = username ? `?username=${encodeURIComponent(username)}&forceReauth=true` : '?forceReauth=true';
     res.json({
       success: true,
-      message: `Previous token deleted for ${username || 'user'}. Please complete re-authorization.`,
+      message: `Previous token cleared for ${username || 'user'}. Please complete re-authorization.`,
       authUrl: `/api/github/auth/login${stateParam}`
     });
   } catch (error) {
@@ -118,7 +108,7 @@ router.post('/reauthorize', async (req, res) => {
 
 /**
  * 5. GET /api/github/auth/callback
- * Handles OAuth callback code, exchanges code for access_token, saves token for authenticated user in DB
+ * Handles OAuth callback code, exchanges code for access_token, saves token persistently in PostgreSQL DB
  */
 router.get('/auth/callback', async (req, res) => {
   const { code, state } = req.query;
@@ -158,17 +148,18 @@ router.get('/auth/callback', async (req, res) => {
     });
 
     const authenticatedUsername = userResponse.data.login;
+    const targetUsername = state || authenticatedUsername;
 
-    // Save token for authenticated user in PostgreSQL database & memory cache
-    await githubService.setAccessToken(authenticatedUsername, accessToken);
-    if (state && state.toLowerCase() !== authenticatedUsername.toLowerCase()) {
-      await githubService.setAccessToken(state, accessToken);
+    // Save token persistently in PostgreSQL database & memory cache under both handles
+    await githubService.setAccessToken(targetUsername, accessToken);
+    if (authenticatedUsername.toLowerCase() !== targetUsername.toLowerCase()) {
+      await githubService.setAccessToken(authenticatedUsername, accessToken);
     }
 
-    console.log(`[GitHubOAuth] Authorized GitHub user: "@${authenticatedUsername}". Target requested: "${state || authenticatedUsername}"`);
+    console.log(`[GitHubOAuth] Saved persistent token in DB for candidate: "@${targetUsername}" (Auth user: "@${authenticatedUsername}")`);
 
-    // Redirect back to demo page with authenticated username
-    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(authenticatedUsername)}&tokenValid=true`);
+    // Redirect back to demo page with candidate username
+    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUsername)}&tokenValid=true`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
     res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);
