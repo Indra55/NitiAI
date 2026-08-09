@@ -7,6 +7,16 @@ interface TemplateProps {
     data: ResumeInfo
 }
 
+function formatExternalUrl(url?: string | null): string {
+    if (!url) return "#"
+    const trimmed = url.trim()
+    if (!trimmed) return "#"
+    if (/^(https?:\/\/|mailto:|tel:|\/\/)/i.test(trimmed)) {
+        return trimmed
+    }
+    return `https://${trimmed}`
+}
+
 export const ModernTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
     return (
         <div ref={ref} className="bg-white text-black p-8 min-h-[1123px] w-[794px] mx-auto shadow-sm print:shadow-none text-sm font-sans">
@@ -55,7 +65,7 @@ export const ModernTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data 
                                     <div key={i}>
                                         <div className="flex justify-between items-baseline">
                                             <h3 className="font-bold text-gray-900">{proj.name}</h3>
-                                            {proj.url && <a href={proj.url} className="text-xs text-blue-600 hover:underline">Link</a>}
+                                            {proj.url && <a href={formatExternalUrl(proj.url)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">Link</a>}
                                         </div>
                                         <p className="text-gray-600 text-xs mt-1">{proj.description}</p>
                                         {proj.technologies && (

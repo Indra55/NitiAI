@@ -51,6 +51,12 @@ export default function LinkedInJobsPage() {
                 console.log("Frontend: Fetching jobs from /api/jobs/linkedin")
 
                 const token = localStorage.getItem("token")
+                if (!token) {
+                    console.warn("Frontend: No authorization token found.")
+                    setLoading(false)
+                    return
+                }
+
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/jobs/linkedin`, {
                     method: "POST",
                     headers: {
@@ -61,17 +67,37 @@ export default function LinkedInJobsPage() {
 
                 console.log("Frontend: Response status:", res.status, res.statusText)
 
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    console.error("Frontend: Response error text:", errorText);
-                    throw new Error(`Failed to fetch jobs: ${res.status} ${res.statusText}`)
+                if (res.status === 401) {
+                    console.warn("Frontend: Session token invalid or expired (401). Clearing token...")
+                    localStorage.removeItem("token")
+                    setNotifications([])
+                    setLoading(false)
+                    return
                 }
 
-                const data = await res.json()
+                if (!res.ok) {
+                    const errorText = await res.text()
+                    console.warn("Frontend: Response error text:", errorText)
+                    setNotifications([])
+                    setLoading(false)
+                    return
+                }
+
+                let data: { jobs?: JobNotification[] } = {}
+                try {
+                    const text = await res.text()
+                    if (text && text.trim().startsWith("{")) {
+                        data = JSON.parse(text)
+                    }
+                } catch (parseError) {
+                    console.warn("Frontend: Non-JSON response received:", parseError)
+                }
+
                 console.log("Frontend: Received data:", data)
                 setNotifications(data.jobs || [])
             } catch (error) {
-                console.error("Frontend: Error fetching jobs:", error)
+                console.warn("Frontend: Error fetching jobs:", error)
+                setNotifications([])
             } finally {
                 setLoading(false)
             }

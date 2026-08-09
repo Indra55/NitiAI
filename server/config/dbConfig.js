@@ -1,13 +1,11 @@
 require("dotenv").config();
 const { Pool } = require("pg");
 
-const isProduction = process.env.NODE_ENV === "production";
-
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: isProduction
-    ? { rejectUnauthorized: false }
-    : false
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 4000,
+  idleTimeoutMillis: 10000,
 });
 
 // Suppress unhandled DB pool errors during network/DNS downtime
