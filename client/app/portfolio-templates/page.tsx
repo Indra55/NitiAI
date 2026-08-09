@@ -10,6 +10,7 @@ import {
 import { getResumeInfo, getCurrentUser } from '@/lib/api';
 
 import CustomPortfolioTemplate from '@/portfolios/CustomPortfolioTemplate';
+import SecondPortfolioTemplate from '@/portfolios/page';
 
 interface PortfolioTemplateOption {
   id: string;
@@ -26,7 +27,7 @@ export default function PortfolioTemplatesPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('custom-cyber-glass');
-  const [fullscreenPreview, setFullscreenPreview] = useState<boolean>(false);
+  const [fullscreenPreviewId, setFullscreenPreviewId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
 
   // Candidate Live Seeded Data State (auto-fetched from user session & resume DB)
@@ -91,9 +92,19 @@ export default function PortfolioTemplatesPage() {
       author: 'saadpasta',
       repo: 'developerFolio',
       description: 'Modern developer portfolio with interactive tech stack filtering, project showcase cards, and career experience timeline.',
-      badge: 'Featured Template',
+      badge: 'Featured Template 1',
       tags: ['Cyber-Glass', 'Interactive Filter', 'GitHub Stars', 'Developer Showcase'],
       component: CustomPortfolioTemplate
+    },
+    {
+      id: 'visual-poetry-creative',
+      title: 'Visual Poetry & Creative Interactive Explorer',
+      author: 'creative-studio',
+      repo: 'visual-poetry-portfolio',
+      description: 'High-impact creative portfolio featuring hero statistics (+Repos, +Skills), interactive folder explorer, and detailed project preview panel.',
+      badge: 'Featured Template 2',
+      tags: ['Visual Hero', 'Folder Explorer', 'Orange Gradient Card', 'Interactive Files'],
+      component: SecondPortfolioTemplate
     }
   ];
 
@@ -169,6 +180,8 @@ export default function PortfolioTemplatesPage() {
     );
   }
 
+  const activeFullscreenTemplate = templatesList.find(t => t.id === fullscreenPreviewId);
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
       {/* Top Header Bar - White & Black with Orange Highlights */}
@@ -209,7 +222,7 @@ export default function PortfolioTemplatesPage() {
         {/* Banner Section */}
         <div className="space-y-2 bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold">
-            <Sparkles className="w-3.5 h-3.5 text-orange-600" /> Select &amp; Preview Portfolio Designs
+            <Sparkles className="w-3.5 h-3.5 text-orange-600" /> Select &amp; Preview Portfolio Designs ({templatesList.length} Available)
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Developer Portfolio Templates
@@ -263,7 +276,7 @@ export default function PortfolioTemplatesPage() {
                   {/* Action Controls for this Template */}
                   <div className="flex flex-wrap items-center gap-3 shrink-0">
                     <button
-                      onClick={() => setFullscreenPreview(true)}
+                      onClick={() => setFullscreenPreviewId(tmpl.id)}
                       className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                     >
                       <Eye className="w-4 h-4 text-orange-600" /> Fullscreen Live Preview
@@ -304,7 +317,7 @@ export default function PortfolioTemplatesPage() {
       </div>
 
       {/* FULLSCREEN MODAL LIVE PREVIEW OVERLAY */}
-      {fullscreenPreview && (
+      {fullscreenPreviewId && activeFullscreenTemplate && (
         <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md overflow-y-auto flex flex-col">
           {/* Modal Header */}
           <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-md">
@@ -312,11 +325,11 @@ export default function PortfolioTemplatesPage() {
               <span className="text-xs font-bold text-orange-700 bg-orange-100 border border-orange-200 px-3 py-1 rounded-full font-mono">
                 Fullscreen Live Seeded Preview
               </span>
-              <span className="text-sm font-bold text-slate-900">DeveloperFolio / Cyber-Glass Template</span>
+              <span className="text-sm font-bold text-slate-900">{activeFullscreenTemplate.title}</span>
             </div>
 
             <button
-              onClick={() => setFullscreenPreview(false)}
+              onClick={() => setFullscreenPreviewId(null)}
               className="bg-slate-100 hover:bg-slate-200 text-slate-800 p-2 rounded-xl border border-slate-300 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
             >
               <X className="w-4 h-4 text-slate-800" /> Close Preview
@@ -325,7 +338,7 @@ export default function PortfolioTemplatesPage() {
 
           {/* Modal Content Frame */}
           <div className="flex-1 bg-slate-950">
-            <CustomPortfolioTemplate data={candidateData} />
+            <activeFullscreenTemplate.component data={candidateData} />
           </div>
         </div>
       )}
