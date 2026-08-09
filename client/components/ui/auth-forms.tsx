@@ -25,6 +25,7 @@ export function FieldBox({
         value={value}
         aria-label={label}
         disabled={disabled}
+        suppressHydrationWarning
         onFocus={() => setIsEditing(true)}
         onBlur={() => {
           if (!value) setIsEditing(false);
@@ -48,6 +49,7 @@ export function CheckboxLine({ children }: { children: ReactNode }) {
       <span className="relative mt-1 size-3.5 shrink-0">
         <input
           type="checkbox"
+          suppressHydrationWarning
           className="peer size-full appearance-none rounded-[2px] border border-slate-400 bg-white checked:border-slate-900 checked:bg-slate-900 dark:border-white/30 dark:bg-white/5 dark:checked:border-white dark:checked:bg-white cursor-pointer"
         />
         <svg
@@ -86,10 +88,10 @@ export function AuthButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      suppressHydrationWarning
       className="mt-9 flex h-12 w-full items-center justify-center rounded-[10px] bg-slate-900 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {children}
     </button>
   );
 }
-
