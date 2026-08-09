@@ -12,19 +12,26 @@ const audioUpload = multer({
 
 /**
  * 1. GET /api/github/check-status
- * Checks if user has a valid authorized OAuth token
+ * Checks if user has a valid authorized OAuth token in PostgreSQL DB
  */
 router.get('/check-status', async (req, res) => {
   try {
-    const username = req.query.username || 'jayyy255';
-    const status = await githubService.checkUserToken(username);
+    const username = (req.query.username || '').trim();
+    if (!username) {
+      return res.json({
+        success: true,
+        username: null,
+        isAuthorized: false,
+        hasStoredScan: false
+      });
+    }
 
-    // Also check if existing scan is stored in DB
+    const status = await githubService.checkUserToken(username);
     const existingScan = await githubService.getScanFromDb(username);
 
     res.json({
       success: true,
-      username,
+      username: status.username || username,
       isAuthorized: status.hasValidToken,
       profile: status.profile || null,
       hasStoredScan: Boolean(existingScan),
@@ -43,18 +50,23 @@ router.get('/check-status', async (req, res) => {
 
 /**
  * 2. GET /api/github/auth/login
- * Redirects candidate to GitHub OAuth Authorization page requesting 'repo' and 'read:user' scopes
+ * Redirects candidate to GitHub OAuth Authorization page passing requested username state
  */
 router.get('/auth/login', (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const redirectUri = process.env.GITHUB_REDIRECT_URI || 'http://localhost:5000/api/github/auth/callback';
   const forceReauth = req.query.forceReauth === 'true';
-  
+  const username = (req.query.username || '').trim();
+
   if (!clientId) {
     return res.status(400).send('GITHUB_CLIENT_ID is not configured in server environment.');
   }
 
   let githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user`;
+  
+  if (username) {
+    githubAuthUrl += `&state=${encodeURIComponent(username)}`;
+  }
   if (forceReauth) {
     githubAuthUrl += '&prompt=consent';
   }
@@ -64,16 +76,19 @@ router.get('/auth/login', (req, res) => {
 
 /**
  * 3. POST /api/github/reauthorize
- * Deletes candidate's previous OAuth token and returns fresh authorization login URL
+ * Deletes candidate's previous OAuth token from DB and returns fresh authorization URL
  */
 router.post('/reauthorize', async (req, res) => {
   try {
-    const { username = 'jayyy255' } = req.body;
+    const { username } = req.body;
+    if (!username) {
+      return res.status(400).json({ success: false, error: 'Username is required for re-authorization.' });
+    }
     await githubService.deleteUserToken(username);
     res.json({
       success: true,
       message: `Previous token deleted for ${username}. Please complete re-authorization.`,
-      authUrl: '/api/github/auth/login?forceReauth=true'
+      authUrl: `/api/github/auth/login?username=${encodeURIComponent(username)}&forceReauth=true`
     });
   } catch (error) {
     console.error('Reauthorize error:', error);
@@ -83,10 +98,10 @@ router.post('/reauthorize', async (req, res) => {
 
 /**
  * 4. GET /api/github/auth/callback
- * Handles OAuth callback code, exchanges code for access_token, saves token, and redirects candidate
+ * Handles OAuth callback code, exchanges code for access_token, saves token securely in DB, and redirects candidate
  */
 router.get('/auth/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
@@ -111,8 +126,8 @@ router.get('/auth/callback', async (req, res) => {
     if (!accessToken) {
       console.error('[GitHubOAuth] Token exchange response payload:', tokenResponse.data);
       if (tokenResponse.data.error === 'bad_verification_code') {
-        console.log('[GitHubOAuth] Verification code expired or already consumed. Redirecting for fresh authorization...');
-        return res.redirect('/api/github/auth/login?forceReauth=true');
+        const stateParam = state ? `?username=${encodeURIComponent(state)}&forceReauth=true` : '?forceReauth=true';
+        return res.redirect(`/api/github/auth/login${stateParam}`);
       }
       return res.redirect(`${clientUrl}/github-demo?githubError=token_failed`);
     }
@@ -122,11 +137,17 @@ router.get('/auth/callback', async (req, res) => {
       headers: { Authorization: `token ${accessToken}`, 'User-Agent': 'NitiAI-Career-Studio' }
     });
 
-    const username = userResponse.data.login;
-    await githubService.setAccessToken(username, accessToken);
+    const authenticatedUsername = userResponse.data.login;
+    const targetUsername = state || authenticatedUsername;
 
-    // Redirect to frontend demo page with authorized status
-    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${username}&tokenValid=true`);
+    // Save token securely in PostgreSQL database & memory cache
+    await githubService.setAccessToken(targetUsername, accessToken);
+    if (authenticatedUsername !== targetUsername) {
+      await githubService.setAccessToken(authenticatedUsername, accessToken);
+    }
+
+    // Redirect to frontend demo page with authorized status for candidate username
+    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUsername)}&tokenValid=true`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
     res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);

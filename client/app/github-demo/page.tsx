@@ -4,17 +4,18 @@ import React, { useState, useEffect } from 'react';
 import { 
   Github, ShieldCheck, CheckCircle2, Sparkles, RefreshCw, Layers, Target, 
   Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff, LogOut,
-  AlertCircle, Play, Check, FolderGit2, Globe
+  AlertCircle, Play, Check, FolderGit2, Globe, Search, Link2
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 export default function GitHubDemoPage() {
   const [mounted, setMounted] = useState<boolean>(false);
-  const [username, setUsername] = useState<string>('jayyy255');
+  const [githubInput, setGithubInput] = useState<string>('https://github.com/jayyy255');
+  const [activeUsername, setActiveUsername] = useState<string>('');
   const [targetRole, setTargetRole] = useState<string>('Senior Backend & Systems Engineer');
   
   // Authorization States
-  const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
+  const [checkingAuth, setCheckingAuth] = useState<boolean>(false);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [profile, setProfile] = useState<any>(null);
 
@@ -40,19 +41,42 @@ export default function GitHubDemoPage() {
     resetRecording
   } = useVoiceRecorder();
 
-  // On Mount: Check Authorization Status via Backend API
+  // Parse GitHub Username from full URL or text input
+  const parseUsername = (input: string): string => {
+    if (!input) return '';
+    let trimmed = input.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      try {
+        const url = new URL(trimmed);
+        const parts = url.pathname.split('/').filter(Boolean);
+        if (parts.length > 0) return parts[0];
+      } catch (e) {
+        // Fallback simple regex parsing
+        const match = trimmed.match(/github\.com\/([^\/]+)/i);
+        if (match) return match[1];
+      }
+    }
+    return trimmed.replace(/^@/, '');
+  };
+
+  // On Mount: Check URL Query Params or default username
   useEffect(() => {
     setMounted(true);
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const userParam = urlParams.get('username') || username;
-      if (userParam) setUsername(userParam);
-      checkAuthStatus(userParam);
+      const userParam = urlParams.get('username');
+      const initialUser = userParam ? parseUsername(userParam) : 'jayyy255';
+      
+      if (userParam) setGithubInput(`https://github.com/${initialUser}`);
+      setActiveUsername(initialUser);
+      checkAuthStatus(initialUser);
     }
   }, []);
 
   const checkAuthStatus = async (userToCheck: string) => {
+    if (!userToCheck) return;
     setCheckingAuth(true);
+    setErrorMsg(null);
     try {
       const res = await fetch(`/api/github/check-status?username=${encodeURIComponent(userToCheck)}`);
       const data = await res.json();
@@ -63,6 +87,8 @@ export default function GitHubDemoPage() {
         // If stored scan exists and user is authorized, fetch scan results
         if (data.hasStoredScan) {
           await fetchStoredScan(userToCheck);
+        } else {
+          setScanResult(null);
         }
       }
     } catch (e) {
@@ -71,6 +97,18 @@ export default function GitHubDemoPage() {
     } finally {
       setCheckingAuth(false);
     }
+  };
+
+  const handleLinkSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseUsername(githubInput);
+    if (!parsed) {
+      setErrorMsg('Please enter a valid GitHub profile URL or username.');
+      return;
+    }
+    setActiveUsername(parsed);
+    setScanResult(null);
+    checkAuthStatus(parsed);
   };
 
   const fetchStoredScan = async (userToFetch: string) => {
@@ -91,39 +129,43 @@ export default function GitHubDemoPage() {
   };
 
   const handleAuthorize = () => {
-    window.location.href = 'http://localhost:5000/api/github/auth/login';
+    const userToAuth = activeUsername || parseUsername(githubInput) || 'jayyy255';
+    window.location.href = `http://localhost:5000/api/github/auth/login?username=${encodeURIComponent(userToAuth)}`;
   };
 
   const handleReauthorize = async () => {
+    const userToAuth = activeUsername || parseUsername(githubInput) || 'jayyy255';
     try {
       setLoading(true);
       const res = await fetch('/api/github/reauthorize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
+        body: JSON.stringify({ username: userToAuth })
       });
       const data = await res.json();
       if (data.success && data.authUrl) {
         window.location.href = `http://localhost:5000${data.authUrl}`;
       } else {
-        window.location.href = 'http://localhost:5000/api/github/auth/login?forceReauth=true';
+        window.location.href = `http://localhost:5000/api/github/auth/login?username=${encodeURIComponent(userToAuth)}&forceReauth=true`;
       }
     } catch (e) {
       console.error('Reauthorize error:', e);
-      window.location.href = 'http://localhost:5000/api/github/auth/login?forceReauth=true';
+      window.location.href = `http://localhost:5000/api/github/auth/login?username=${encodeURIComponent(userToAuth)}&forceReauth=true`;
     } finally {
       setLoading(false);
     }
   };
 
   const runScanAndAnalyze = async () => {
+    const targetUser = activeUsername || parseUsername(githubInput);
+    if (!targetUser) return;
     setLoading(true);
     setErrorMsg(null);
     try {
       const res = await fetch('/api/github/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ githubUsername: username, targetRole })
+        body: JSON.stringify({ githubUsername: targetUser, targetRole })
       });
 
       if (!res.ok) {
@@ -198,11 +240,11 @@ export default function GitHubDemoPage() {
     ? reposList.filter((r: any) => !r.private).length 
     : (scanResult?.publicReposCount || actualTotalCount - actualPrivateCount);
 
-  if (!mounted || checkingAuth) {
+  if (!mounted) {
     return (
       <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <div className="flex items-center gap-3 text-purple-400 font-semibold">
-          <RefreshCw className="w-5 h-5 animate-spin" /> Verifying GitHub OAuth Token...
+          <RefreshCw className="w-5 h-5 animate-spin" /> Loading GitHub Studio...
         </div>
       </main>
     );
@@ -224,20 +266,75 @@ export default function GitHubDemoPage() {
           </p>
         </div>
 
-        {/* CONDITION 1: NO VALID AUTHORIZATION TOKEN */}
-        {!isAuthorized && (
+        {/* STEP 1: CANDIDATE GITHUB LINK / USERNAME INPUT CARD */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4 max-w-3xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-950 border border-indigo-800 rounded-full flex items-center justify-center text-indigo-400">
+              <Link2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-100">Step 1: Enter Candidate GitHub Profile URL or Username</h2>
+              <p className="text-xs text-slate-400">Input any candidate's GitHub profile link to check token status in database.</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleLinkSubmit} className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Github className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              <input
+                type="text"
+                value={githubInput}
+                onChange={(e) => setGithubInput(e.target.value)}
+                placeholder="e.g. https://github.com/jayyy255 or SujalChoudhari"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={checkingAuth}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {checkingAuth ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Check Token Status
+            </button>
+          </form>
+
+          {activeUsername && (
+            <div className="text-xs text-slate-400 flex items-center gap-2 pt-1">
+              <span>Active Target Candidate:</span>
+              <span className="bg-slate-950 border border-slate-800 text-indigo-300 font-mono px-2 py-0.5 rounded font-bold">
+                @{activeUsername}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Error Message Box */}
+        {errorMsg && (
+          <div className="p-4 bg-red-950/50 border border-red-800 rounded-xl text-red-200 text-xs flex items-center justify-between max-w-3xl mx-auto">
+            <span>{errorMsg}</span>
+            <button 
+              onClick={() => setErrorMsg(null)}
+              className="text-red-400 hover:text-red-200 font-bold"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* CONDITION 1: NO VALID AUTHORIZATION TOKEN FOR ACTIVE USER */}
+        {activeUsername && !isAuthorized && !checkingAuth && (
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6 max-w-2xl mx-auto">
             <div className="w-16 h-16 bg-purple-950 border border-purple-800 rounded-full flex items-center justify-center mx-auto text-purple-400">
               <Lock className="w-8 h-8" />
             </div>
 
             <div className="space-y-2">
-              <span className="bg-red-950 border border-red-800 text-red-400 text-xs px-3 py-1 rounded-full font-semibold">
-                Authorization Needed
+              <span className="bg-amber-950 border border-amber-800 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold">
+                No Valid Token in Database for @{activeUsername}
               </span>
-              <h2 className="text-2xl font-bold text-slate-100 mt-2">Connect Your GitHub Account</h2>
+              <h2 className="text-2xl font-bold text-slate-100 mt-2">Connect &amp; Save OAuth Token</h2>
               <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                NitiAI requires read authorization to fetch and index <strong>all of your public &amp; private repositories</strong> without API rate limits.
+                Authorize NitiAI via GitHub OAuth for candidate <strong>@{activeUsername}</strong> to securely store the access token in PostgreSQL database and fetch <strong>all public &amp; private repositories</strong>.
               </p>
             </div>
 
@@ -246,26 +343,26 @@ export default function GitHubDemoPage() {
                 onClick={handleAuthorize}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 cursor-pointer"
               >
-                <Github className="w-5 h-5" /> 🔐 Authorize GitHub Account
+                <Github className="w-5 h-5" /> 🔐 Authorize GitHub Account (@{activeUsername})
               </button>
 
               <button
                 onClick={handleReauthorize}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3.5 px-5 rounded-xl text-sm transition-all border border-slate-700 cursor-pointer"
               >
-                <RefreshCw className="w-4 h-4 text-purple-400" /> Re-authorize (Clear Old Token)
+                <RefreshCw className="w-4 h-4 text-purple-400" /> Re-authorize (Clear Stale Token)
               </button>
             </div>
 
             <div className="pt-6 border-t border-slate-800 flex items-center justify-center gap-3 text-xs text-slate-500">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>100% Safe OAuth2 Read Access • Private Repositories Protected</span>
+              <span>Tokens Stored Securely in PostgreSQL Database (`github_tokens` table)</span>
             </div>
           </div>
         )}
 
-        {/* CONDITION 2: AUTHORIZATION VERIFIED -> SHOW SCAN ACTION & RESULTS */}
-        {isAuthorized && (
+        {/* CONDITION 2: AUTHORIZATION VERIFIED IN DB -> SHOW SCAN ACTION & RESULTS */}
+        {activeUsername && isAuthorized && !checkingAuth && (
           <div className="space-y-6">
             {/* Valid Token Status Banner */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
@@ -275,12 +372,12 @@ export default function GitHubDemoPage() {
                 </div>
                 <div>
                   <div className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <span>GitHub Authorization Verified</span>
+                    <span>Verified OAuth Token Found in Database</span>
                     <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold">
-                      @{username}
+                      @{activeUsername}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">Valid OAuth access token verified against GitHub API.</p>
+                  <p className="text-xs text-slate-400">Active OAuth access token verified in PostgreSQL `github_tokens` table.</p>
                 </div>
               </div>
 
@@ -325,26 +422,13 @@ export default function GitHubDemoPage() {
               </button>
             </div>
 
-            {/* Error Message Box */}
-            {errorMsg && (
-              <div className="p-4 bg-red-950/50 border border-red-800 rounded-xl text-red-200 text-xs flex items-center justify-between">
-                <span>{errorMsg}</span>
-                <button 
-                  onClick={runScanAndAnalyze}
-                  className="bg-red-800 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold"
-                >
-                  Retry Scan
-                </button>
-              </div>
-            )}
-
             {/* Live Loading State */}
             {loading && (
               <div className="p-12 bg-slate-900/90 border border-purple-900/60 rounded-2xl text-center space-y-4 shadow-2xl">
                 <RefreshCw className="w-10 h-10 text-purple-400 animate-spin mx-auto" />
                 <div className="space-y-1">
                   <h3 className="text-xl font-bold text-slate-100">Scanning &amp; Indexing All Public &amp; Private Repositories...</h3>
-                  <p className="text-xs text-slate-400">Fetching repositories for @{username} into Tier 1 In-Memory Hash Map &amp; Tier 2 Neon PostgreSQL Graph.</p>
+                  <p className="text-xs text-slate-400">Fetching repositories for @{activeUsername} into Tier 1 In-Memory Hash Map &amp; Tier 2 Neon PostgreSQL Graph.</p>
                 </div>
               </div>
             )}
