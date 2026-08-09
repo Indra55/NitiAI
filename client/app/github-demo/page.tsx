@@ -3,16 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Github, ShieldCheck, CheckCircle2, Sparkles, RefreshCw, Layers, Target, 
-  Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff, LogOut
+  Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff, LogOut,
+  AlertCircle, Play, Check
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 export default function GitHubDemoPage() {
   const [mounted, setMounted] = useState<boolean>(false);
-  const [githubConnected, setGithubConnected] = useState<boolean>(false);
   const [username, setUsername] = useState<string>('jayyy255');
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [targetRole, setTargetRole] = useState<string>('Senior Backend & Systems Engineer');
+  
+  // Authorization States
+  const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
+  const [profile, setProfile] = useState<any>(null);
+
+  // Scanning & Analysis States
   const [loading, setLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -34,71 +40,90 @@ export default function GitHubDemoPage() {
     resetRecording
   } = useVoiceRecorder();
 
-  // Handle client-side hydration & query params parsing
+  // On Mount: Check Authorization Status via Backend API
   useEffect(() => {
     setMounted(true);
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const isConnected = urlParams.get('githubConnected') === 'true';
-      const userParam = urlParams.get('username');
-      const tokenParam = urlParams.get('token');
-
-      if (isConnected || userParam) {
-        setGithubConnected(true);
-        const activeUser = userParam || 'jayyy255';
-        setUsername(activeUser);
-        if (tokenParam) setAccessToken(tokenParam);
-        fetchStoredScan(activeUser);
-      }
+      const userParam = urlParams.get('username') || username;
+      if (userParam) setUsername(userParam);
+      checkAuthStatus(userParam);
     }
   }, []);
 
-  const fetchStoredScan = async (userToFetch: string) => {
-    setLoading(true);
-    setErrorMsg(null);
+  const checkAuthStatus = async (userToCheck: string) => {
+    setCheckingAuth(true);
     try {
-      // First try fetching pre-computed scan directly from Database
-      const dbRes = await fetch(`/api/github/scan-results?username=${encodeURIComponent(userToFetch)}`);
-      if (dbRes.ok) {
-        const dbData = await dbRes.json();
-        if (dbData.success && dbData.scanResult) {
-          setScanResult(dbData.scanResult);
-          if (dbData.scanResult.analysis && dbData.scanResult.analysis.probingQuestions && dbData.scanResult.scanResult.analysis.probingQuestions.length > 0) {
-            setSelectedQuestion(dbData.scanResult.analysis.probingQuestions[0]);
-          }
-          setLoading(false);
-          return;
+      const res = await fetch(`/api/github/check-status?username=${encodeURIComponent(userToCheck)}`);
+      const data = await res.json();
+      if (data.success) {
+        setIsAuthorized(data.isAuthorized);
+        if (data.profile) setProfile(data.profile);
+        
+        // If stored scan exists and user is authorized, fetch scan results
+        if (data.hasStoredScan) {
+          await fetchStoredScan(userToCheck);
         }
       }
+    } catch (e) {
+      console.error('Check status error:', e);
+      setIsAuthorized(false);
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
 
-      // Fallback to trigger full scan if DB has no stored record
-      await runScan(userToFetch);
-    } catch (e: any) {
+  const fetchStoredScan = async (userToFetch: string) => {
+    try {
+      const res = await fetch(`/api/github/scan-results?username=${encodeURIComponent(userToFetch)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.scanResult) {
+          setScanResult(data.scanResult);
+          if (data.scanResult.analysis && data.scanResult.analysis.probingQuestions && data.scanResult.analysis.probingQuestions.length > 0) {
+            setSelectedQuestion(data.scanResult.analysis.probingQuestions[0]);
+          }
+        }
+      }
+    } catch (e) {
       console.error('Fetch stored scan error:', e);
-      await runScan(userToFetch);
+    }
+  };
+
+  const handleAuthorize = () => {
+    window.location.href = 'http://localhost:5000/api/github/auth/login';
+  };
+
+  const handleReauthorize = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/github/reauthorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      const data = await res.json();
+      if (data.success && data.authUrl) {
+        window.location.href = `http://localhost:5000${data.authUrl}`;
+      } else {
+        window.location.href = 'http://localhost:5000/api/github/auth/login?forceReauth=true';
+      }
+    } catch (e) {
+      console.error('Reauthorize error:', e);
+      window.location.href = 'http://localhost:5000/api/github/auth/login?forceReauth=true';
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOAuthConnect = () => {
-    window.location.href = 'http://localhost:5000/api/github/auth/login';
-  };
-
-  const handleReauthenticate = () => {
-    setGithubConnected(false);
-    setScanResult(null);
-    window.location.href = 'http://localhost:5000/api/github/auth/login';
-  };
-
-  const runScan = async (userToScan: string) => {
+  const runScanAndAnalyze = async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
       const res = await fetch('/api/github/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ githubUsername: userToScan, targetRole })
+        body: JSON.stringify({ githubUsername: username, targetRole })
       });
 
       if (!res.ok) {
@@ -151,10 +176,7 @@ export default function GitHubDemoPage() {
           })
         });
       }
-      if (!res.ok) {
-        console.error('Evaluate API error');
-        return;
-      }
+      if (!res.ok) return;
       const data = await res.json();
       setEvaluationResult(data.evaluation);
       if (data.transcript) setCandidateAnswer(data.transcript);
@@ -166,11 +188,11 @@ export default function GitHubDemoPage() {
     }
   };
 
-  if (!mounted) {
+  if (!mounted || checkingAuth) {
     return (
       <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <div className="flex items-center gap-3 text-purple-400 font-semibold">
-          <RefreshCw className="w-5 h-5 animate-spin" /> Loading GitHub Studio...
+          <RefreshCw className="w-5 h-5 animate-spin" /> Verifying GitHub OAuth Token...
         </div>
       </main>
     );
@@ -185,33 +207,45 @@ export default function GitHubDemoPage() {
             <Sparkles className="w-4 h-4 text-purple-400" /> NitiAI GitHub OAuth &amp; 2-Tier Indexing Engine
           </div>
           <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            GitHub Repository Analysis Live Studio
+            GitHub Repository Analysis &amp; Roadmap Studio
           </h1>
           <p className="text-slate-400 text-sm max-w-2xl mx-auto">
             100% Public &amp; Private Repository Scan, 2-Tier Relational Graph Indexing, and Dynamic Probing Questions.
           </p>
         </div>
 
-        {/* CONDITION 1: DISCONNECTED STATE -> SHOW CONNECT BUTTON */}
-        {!githubConnected && (
+        {/* CONDITION 1: NO VALID AUTHORIZATION TOKEN */}
+        {!isAuthorized && (
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6 max-w-2xl mx-auto">
             <div className="w-16 h-16 bg-purple-950 border border-purple-800 rounded-full flex items-center justify-center mx-auto text-purple-400">
-              <Github className="w-8 h-8" />
+              <Lock className="w-8 h-8" />
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-slate-100">Connect Your GitHub Account</h2>
+              <span className="bg-red-950 border border-red-800 text-red-400 text-xs px-3 py-1 rounded-full font-semibold">
+                Authorization Needed
+              </span>
+              <h2 className="text-2xl font-bold text-slate-100 mt-2">Connect Your GitHub Account</h2>
               <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                Authorize NitiAI via GitHub OAuth to fetch and analyze <strong>all 33 of your public and private repositories</strong> without API rate limits.
+                NitiAI requires read authorization to fetch and index <strong>all 33 of your public &amp; private repositories</strong> without API rate limits.
               </p>
             </div>
 
-            <a
-              href="http://localhost:5000/api/github/auth/login"
-              className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 px-8 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 hover:scale-[1.02] cursor-pointer"
-            >
-              <Github className="w-5 h-5" /> 🚀 Connect GitHub Account (Public &amp; Private Repos)
-            </a>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={handleAuthorize}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 cursor-pointer"
+              >
+                <Github className="w-5 h-5" /> 🔐 Authorize GitHub Account
+              </button>
+
+              <button
+                onClick={handleReauthorize}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3.5 px-5 rounded-xl text-sm transition-all border border-slate-700 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4 text-purple-400" /> Re-authorize (Clear Old Token)
+              </button>
+            </div>
 
             <div className="pt-6 border-t border-slate-800 flex items-center justify-center gap-3 text-xs text-slate-500">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -220,32 +254,65 @@ export default function GitHubDemoPage() {
           </div>
         )}
 
-        {/* CONDITION 2: CONNECTED STATE -> SHOW USER REPOS & ANALYSIS */}
-        {githubConnected && (
+        {/* CONDITION 2: AUTHORIZATION VERIFIED -> SHOW SCAN ACTION & RESULTS */}
+        {isAuthorized && (
           <div className="space-y-6">
-            {/* Connection Banner */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-4">
+            {/* Valid Token Status Banner */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-emerald-950 border border-emerald-800 rounded-full flex items-center justify-center text-emerald-400">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <span>GitHub OAuth Connected</span>
-                    <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-mono">
+                    <span>GitHub Authorization Verified</span>
+                    <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold">
                       @{username}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">Retrieved scanned public and private repositories from PostgreSQL Database.</p>
+                  <p className="text-xs text-slate-400">Valid OAuth access token verified against GitHub API.</p>
                 </div>
               </div>
 
-              <a
-                href="http://localhost:5000/api/github/auth/login"
-                className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={runScanAndAnalyze}
+                  disabled={loading}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />} 🚀 Scan Repositories &amp; Generate Roadmap Learnings
+                </button>
+
+                <button
+                  onClick={handleReauthorize}
+                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl transition-all cursor-pointer"
+                  title="Re-authorize GitHub account"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Re-authorize
+                </button>
+              </div>
+            </div>
+
+            {/* Target Role Selector */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-indigo-400" />
+                <span className="text-xs font-semibold text-slate-300">Target Role Title:</span>
+              </div>
+              <input
+                type="text"
+                value={targetRole}
+                onChange={(e) => setTargetRole(e.target.value)}
+                placeholder="e.g. Senior Backend & Systems Engineer"
+                className="flex-1 max-w-md bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-indigo-300 font-medium focus:outline-none"
+              />
+              <button
+                onClick={runScanAndAnalyze}
+                disabled={loading}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <LogOut className="w-3.5 h-3.5" /> Re-authenticate
-              </a>
+                <Sparkles className="w-3.5 h-3.5" /> Re-Analyze Role Fit
+              </button>
             </div>
 
             {/* Error Message Box */}
@@ -253,7 +320,7 @@ export default function GitHubDemoPage() {
               <div className="p-4 bg-red-950/50 border border-red-800 rounded-xl text-red-200 text-xs flex items-center justify-between">
                 <span>{errorMsg}</span>
                 <button 
-                  onClick={() => runScan(username)}
+                  onClick={runScanAndAnalyze}
                   className="bg-red-800 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold"
                 >
                   Retry Scan
@@ -266,8 +333,8 @@ export default function GitHubDemoPage() {
               <div className="p-12 bg-slate-900/90 border border-purple-900/60 rounded-2xl text-center space-y-4 shadow-2xl">
                 <RefreshCw className="w-10 h-10 text-purple-400 animate-spin mx-auto" />
                 <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-slate-100">Fetching Stored Scan Results for @{username}...</h3>
-                  <p className="text-xs text-slate-400">Retrieving pre-computed 2-Tier Relational Graph scan from PostgreSQL Database.</p>
+                  <h3 className="text-xl font-bold text-slate-100">Scanning &amp; Indexing All Public &amp; Private Repositories...</h3>
+                  <p className="text-xs text-slate-400">Fetching repositories for @{username} into Tier 1 In-Memory Hash Map &amp; Tier 2 Neon PostgreSQL Graph.</p>
                 </div>
               </div>
             )}
@@ -300,7 +367,7 @@ export default function GitHubDemoPage() {
                   </div>
 
                   <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                    <span className="text-xs text-slate-400 font-semibold uppercase">Identified Skill Gaps for Learning Roadmap</span>
+                    <span className="text-xs text-slate-400 font-semibold uppercase">Identified Skill Gaps for Roadmap Learnings</span>
                     <p className="text-sm text-amber-300 font-medium font-mono">
                       {scanResult.analysis?.missingRoleSkills ? scanResult.analysis.missingRoleSkills.join(', ') : 'None'}
                     </p>
@@ -312,7 +379,7 @@ export default function GitHubDemoPage() {
                   <div className="space-y-3 pt-4 border-t border-slate-800">
                     <h3 className="text-sm font-bold text-slate-200 flex items-center justify-between">
                       <span>Indexed Repositories List ({scanResult.repos.length} Repositories):</span>
-                      <span className="text-xs text-emerald-400 font-mono">Retrieved from PostgreSQL Database</span>
+                      <span className="text-xs text-emerald-400 font-mono">2-Tier Hybrid PostgreSQL Graph</span>
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto pr-2">
                       {scanResult.repos.map((r: any, idx: number) => (
@@ -431,5 +498,28 @@ export default function GitHubDemoPage() {
         )}
       </div>
     </main>
+  );
+}
+
+// Rocket icon helper component
+function Rocket(props: any) {
+  return (
+    <svg 
+      {...props} 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.71 1.1-1.35 1.34-1.9a10 10 0 0 1 3.54-5.6l-3.32-3.32a10 10 0 0 1-5.6 3.54c-.55.24-1.19.63-1.9 1.34Z" />
+      <path d="m12 15 3 3" />
+      <path d="M15 9l-3-3" />
+      <path d="M12 9A9.9 9.9 0 0 1 20.7 3.3c.4.4.4 1 0 1.4A9.9 9.9 0 0 1 15 12" />
+    </svg>
   );
 }

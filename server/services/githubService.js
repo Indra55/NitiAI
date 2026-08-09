@@ -13,7 +13,7 @@ const pool = new Pool({
 /**
  * GitHubService - 2-Tier Hybrid GitHub Indexing Engine & Database Persistence
  * Tier 1: In-Memory Commit SHA Caching & Inverted Hash Table (Tool -> Repos)
- * Tier 2: PostgreSQL Relational Property Graph Persistence (repo_tools Foreign Key Edges) & Scan Results Storage
+ * Tier 2: PostgreSQL Relational Property Graph Persistence & OAuth Token Management
  */
 class GitHubService {
   constructor() {
@@ -26,24 +26,147 @@ class GitHubService {
   }
 
   /**
-   * Save OAuth access token for a username
+   * Save / update OAuth access token for a username in memory and PostgreSQL DB
    */
-  setAccessToken(username, token) {
-    if (username && token) {
-      const key = username.toLowerCase().trim();
-      this.userTokens.set(key, token);
-      console.log(`[GitHubService] Cached OAuth token for user: "${key}" (Token length: ${token.length})`);
+  async setAccessToken(username, token) {
+    if (!username || !token) return;
+    const key = username.toLowerCase().trim();
+    this.userTokens.set(key, token);
+    console.log(`[GitHubService] Cached OAuth token for user: "${key}"`);
+
+    if (process.env.DATABASE_URL) {
+      try {
+        const client = await pool.connect();
+        try {
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS github_tokens (
+              username VARCHAR(100) PRIMARY KEY,
+              access_token TEXT NOT NULL,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          await client.query(`
+            INSERT INTO github_tokens (username, access_token, updated_at)
+            VALUES ($1, $2, CURRENT_TIMESTAMP)
+            ON CONFLICT (username) DO UPDATE SET 
+              access_token = EXCLUDED.access_token,
+              updated_at = CURRENT_TIMESTAMP;
+          `, [key, token]);
+          console.log(`[GitHubService] Persisted token for "${key}" in PostgreSQL github_tokens table.`);
+        } finally {
+          client.release();
+        }
+      } catch (dbErr) {
+        console.warn(`[GitHubService] PostgreSQL token persistence warning:`, dbErr.message);
+      }
     }
   }
 
   /**
-   * Get cached OAuth access token for a username
+   * Get cached OAuth access token for a username from memory or PostgreSQL DB
    */
-  getAccessToken(username) {
+  async getAccessToken(username) {
     if (!username) return null;
     const key = username.toLowerCase().trim();
-    const token = this.userTokens.get(key) || null;
-    return token;
+
+    if (this.userTokens.has(key)) {
+      return this.userTokens.get(key);
+    }
+
+    if (process.env.DATABASE_URL) {
+      try {
+        const client = await pool.connect();
+        try {
+          const res = await client.query(`SELECT access_token FROM github_tokens WHERE username = $1`, [key]);
+          if (res.rows.length > 0) {
+            const token = res.rows[0].access_token;
+            this.userTokens.set(key, token);
+            return token;
+          }
+        } finally {
+          client.release();
+        }
+      } catch (dbErr) {
+        console.warn(`[GitHubService] PostgreSQL token retrieval warning:`, dbErr.message);
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Delete an OAuth access token from memory and PostgreSQL DB (for Re-authorization)
+   */
+  async deleteUserToken(username) {
+    if (!username) return;
+    const key = username.toLowerCase().trim();
+    this.userTokens.delete(key);
+    this.scanCache.delete(key);
+    console.log(`[GitHubService] Deleted token and scan cache for "${key}".`);
+
+    if (process.env.DATABASE_URL) {
+      try {
+        const client = await pool.connect();
+        try {
+          await client.query(`DELETE FROM github_tokens WHERE username = $1`, [key]);
+          await client.query(`DELETE FROM github_scans WHERE username = $1`, [key]);
+          console.log(`[GitHubService] Deleted token and scan record for "${key}" from PostgreSQL DB.`);
+        } finally {
+          client.release();
+        }
+      } catch (dbErr) {
+        console.warn(`[GitHubService] PostgreSQL token deletion warning:`, dbErr.message);
+      }
+    }
+  }
+
+  /**
+   * Validate a GitHub OAuth access token against GitHub API (/user endpoint)
+   */
+  async validateToken(token) {
+    if (!token) return { valid: false };
+    try {
+      const response = await axios.get('https://api.github.com/user', {
+        headers: {
+          'Authorization': `token ${token}`,
+          'User-Agent': 'NitiAI-Career-Studio',
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      });
+      return {
+        valid: true,
+        user: response.data
+      };
+    } catch (err) {
+      console.warn(`[GitHubService] Token validation failed:`, err.message);
+      return { valid: false };
+    }
+  }
+
+  /**
+   * Check if user has a valid authorized OAuth token
+   */
+  async checkUserToken(username) {
+    if (!username) return { hasValidToken: false, username: null, token: null };
+    const token = await this.getAccessToken(username);
+    if (!token) {
+      return { hasValidToken: false, username, token: null };
+    }
+
+    const validation = await this.validateToken(token);
+    if (!validation.valid) {
+      // Token is expired or revoked, delete it
+      await this.deleteUserToken(username);
+      return { hasValidToken: false, username, token: null };
+    }
+
+    return {
+      hasValidToken: true,
+      username: validation.user.login,
+      token,
+      profile: validation.user
+    };
   }
 
   /**
@@ -71,11 +194,9 @@ class GitHubService {
       updated_at: new Date().toISOString()
     };
 
-    // Store in Tier 1 Memory Cache
     this.scanCache.set(key, scanData);
-    console.log(`[GitHubService] Saved scan for "${key}" in Tier 1 Memory Cache. Total Repos: ${repos.length} (${privateRepos.length} Private, ${publicRepos.length} Public)`);
+    console.log(`[GitHubService] Saved scan for "${key}". Total Repos: ${repos.length} (${privateRepos.length} Private, ${publicRepos.length} Public)`);
 
-    // Store in Tier 2 PostgreSQL Database
     if (process.env.DATABASE_URL) {
       try {
         const client = await pool.connect();
@@ -102,7 +223,7 @@ class GitHubService {
               updated_at = CURRENT_TIMESTAMP;
           `, [key, repos.length, privateRepos.length, publicRepos.length, JSON.stringify(scanData)]);
 
-          console.log(`[GitHubService] Successfully persisted scan for "${key}" in PostgreSQL Database.`);
+          console.log(`[GitHubService] Persisted scan for "${key}" in PostgreSQL github_scans table.`);
         } finally {
           client.release();
         }
@@ -121,13 +242,10 @@ class GitHubService {
     if (!username) return null;
     const key = username.toLowerCase().trim();
 
-    // Check Tier 1 Memory Cache
     if (this.scanCache.has(key)) {
-      console.log(`[GitHubService] Retrieved scan for "${key}" from Tier 1 Memory Cache.`);
       return this.scanCache.get(key);
     }
 
-    // Check Tier 2 PostgreSQL Database
     if (process.env.DATABASE_URL) {
       try {
         const client = await pool.connect();
@@ -136,7 +254,6 @@ class GitHubService {
           if (res.rows.length > 0) {
             const scanData = res.rows[0].scan_json;
             this.scanCache.set(key, scanData);
-            console.log(`[GitHubService] Retrieved scan for "${key}" from PostgreSQL Database.`);
             return scanData;
           }
         } finally {
@@ -155,7 +272,7 @@ class GitHubService {
    */
   async fetchUserRepositories(username, accessToken = null) {
     try {
-      const activeToken = accessToken || this.getAccessToken(username);
+      const activeToken = accessToken || await this.getAccessToken(username);
       let rawRepos = [];
       let page = 1;
       const perPage = 100;
@@ -177,7 +294,6 @@ class GitHubService {
           ? `https://api.github.com/user/repos?visibility=all&sort=updated&per_page=${perPage}&page=${page}`
           : `https://api.github.com/users/${username}/repos?sort=updated&per_page=${perPage}&page=${page}`;
 
-        console.log(`[GitHubService] API Query [Page ${page}]: ${url}`);
         try {
           const response = await axios.get(url, { headers });
           const pageData = response.data;
@@ -216,7 +332,6 @@ class GitHubService {
           repo.topics.forEach(t => detectedTools.add(t));
         }
 
-        // Detect tech stack tools from repo metadata & descriptions
         const nameLower = repo.name.toLowerCase();
         const descLower = (repo.description || '').toLowerCase();
         if (nameLower.includes('api') || descLower.includes('node') || descLower.includes('express')) {
@@ -274,7 +389,6 @@ class GitHubService {
     let newReposIndexed = 0;
     let cachedReposSkipped = 0;
 
-    // --- TIER 1: In-Memory SHA Caching & Inverted Hash Mapping ($O(1)$) ---
     for (const repo of repos) {
       if (this.shaCache.get(repo.name) === repo.pushed_at) {
         cachedReposSkipped++;
@@ -300,7 +414,6 @@ class GitHubService {
       }
     }
 
-    // --- TIER 2: PostgreSQL Relational Property Graph Persistence ---
     let dbStatus = 'Tier 1 In-Memory Graph Active';
     if (process.env.DATABASE_URL) {
       try {
