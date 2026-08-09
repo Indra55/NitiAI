@@ -115,26 +115,26 @@ export default function PortfolioTemplatesPage() {
 
   const fetchUserAndResumeInfo = async () => {
     setLoading(true);
-    const targetGithubUser = 'jayyy255';
-
     try {
-      // 1. Fetch user account details
+      let activeUsername = 'jayyy255';
+
+      // 1. Fetch logged-in user account details from current active session
       const userRes = await getCurrentUser();
       if (userRes.data?.user) {
         const u = userRes.data.user;
-        const userGithub = u.username && u.username.toLowerCase() !== 'mihir patil' ? u.username : targetGithubUser;
+        activeUsername = u.username || u.name?.toLowerCase().replace(/\s+/g, '') || activeUsername;
         setCandidateData(prev => ({
           ...prev,
-          name: u.name || prev.name,
-          username: userGithub,
+          name: u.name || u.username || prev.name,
+          username: activeUsername,
           email: u.email || prev.email,
           location: u.location || prev.location,
           targetRole: u.career_goal_short || prev.targetRole,
-          avatarUrl: `https://github.com/${userGithub}.png`
+          avatarUrl: `https://github.com/${activeUsername}.png`
         }));
       }
 
-      // 2. Fetch stored candidate resume info from DB
+      // 2. Fetch active user's stored resume info from DB
       const resumeRes = await getResumeInfo();
       if (resumeRes.data) {
         const r = resumeRes.data;
@@ -152,8 +152,8 @@ export default function PortfolioTemplatesPage() {
             language: p.technologies ? p.technologies[0] : 'TypeScript',
             stars: Math.floor(Math.random() * 25) + 10,
             forks: Math.floor(Math.random() * 8) + 2,
-            url: p.url || `https://github.com/${targetGithubUser}/${p.name || ''}`,
-            detectedTools: p.technologies || ['React', 'Node.js']
+            url: p.url || `https://github.com/${activeUsername}/${p.name || ''}`,
+            detectedTools: p.technologies || ['TypeScript', 'Node.js']
           })) : prev.repos,
           experiences: r.experience && r.experience.length > 0 ? r.experience.map(e => ({
             role: e.title || 'Software Engineer',
@@ -164,33 +164,33 @@ export default function PortfolioTemplatesPage() {
         }));
       }
 
-      // 3. Attempt to fetch GitHub repo scan data for jayyy255
+      // 3. Fetch active session user's GitHub repository scan data
       try {
-        const ghRes = await fetch(`/api/github/user-roadmap?username=${targetGithubUser}`);
+        const ghRes = await fetch(`/api/github/user-roadmap?username=${activeUsername}`);
         if (ghRes.ok) {
           const ghData = await ghRes.json();
           if (ghData.success && ghData.probingQuestions && ghData.probingQuestions.length > 0) {
             setCandidateData(prev => ({
               ...prev,
-              username: targetGithubUser,
-              avatarUrl: `https://github.com/${targetGithubUser}.png`,
+              username: activeUsername,
+              avatarUrl: `https://github.com/${activeUsername}.png`,
               repos: ghData.probingQuestions.map((q: any, idx: number) => ({
                 name: q.repoName || `Repo_${idx + 1}`,
                 description: q.question || 'Scanned GitHub repository.',
                 language: 'TypeScript',
-                stars: 35 + idx * 8,
-                forks: 12 + idx * 3,
-                url: `https://github.com/${targetGithubUser}/${q.repoName || ''}`,
+                stars: 25 + idx * 6,
+                forks: 8 + idx * 2,
+                url: `https://github.com/${activeUsername}/${q.repoName || ''}`,
                 detectedTools: q.expectedConcepts ? q.expectedConcepts.slice(0, 3) : ['TypeScript', 'GitHub']
               }))
             }));
           }
         }
       } catch (ghErr) {
-        console.warn('GitHub scan fetch notice:', ghErr);
+        console.warn('GitHub session fetch notice:', ghErr);
       }
     } catch (e) {
-      console.warn('Auto-fetch user resume details notice:', e);
+      console.warn('Auto-fetch session details notice:', e);
     } finally {
       setLoading(false);
     }
