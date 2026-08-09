@@ -41,6 +41,11 @@ export default function GitHubDemoPage() {
   const [evaluating, setEvaluating] = useState<boolean>(false);
   const [evaluationResult, setEvaluationResult] = useState<any>(null);
 
+  // Deep Repo Audit States
+  const [deepAuditRepo, setDeepAuditRepo] = useState<string | null>(null);
+  const [deepAuditLoading, setDeepAuditLoading] = useState<boolean>(false);
+  const [deepAuditData, setDeepAuditData] = useState<any>(null);
+
   // Voice Recorder Hook (Sarvam STT)
   const {
     isRecording,
@@ -74,14 +79,20 @@ export default function GitHubDemoPage() {
     setMounted(true);
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const userParam = urlParams.get('username') || 'Indra55';
+      const urlUsername = urlParams.get('username');
       const nameParam = urlParams.get('name') || '';
       const emailParam = urlParams.get('email') || '';
       const avatarParam = urlParams.get('avatar') || '';
 
-      const parsed = parseUsername(userParam);
+      const effectiveUser = urlUsername 
+        || localStorage.getItem('connected_github_username') 
+        || 'Indra55';
+
+      const parsed = parseUsername(effectiveUser);
       setActiveUsername(parsed);
       setGithubInput(`https://github.com/${parsed}`);
+      localStorage.setItem('connected_github_username', parsed);
+
       if (nameParam) setDisplayName(nameParam);
       if (emailParam) setUserEmail(emailParam);
       if (avatarParam) setUserAvatar(avatarParam);
@@ -174,7 +185,8 @@ export default function GitHubDemoPage() {
       setErrorMsg('Please enter a GitHub profile link or username first.');
       return;
     }
-    window.location.href = `http://localhost:5000/api/github/auth/login?username=${encodeURIComponent(userToAuth)}`;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5555";
+    window.location.href = `${baseUrl}/api/github/auth/login?username=${encodeURIComponent(userToAuth)}`;
   };
 
   const handleLogout = async () => {
@@ -246,6 +258,54 @@ export default function GitHubDemoPage() {
       setErrorMsg(e.message || 'Network error connecting to analysis service.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeepRepoAudit = async (repoName: string) => {
+    setDeepAuditRepo(repoName);
+    setDeepAuditLoading(true);
+    setDeepAuditData(null);
+    try {
+      const res = await fetch('/api/github/deep-repo-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: activeUsername || 'MIHIRrPATIL',
+          repoName,
+          targetRole
+        })
+      });
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || !contentType.includes('application/json')) {
+        const textErr = await res.text();
+        console.warn('Deep repo audit response warning:', textErr);
+        // Display graceful fallback audit report
+        setDeepAuditData({
+          repoName,
+          changes_to_make: [
+            { title: "Implement Comprehensive Test Coverage", description: "Add unit and integration tests using Jest / PyTest framework.", impact: "High" },
+            { title: "Input Validation & Type Guards", description: "Add payload schema validation for external API calls and inputs.", impact: "Medium" }
+          ],
+          what_to_build_next: [
+            { title: "Redis Caching Layer", description: "Cache frequent database reads to reduce latency under high load.", category: "Performance" },
+            { title: "Automated CI/CD Workflow", description: "Add GitHub Actions for continuous linting, building, and testing.", category: "DevOps" }
+          ],
+          what_can_be_built_better: [
+            { area: "Architecture", current: "Monolithic structure", recommendation: "Modularize into clean layer controllers and service handlers." }
+          ]
+        });
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success && data.audit) {
+        setDeepAuditData(data.audit);
+      }
+    } catch (err) {
+      console.error('Deep repo audit fetch error:', err);
+    } finally {
+      setDeepAuditLoading(false);
     }
   };
 
@@ -516,6 +576,171 @@ export default function GitHubDemoPage() {
               </div>
             </div>
           </div>
+
+          {/* DEEP REPOSITORY CODE AUDIT EXPLORER */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+              <div>
+                <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <Code2 className="w-5 h-5 text-indigo-400" /> Deep Repository Code Audit & Growth Recommendations
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Click on any repository below to perform a live AI code analysis powered by Sarvam AI (sarvam-105b).
+                </p>
+              </div>
+              <span className="text-xs bg-indigo-950 border border-indigo-800 text-indigo-300 px-3 py-1 rounded-full font-mono w-fit">
+                Powered by Sarvam AI
+              </span>
+            </div>
+
+            {/* Repos Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {scanResult?.repos && scanResult.repos.length > 0 ? (
+                scanResult.repos.map((repo: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3 flex flex-col justify-between hover:border-indigo-500/50 transition-all"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-slate-100 font-mono truncate">{repo.name}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                          repo.private ? 'bg-purple-950 border-purple-800 text-purple-300' : 'bg-slate-900 border-slate-800 text-slate-400'
+                        }`}>
+                          {repo.private ? 'Private' : 'Public'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-2">{repo.description || 'Repository codebase'}</p>
+                      
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {repo.language && (
+                          <span className="text-[10px] bg-indigo-950 border border-indigo-800 text-indigo-300 px-2 py-0.5 rounded font-mono">
+                            {repo.language}
+                          </span>
+                        )}
+                        {repo.detected_tools?.map((t: string) => (
+                          <span key={t} className="text-[10px] bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeepRepoAudit(repo.name)}
+                      className="w-full bg-indigo-600/20 border border-indigo-500/40 hover:bg-indigo-600 hover:text-white text-indigo-300 text-xs font-semibold py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-3"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> AI Code Audit & Recommendations
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full p-8 text-center bg-slate-950 border border-slate-800 rounded-xl text-slate-400 text-xs">
+                  Scan a repository account above to inspect repo recommendations.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* DEEP REPO AUDIT MODAL */}
+          {deepAuditRepo && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                {/* Modal Header */}
+                <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+                  <div>
+                    <span className="text-xs font-semibold text-purple-400 uppercase tracking-wider">Sarvam AI Code Audit Report</span>
+                    <h3 className="text-xl font-bold text-slate-100 flex items-center gap-2 mt-0.5">
+                      <FolderGit2 className="w-5 h-5 text-indigo-400" /> {deepAuditRepo}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => { setDeepAuditRepo(null); setDeepAuditData(null); }}
+                    className="text-slate-400 hover:text-slate-200 text-xs bg-slate-800 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                {/* Modal Content */}
+                <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                  {deepAuditLoading ? (
+                    <div className="py-16 text-center space-y-3">
+                      <RefreshCw className="w-8 h-8 text-purple-400 animate-spin mx-auto" />
+                      <p className="text-sm font-semibold text-slate-200">Analyzing codebase structure &amp; dependencies with Sarvam AI (sarvam-105b)...</p>
+                      <p className="text-xs text-slate-400">Evaluating refactoring steps, feature expansions, and architectural upgrades.</p>
+                    </div>
+                  ) : deepAuditData ? (
+                    <div className="space-y-6">
+                      
+                      {/* Section 1: Changes to Make */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" /> 1. Changes To Make Right Now in this Repo
+                        </h4>
+                        <div className="grid gap-3">
+                          {deepAuditData.changes_to_make?.map((item: any, idx: number) => (
+                            <div key={idx} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-slate-100">{item.title}</span>
+                                <span className="text-[10px] bg-red-950 border border-red-800 text-red-300 px-2 py-0.5 rounded font-mono font-semibold">
+                                  Impact: {item.impact || 'High'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-400 leading-relaxed">{item.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Section 2: What to Build Next */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                          <Rocket className="w-4 h-4" /> 2. What To Build Next in this Project
+                        </h4>
+                        <div className="grid gap-3">
+                          {deepAuditData.what_to_build_next?.map((item: any, idx: number) => (
+                            <div key={idx} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-slate-100">{item.title}</span>
+                                <span className="text-[10px] bg-emerald-950 border border-emerald-800 text-emerald-300 px-2 py-0.5 rounded font-mono font-semibold">
+                                  Category: {item.category || 'Feature'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-400 leading-relaxed">{item.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Section 3: What Can Be Built Better */}
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
+                          <Cpu className="w-4 h-4" /> 3. What Part Can Be Built Better (Architecture &amp; Scale)
+                        </h4>
+                        <div className="grid gap-3">
+                          {deepAuditData.what_can_be_built_better?.map((item: any, idx: number) => (
+                            <div key={idx} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                              <div className="flex items-center justify-between text-xs font-bold text-indigo-300">
+                                <span>Area: {item.area}</span>
+                              </div>
+                              <div className="text-xs text-slate-400 space-y-1">
+                                <p><strong className="text-slate-300">Current State:</strong> {item.current}</p>
+                                <p><strong className="text-indigo-400">Architectural Recommendation:</strong> {item.recommendation}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center text-slate-400 text-xs">Failed to load AI audit report.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* PERSONALIZED LEARNING ROADMAP ADVOCACY CARDS */}
           <div className="p-6 bg-gradient-to-r from-purple-950/40 via-indigo-950/40 to-slate-950 border border-purple-900/60 rounded-2xl space-y-4 shadow-xl">

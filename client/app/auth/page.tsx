@@ -46,14 +46,23 @@ export default function AuthPage() {
   const handleGitHubOAuth = () => {
     const parsedHandle = parseUsername(githubInput) || '';
     const stateParam = parsedHandle ? `?username=${encodeURIComponent(parsedHandle)}` : '';
-    window.location.href = `http://localhost:5000/api/github/auth/login${stateParam}`;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5555";
+    window.location.href = `${baseUrl}/api/github/auth/login${stateParam}`;
+  };
+
+  const showToast = (title: string, type: "error" | "success" | "info" = "info") => {
+    try {
+      toaster.create({ title, type });
+    } catch (e) {
+      console.log(`[${type}] ${title}`);
+    }
   };
 
   // Normal Email/Password Signup Handler
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password || !name) {
-      toaster.error("Please fill in all required fields.");
+      showToast("Please fill in all required fields.", "error");
       return;
     }
     setLoading(true);
@@ -73,12 +82,12 @@ export default function AuthPage() {
           body: JSON.stringify({ githubUsername: handle })
         });
 
-        toaster.success("Registration successful! Redirecting to setup...");
+        showToast("Registration successful! Redirecting to setup...", "success");
         router.push(`/github-demo?username=${encodeURIComponent(handle)}&authPrompt=true`);
       }
     } catch (err: any) {
       console.error("Registration error:", err);
-      toaster.error(err.response?.data?.error || "Registration failed. Please try again.");
+      showToast(err.response?.data?.error || "Registration failed. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -88,23 +97,26 @@ export default function AuthPage() {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      toaster.error("Please enter email and password.");
+      showToast("Please enter email and password.", "error");
       return;
     }
     setLoading(true);
     try {
       const res = await login({ email, password });
       if (res.data) {
-        if (auth.setAuthData) {
-          auth.setAuthData(res.data.token, res.data.user);
+        if (auth?.setUser && res.data.user) {
+          auth.setUser({
+            ...res.data.user,
+            name: res.data.user.name || res.data.user.username || "User"
+          });
         }
         const userHandle = parseUsername(githubInput) || res.data.user?.username || 'Indra55';
-        toaster.success("Login successful! Welcome back.");
+        showToast("Login successful! Welcome back.", "success");
         router.push(`/github-demo?username=${encodeURIComponent(userHandle)}`);
       }
     } catch (err: any) {
       console.error("Login error:", err);
-      toaster.error(err.response?.data?.error || "Invalid credentials.");
+      showToast(err.response?.data?.error || "Invalid credentials.", "error");
     } finally {
       setLoading(false);
     }

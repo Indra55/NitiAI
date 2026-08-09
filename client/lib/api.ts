@@ -32,6 +32,7 @@ interface RegisterData {
     username: string;
     email: string;
     password: string;
+    name?: string;
 }
 
 interface LoginData {

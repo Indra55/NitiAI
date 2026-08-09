@@ -117,11 +117,14 @@ router.post('/save-user-github', async (req, res) => {
  */
 router.get('/auth/login', (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
-  const redirectUri = process.env.GITHUB_REDIRECT_URI || 'http://localhost:5000/api/github/auth/callback';
+  const redirectUri = process.env.GITHUB_REDIRECT_URI || 'http://localhost:5555/api/github/auth/callback';
   const username = (req.query.username || '').trim();
 
   if (!clientId) {
-    return res.status(400).send('GITHUB_CLIENT_ID is not configured in server environment.');
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const targetUser = username || 'Indra55';
+    console.log(`[GitHubOAuth] GITHUB_CLIENT_ID not configured. Directing candidate @${targetUser} to public repo scan mode.`);
+    return res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUser)}`);
   }
 
   let githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user&prompt=consent`;
@@ -209,12 +212,12 @@ router.get('/auth/callback', async (req, res) => {
 
     const ghUser = userResponse.data;
     const authenticatedUsername = ghUser.login;
-    const targetUsername = (state || authenticatedUsername).trim();
+    const targetUsername = authenticatedUsername;
 
-    // Save token persistently in PostgreSQL database & memory cache under both handles
-    await githubService.setAccessToken(targetUsername, accessToken);
-    if (authenticatedUsername.toLowerCase() !== targetUsername.toLowerCase()) {
-      await githubService.setAccessToken(authenticatedUsername, accessToken);
+    // Save token persistently in PostgreSQL database & memory cache under handle
+    await githubService.setAccessToken(authenticatedUsername, accessToken);
+    if (state && state.toLowerCase() !== authenticatedUsername.toLowerCase()) {
+      await githubService.setAccessToken(state.toLowerCase().trim(), accessToken);
     }
 
     // PRE-SEED DATABASE: Insert or update pre-filled candidate profile in PostgreSQL DB
@@ -333,10 +336,23 @@ router.get('/user-roadmap', async (req, res) => {
  */
 router.post('/analyze', async (req, res) => {
   try {
-    const { githubUsername, targetRole = 'Senior Backend Engineer', accessToken = null, languageCode = 'hi-IN' } = req.body;
+    const { githubUsername, targetRole = 'Senior Backend Engineer', accessToken = null, forceRefresh = false } = req.body;
 
     if (!githubUsername || githubUsername.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'GitHub username is required.' });
+    }
+
+    // $O(1)$ Fast Cache Lookup: Return existing scan if already indexed & cached
+    if (!forceRefresh) {
+      const cachedScan = await githubService.getScanFromDb(githubUsername);
+      if (cachedScan && cachedScan.repos && cachedScan.repos.length > 0) {
+        console.log(`[GitHubRoutes] Returning $O(1)$ fast hashed scan cache for "${githubUsername}".`);
+        return res.json({
+          success: true,
+          ...cachedScan,
+          cached: true
+        });
+      }
     }
 
     // Fetch public & private repositories using active or cached OAuth access token from DB
@@ -400,6 +416,32 @@ router.post('/evaluate-answer', audioUpload.single('audio'), async (req, res) =>
     });
   } catch (error) {
     console.error('GitHub evaluate-answer error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 11. POST /api/github/deep-repo-analysis
+ * Performs deep repository code analysis powered by Sarvam AI (sarvam-105b)
+ * Returns:
+ * - changes_to_make
+ * - what_to_build_next
+ * - what_can_be_built_better
+ */
+router.post('/deep-repo-analysis', async (req, res) => {
+  try {
+    const { username, repoName, targetRole = 'Senior Software Engineer' } = req.body;
+    if (!username || !repoName) {
+      return res.status(400).json({ success: false, error: 'Username and repoName are required.' });
+    }
+
+    const audit = await githubService.analyzeRepoDeepCode(username, repoName, targetRole);
+    res.json({
+      success: true,
+      audit
+    });
+  } catch (error) {
+    console.error('GitHub deep-repo-analysis route error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

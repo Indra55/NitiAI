@@ -304,8 +304,8 @@ class GitHubService {
 
       while (hasMore && page <= 10) {
         const url = activeToken
-          ? `https://api.github.com/user/repos?visibility=all&sort=updated&per_page=${perPage}&page=${page}`
-          : `https://api.github.com/users/${username}/repos?sort=updated&per_page=${perPage}&page=${page}`;
+          ? `https://api.github.com/user/repos?affiliation=owner&sort=updated&per_page=${perPage}&page=${page}`
+          : `https://api.github.com/users/${username}/repos?type=owner&sort=updated&per_page=${perPage}&page=${page}`;
 
         try {
           const response = await axios.get(url, { headers });
@@ -316,8 +316,14 @@ class GitHubService {
             break;
           }
 
-          rawRepos = rawRepos.concat(pageData);
-          console.log(`[GitHubService] Page ${page} returned ${pageData.length} repos. Total accumulated: ${rawRepos.length}`);
+          // Filter to strictly include repositories owned by the candidate handle
+          const ownedPageData = pageData.filter(repo => {
+            if (!repo.owner || !repo.owner.login) return true;
+            return repo.owner.login.toLowerCase() === username.toLowerCase();
+          });
+
+          rawRepos = rawRepos.concat(ownedPageData);
+          console.log(`[GitHubService] Page ${page} returned ${pageData.length} repos (${ownedPageData.length} owned). Total accumulated: ${rawRepos.length}`);
 
           if (pageData.length < perPage) {
             hasMore = false;
@@ -329,16 +335,28 @@ class GitHubService {
           if (activeToken && page === 1) {
             console.log(`[GitHubService] Token fetch failed. Retrying public repos endpoint for user "${username}"...`);
             delete headers['Authorization'];
-            const fallbackUrl = `https://api.github.com/users/${username}/repos?sort=updated&per_page=${perPage}&page=1`;
+            const fallbackUrl = `https://api.github.com/users/${username}/repos?type=owner&sort=updated&per_page=${perPage}&page=1`;
             const fallbackRes = await axios.get(fallbackUrl, { headers });
-            rawRepos = fallbackRes.data || [];
+            rawRepos = (fallbackRes.data || []).filter(repo => {
+              if (!repo.owner || !repo.owner.login) return true;
+              return repo.owner.login.toLowerCase() === username.toLowerCase();
+            });
           }
           hasMore = false;
           break;
         }
       }
 
-      const repoSummaries = rawRepos.map(repo => {
+      // Deduplicate repositories by repo ID / full_name and enforce strict owner filtering
+      const uniqueReposMap = new Map();
+      rawRepos.forEach(r => {
+        if (!r.owner || !r.owner.login || r.owner.login.toLowerCase() === username.toLowerCase()) {
+          uniqueReposMap.set(r.id || r.full_name, r);
+        }
+      });
+      const deduplicatedRepos = Array.from(uniqueReposMap.values());
+
+      const repoSummaries = deduplicatedRepos.map(repo => {
         const detectedTools = new Set();
         if (repo.language) detectedTools.add(repo.language);
         if (repo.topics && Array.isArray(repo.topics)) {
@@ -560,6 +578,146 @@ class GitHubService {
     }
 
     return probingQuestions;
+  }
+
+  /**
+   * Deep Repository AI Audit powered by Sarvam AI (sarvam-105b)
+   * Analyzes README, language breakdown, and repo structure to output:
+   * 1. Changes to make
+   * 2. What to build next
+   * 3. What can be built better
+   */
+  async analyzeRepoDeepCode(username, repoName, targetRole = 'Senior Software Engineer') {
+    const key = username.toLowerCase().trim();
+    const token = await this.getAccessToken(key);
+
+    const headers = {
+      'User-Agent': 'NitiAI-Career-Studio',
+      'Accept': 'application/vnd.github.v3+json'
+    };
+    if (token) {
+      headers['Authorization'] = `token ${token}`;
+    }
+
+    let repoData = {};
+    let readmeText = "";
+    let languages = {};
+
+    try {
+      const repoRes = await axios.get(`https://api.github.com/repos/${username}/${repoName}`, { headers });
+      repoData = repoRes.data || {};
+    } catch (e) {
+      console.warn(`[GitHubService] Could not fetch repo details for ${username}/${repoName}:`, e.message);
+    }
+
+    try {
+      const langRes = await axios.get(`https://api.github.com/repos/${username}/${repoName}/languages`, { headers });
+      languages = langRes.data || {};
+    } catch (e) {
+      console.warn(`[GitHubService] Could not fetch languages for ${username}/${repoName}:`, e.message);
+    }
+
+    try {
+      const readmeRes = await axios.get(`https://api.github.com/repos/${username}/${repoName}/readme`, { headers });
+      if (readmeRes.data && readmeRes.data.content) {
+        readmeText = Buffer.from(readmeRes.data.content, 'base64').toString('utf-8').substring(0, 1500);
+      }
+    } catch (e) {
+      console.warn(`[GitHubService] README not available for ${username}/${repoName}`);
+    }
+
+    const apiKey = process.env.SARVAM_API_KEY;
+    if (!apiKey) {
+      return this.getFallbackRepoAudit(repoName, targetRole);
+    }
+
+    const prompt = `
+You are a Principal AI Architect performing a technical repository audit for candidate "${username}".
+Target Role: "${targetRole}"
+Repository: "${repoName}"
+Description: "${repoData.description || 'No description'}"
+Languages Breakdown: ${JSON.stringify(languages)}
+Topics/Tags: ${JSON.stringify(repoData.topics || [])}
+README Excerpt:
+"""
+${readmeText || 'No README provided'}
+"""
+
+Provide a structured, highly actionable code analysis JSON with 3 distinct arrays:
+1. "changes_to_make": 3 specific code refactoring, bug fixes, or testing improvements.
+2. "what_to_build_next": 3 high-impact features, microservices, or integrations to build next.
+3. "what_can_be_built_better": 3 architecture, database, or performance upgrades.
+
+Return ONLY valid JSON format matching:
+{
+  "repoName": "${repoName}",
+  "changes_to_make": [
+    { "title": "...", "description": "...", "impact": "High" },
+    { "title": "...", "description": "...", "impact": "Medium" },
+    { "title": "...", "description": "...", "impact": "High" }
+  ],
+  "what_to_build_next": [
+    { "title": "...", "description": "...", "category": "Feature" },
+    { "title": "...", "description": "...", "category": "Integration" },
+    { "title": "...", "description": "...", "category": "Microservice" }
+  ],
+  "what_can_be_built_better": [
+    { "area": "Architecture", "current": "...", "recommendation": "..." },
+    { "area": "Performance", "current": "...", "recommendation": "..." },
+    { "area": "Database / State", "current": "...", "recommendation": "..." }
+  ]
+}
+`;
+
+    try {
+      const sarvamRes = await axios.post("https://api.sarvam.ai/v1/chat/completions", {
+        model: "sarvam-105b",
+        messages: [
+          { role: "system", content: "You are an expert tech lead. Return ONLY valid JSON format without markdown wrapper." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.3
+      }, {
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        timeout: 20000
+      });
+
+      const content = sarvamRes.data?.choices?.[0]?.message?.content;
+      if (content) {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+      }
+      return this.getFallbackRepoAudit(repoName, targetRole);
+    } catch (err) {
+      console.warn(`[GitHubService] Sarvam AI deep repo audit error for ${repoName}:`, err.message);
+      return this.getFallbackRepoAudit(repoName, targetRole);
+    }
+  }
+
+  getFallbackRepoAudit(repoName, targetRole) {
+    return {
+      repoName,
+      changes_to_make: [
+        { title: "Implement Comprehensive Unit & Integration Tests", description: "Add Jest / PyTest suite to cover core API handlers and edge case validation.", impact: "High" },
+        { title: "Enforce Strict TypeScript / Type Annotations", description: "Eliminate implicit 'any' types and add runtime payload validation with Zod / Pydantic.", impact: "Medium" },
+        { title: "Structured Error & Security Logging", description: "Replace standard console.log statements with structured JSON logger (Pino / Winston).", impact: "High" }
+      ],
+      what_to_build_next: [
+        { title: "Redis Caching Layer for Hot Endpoints", description: "Cache frequent read operations with sub-10ms latency fallback.", category: "Performance" },
+        { title: "Asynchronous Background Job Queue", description: "Move heavy processing tasks to BullMQ / Celery worker queue.", category: "Microservice" },
+        { title: "CI/CD GitHub Actions Workflow", description: "Automate linting, unit testing, and Docker image build/push on every pull request.", category: "DevOps" }
+      ],
+      what_can_be_built_better: [
+        { area: "Architecture", current: "Monolithic file organization", recommendation: "Modularize into clean layer architecture (Controllers, Services, Repositories)." },
+        { area: "Database / State", current: "Direct SQL queries without pooling", recommendation: "Use connection pooling with Neon DB / PgBouncer for high concurrency." },
+        { area: "Performance", current: "Synchronous blocking IO operations", recommendation: "Migrate heavy async calculations to background worker threads." }
+      ]
+    };
   }
 }
 

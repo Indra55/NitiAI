@@ -67,6 +67,14 @@ app.get('/health', (req, res) => {
     res.json({ status: 'Niti AI Backend is Running' });
 });
 
+// Forward any /api/github requests to main API server on port 5555
+app.use('/api/github', (req, res) => {
+    const mainApiUrl = process.env.MAIN_API_URL || 'http://localhost:5555';
+    const targetUrl = `${mainApiUrl}/api/github${req.url}`;
+    console.log(`[Port 5000 Proxy] Redirecting /api/github${req.url} -> ${targetUrl}`);
+    res.redirect(targetUrl);
+});
+
 // Socket.io initialization
 const { init, rooms } = require('./socket');
 init(io);
