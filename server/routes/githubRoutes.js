@@ -108,7 +108,7 @@ router.post('/reauthorize', async (req, res) => {
 
 /**
  * 5. GET /api/github/auth/callback
- * Handles OAuth callback code, exchanges code for access_token, saves token persistently in PostgreSQL DB
+ * Handles OAuth callback code, exchanges code for access_token, saves token securely in DB for requested candidate username
  */
 router.get('/auth/callback', async (req, res) => {
   const { code, state } = req.query;
@@ -148,18 +148,18 @@ router.get('/auth/callback', async (req, res) => {
     });
 
     const authenticatedUsername = userResponse.data.login;
-    const targetUsername = state || authenticatedUsername;
+    const requestedUsername = (state || authenticatedUsername).trim();
 
-    // Save token persistently in PostgreSQL database & memory cache under both handles
-    await githubService.setAccessToken(targetUsername, accessToken);
-    if (authenticatedUsername.toLowerCase() !== targetUsername.toLowerCase()) {
+    // Save token persistently in PostgreSQL database & memory cache under requested candidate handle
+    await githubService.setAccessToken(requestedUsername, accessToken);
+    if (authenticatedUsername.toLowerCase() !== requestedUsername.toLowerCase()) {
       await githubService.setAccessToken(authenticatedUsername, accessToken);
     }
 
-    console.log(`[GitHubOAuth] Saved persistent token in DB for candidate: "@${targetUsername}" (Auth user: "@${authenticatedUsername}")`);
+    console.log(`[GitHubOAuth] Successfully stored token in DB for candidate: "@${requestedUsername}" (Authenticated GitHub user: "@${authenticatedUsername}")`);
 
-    // Redirect back to demo page with candidate username
-    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUsername)}&tokenValid=true`);
+    // Redirect back to demo page for requested candidate username
+    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(requestedUsername)}`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
     res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);
@@ -205,7 +205,7 @@ router.post('/analyze', async (req, res) => {
       return res.status(400).json({ success: false, error: 'GitHub username is required.' });
     }
 
-    // Fetch public & private repositories using active or cached OAuth access token
+    // Fetch public & private repositories using active or cached OAuth access token from DB
     const repos = await githubService.fetchUserRepositories(githubUsername, accessToken);
 
     // Perform 2-Tier Hybrid Graph Sync
