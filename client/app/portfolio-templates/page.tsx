@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { 
   Sparkles, RefreshCw, Check, Download, Layout, CheckCircle2, UserCheck, 
-  Code2, ArrowRight, Eye, ExternalLink, Github, Terminal, Layers, Star, GitFork, X
+  Code2, ArrowRight, Eye, ExternalLink, Github, Terminal, Layers, Star, GitFork, X, FileCode
 } from 'lucide-react';
 import { getResumeInfo, getCurrentUser } from '@/lib/api';
 import { DynamicNavbar } from '@/components/dynamic-navbar';
@@ -32,7 +32,7 @@ export default function PortfolioTemplatesPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('custom-cyber-glass');
   const [fullscreenPreviewId, setFullscreenPreviewId] = useState<string | null>(null);
-  const [copiedCode, setCopiedCode] = useState<boolean>(false);
+  const [downloadedTemplateId, setDownloadedTemplateId] = useState<string | null>(null);
 
   // Candidate Live Seeded Data State (auto-fetched from active user session)
   const [candidateData, setCandidateData] = useState({
@@ -184,14 +184,109 @@ export default function PortfolioTemplatesPage() {
     }
   };
 
-  const handleExportCode = () => {
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 3000);
+  const handleDownloadDeployableHTML = (tmplId: string) => {
+    setDownloadedTemplateId(tmplId);
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${candidateData.name || 'Developer'} - Portfolio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div class="max-w-6xl mx-auto px-6 py-12 space-y-12">
+    <!-- HERO HEADER -->
+    <header class="bg-slate-900 border border-slate-800 rounded-3xl p-8 md:p-12 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8">
+      <div class="space-y-4 flex-1">
+        <span class="inline-block px-3.5 py-1 bg-orange-950 text-orange-400 border border-orange-800 rounded-full text-xs font-mono font-bold">
+          ${candidateData.targetRole || 'Software Engineer'}
+        </span>
+        <h1 class="text-4xl md:text-6xl font-black text-white tracking-tight">${candidateData.name || 'Developer Portfolio'}</h1>
+        <p class="text-sm md:text-base text-slate-300 max-w-xl leading-relaxed">${candidateData.bio || 'Software Engineer crafting modern web applications and digital architectures.'}</p>
+        <div class="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-400 pt-2">
+          <span>📍 ${candidateData.location || 'Worldwide'}</span>
+          <span>✉️ <a href="mailto:${candidateData.email}" class="text-orange-400 hover:underline">${candidateData.email}</a></span>
+          ${candidateData.username ? `<span>🐙 <a href="https://github.com/${candidateData.username}" target="_blank" class="text-purple-400 hover:underline">github.com/${candidateData.username}</a></span>` : ''}
+        </div>
+      </div>
+      <img
+        src="${candidateData.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80'}"
+        alt="${candidateData.name}"
+        class="w-36 h-36 md:w-44 md:h-44 rounded-2xl object-cover border-4 border-slate-800 shadow-2xl shrink-0 bg-slate-900"
+      />
+    </header>
+
+    <!-- TECH STACK -->
+    <section class="space-y-4">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">⚡ Skills &amp; Technical Capabilities</h2>
+      <div class="flex flex-wrap gap-2.5">
+        ${candidateData.skills.map(s => `<span class="px-4 py-2 bg-slate-900 border border-slate-800 text-slate-200 text-xs font-semibold rounded-xl font-mono">${s}</span>`).join('\n        ')}
+      </div>
+    </section>
+
+    <!-- FEATURED PROJECTS -->
+    <section class="space-y-6">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">🚀 Scanned Projects Showcase</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        ${candidateData.repos.map(r => `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 flex flex-col justify-between hover:border-orange-500/50 transition-all">
+          <div class="space-y-2">
+            <h3 class="text-lg font-bold text-white">${r.name}</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">${r.description || 'Open source repository project.'}</p>
+            <div class="flex flex-wrap gap-1.5 pt-2">
+              ${(r.detectedTools || []).map(t => `<span class="text-[10px] bg-slate-950 border border-slate-800 text-orange-300 px-2 py-0.5 rounded font-mono">${t}</span>`).join('')}
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-4 border-t border-slate-800 text-xs text-slate-400 font-mono">
+            <span class="text-orange-400 font-bold">${r.language || 'Code'}</span>
+            <a href="${r.url}" target="_blank" class="text-white hover:underline font-bold bg-orange-600 px-3 py-1.5 rounded-lg">View GitHub &rarr;</a>
+          </div>
+        </div>
+        `).join('')}
+      </div>
+    </section>
+
+    <!-- WORK EXPERIENCE -->
+    <section class="space-y-6">
+      <h2 class="text-xl font-bold text-white flex items-center gap-2">💼 Career &amp; Experience Timeline</h2>
+      <div class="space-y-4">
+        ${candidateData.experiences.map(e => `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-2">
+          <div class="flex justify-between items-start">
+            <h3 class="text-base font-bold text-white">${e.role} <span class="text-orange-400">@ ${e.company}</span></h3>
+            <span class="text-xs text-slate-400 font-mono">${e.period}</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">${e.desc}</p>
+        </div>
+        `).join('')}
+      </div>
+    </section>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `index.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    setTimeout(() => setDownloadedTemplateId(null), 3000);
   };
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#fcf9f5] text-[#171716] flex items-center justify-center dashboard-theme">
+      <div className="min-h-screen bg-[#fcf9f5] text-[#171716] flex items-center justify-center dashboard-theme font-sans">
         <RefreshCw className="w-6 h-6 animate-spin text-[#ef4a18]" />
       </div>
     );
@@ -211,6 +306,7 @@ export default function PortfolioTemplatesPage() {
         <div className="space-y-8">
           {templatesList.map((tmpl, idx) => {
             const isSelected = selectedTemplateId === tmpl.id;
+            const isDownloaded = downloadedTemplateId === tmpl.id;
             const TemplateComponent = tmpl.component;
 
             return (
@@ -271,11 +367,11 @@ export default function PortfolioTemplatesPage() {
                     </Button>
 
                     <Button
-                      onClick={handleExportCode}
-                      className="bg-[#f3f0ec] hover:bg-[#e8e1da] text-[#171716] border border-[#e8e1da] font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap"
+                      onClick={() => handleDownloadDeployableHTML(tmpl.id)}
+                      className="bg-[#ef4a18] hover:bg-[#d83f12] text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap"
                     >
-                      {copiedCode ? <Check className="w-3.5 h-3.5 text-[#ef4a18]" /> : <Download className="w-3.5 h-3.5" />}
-                      {copiedCode ? 'TSX Exported!' : 'Export React TSX'}
+                      {isDownloaded ? <Check className="w-3.5 h-3.5 text-white" /> : <Download className="w-3.5 h-3.5" />}
+                      {isDownloaded ? 'index.html Downloaded!' : 'Download Deployable .html'}
                     </Button>
                   </div>
                 </div>
@@ -302,7 +398,7 @@ export default function PortfolioTemplatesPage() {
 
       {/* FULLSCREEN MODAL LIVE PREVIEW OVERLAY */}
       {fullscreenPreviewId && activeFullscreenTemplate && (
-        <div className="fixed inset-0 z-50 bg-[#171716]/80 backdrop-blur-md overflow-y-auto flex flex-col dashboard-theme">
+        <div className="fixed inset-0 z-50 bg-[#171716]/80 backdrop-blur-md overflow-y-auto flex flex-col dashboard-theme font-sans">
           {/* Modal Header */}
           <div className="sticky top-0 z-50 bg-white border-b border-[#e8e1da] px-6 py-4 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-3">
@@ -312,13 +408,22 @@ export default function PortfolioTemplatesPage() {
               <span className="text-sm font-bold text-[#171716]">{activeFullscreenTemplate.title}</span>
             </div>
 
-            <Button
-              variant="outline"
-              onClick={() => setFullscreenPreviewId(null)}
-              className="bg-[#f3f0ec] hover:bg-[#e8e1da] text-[#171716] p-2 rounded-xl border border-[#e8e1da] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
-            >
-              <X className="w-4 h-4 text-[#171716]" /> Close Preview
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => handleDownloadDeployableHTML(activeFullscreenTemplate.id)}
+                className="bg-[#ef4a18] hover:bg-[#d83f12] text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              >
+                <Download className="w-3.5 h-3.5" /> Download Deployable .html
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => setFullscreenPreviewId(null)}
+                className="bg-[#f3f0ec] hover:bg-[#e8e1da] text-[#171716] p-2 rounded-xl border border-[#e8e1da] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+              >
+                <X className="w-4 h-4 text-[#171716]" /> Close Preview
+              </Button>
+            </div>
           </div>
 
           {/* Modal Content Frame */}
