@@ -4,82 +4,41 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { 
-  Sparkles, RefreshCw, Check, Download, Layout, CheckCircle2, UserCheck, Code2, ArrowRight
+  Sparkles, RefreshCw, Check, Download, Layout, CheckCircle2, UserCheck, 
+  Code2, ArrowRight, Eye, ExternalLink, Github, Terminal, Layers, Star, GitFork, X
 } from 'lucide-react';
 import { getResumeInfo, getCurrentUser } from '@/lib/api';
 
-import DeveloperFolioTemplate from '@/components/portfolio-templates/DeveloperFolioTemplate';
-import GitProfileTemplate from '@/components/portfolio-templates/GitProfileTemplate';
-import FramerCreativeTemplate from '@/components/portfolio-templates/FramerCreativeTemplate';
-import AcademicCVTemplate from '@/components/portfolio-templates/AcademicCVTemplate';
+import CustomPortfolioTemplate from '@/portfolios/CustomPortfolioTemplate';
 
-type TemplateKey = 'developerFolio' | 'gitProfile' | 'framerCreative' | 'academicCV';
-
-interface TemplateOption {
-  id: TemplateKey;
+interface PortfolioTemplateOption {
+  id: string;
   title: string;
-  repoAuthor: string;
-  repoName: string;
+  author: string;
+  repo: string;
   description: string;
   badge: string;
-  accentColor: string;
+  tags: string[];
+  component: React.ComponentType<{ data: any }>;
 }
-
-const TEMPLATES: TemplateOption[] = [
-  {
-    id: 'developerFolio',
-    title: 'DeveloperFolio / MasterPortfolio',
-    repoAuthor: 'saadpasta',
-    repoName: 'developerFolio',
-    description: 'Modern Cyber-Tech Glassmorphism with Tech Stack Pills, Experience Timeline & Live Project Cards.',
-    badge: 'Popular',
-    accentColor: 'from-indigo-500 to-purple-500'
-  },
-  {
-    id: 'gitProfile',
-    title: 'GitProfile / Minimalist Dev',
-    repoAuthor: 'arifszn',
-    repoName: 'gitprofile',
-    description: 'Clean Minimalist GitHub profile card with repository star counts, forks, and terminal styling.',
-    badge: 'Clean',
-    accentColor: 'from-emerald-500 to-teal-500'
-  },
-  {
-    id: 'framerCreative',
-    title: 'Next.js Framer Creative',
-    repoAuthor: 'codebucks27',
-    repoName: 'Next.js-Developer-Portfolio',
-    description: 'Vibrant Mesh Gradient with 3D-styled skill keycaps, interactive project showcase, and voice intro.',
-    badge: 'Creative',
-    accentColor: 'from-purple-500 to-pink-500'
-  },
-  {
-    id: 'academicCV',
-    title: 'Academic CV & Researcher',
-    repoAuthor: 'HugoBlox',
-    repoName: 'hugo-theme-academic-cv',
-    description: 'LaTeX-inspired typography with BibTeX citations, research project list, and academic experience timeline.',
-    badge: 'Academic',
-    accentColor: 'from-blue-500 to-indigo-500'
-  }
-];
 
 export default function PortfolioTemplatesPage() {
   const [mounted, setMounted] = useState<boolean>(false);
-  const [activeTemplate, setActiveTemplate] = useState<TemplateKey>('developerFolio');
   const [loading, setLoading] = useState<boolean>(true);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('custom-cyber-glass');
+  const [fullscreenPreview, setFullscreenPreview] = useState<boolean>(false);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
 
-  // Candidate Live Seeded Data State
+  // Candidate Live Seeded Data State (auto-fetched from user session & resume DB)
   const [candidateData, setCandidateData] = useState({
     name: 'Jay Dalvi',
     username: 'jayyy255',
     avatarUrl: 'https://github.com/jayyy255.png',
-    bio: 'Software Engineer specializing in scalable backend microservices, modern web applications, and AI system design.',
+    bio: 'Full Stack & AI Engineer specializing in scalable backend microservices, high-throughput systems, and modern WebGL architectures.',
     location: 'Mumbai, India',
     email: 'jaydalvi0205@gmail.com',
-    targetRole: 'Full Stack & AI Engineer',
-    skills: ['React', 'Next.js', 'Node.js', 'Express', 'Python', 'PostgreSQL', 'Docker', 'TypeScript', 'Sarvam AI', 'Tailwind CSS'],
+    targetRole: 'Senior Full Stack & AI Engineer',
+    skills: ['TypeScript', 'React', 'Next.js', 'Node.js', 'Express', 'Python', 'PostgreSQL', 'Docker', 'Sarvam AI', 'Tailwind CSS', 'Redis', 'Rust'],
     repos: [
       {
         name: 'NitiAI',
@@ -92,12 +51,12 @@ export default function PortfolioTemplatesPage() {
       },
       {
         name: 'distributed-cache-service',
-        description: 'High-throughput in-memory key-value cache engine built with Node.js and LRU eviction policy.',
-        language: 'JavaScript',
+        description: 'High-throughput in-memory key-value cache engine built with Rust and LRU eviction policy.',
+        language: 'Rust',
         stars: 32,
         forks: 9,
         url: 'https://github.com/jayyy255',
-        detectedTools: ['Node.js', 'LRU Cache', 'Concurrency']
+        detectedTools: ['Rust', 'LRU Cache', 'Concurrency']
       },
       {
         name: 'microservice-gateway',
@@ -111,8 +70,8 @@ export default function PortfolioTemplatesPage() {
     ],
     experiences: [
       {
-        role: 'Full Stack AI Developer',
-        company: 'NitiAI Tech Solutions',
+        role: 'Full Stack AI Engineer',
+        company: 'NitiAI Systems',
         period: '2024 - Present',
         desc: 'Architected high-throughput AI career evaluation engine and microservices using Next.js, Node.js, and PostgreSQL.'
       },
@@ -120,10 +79,23 @@ export default function PortfolioTemplatesPage() {
         role: 'Software Engineer Intern',
         company: 'Innovate Labs',
         period: '2023 - 2024',
-        desc: 'Developed RESTful APIs with Express and built interactive web dashboards.'
+        desc: 'Engineered RESTful APIs with Express and built interactive WebGL developer dashboards.'
       }
     ]
   });
+
+  const templatesList: PortfolioTemplateOption[] = [
+    {
+      id: 'custom-cyber-glass',
+      title: 'DeveloperFolio / Cyber-Glass Template',
+      author: 'saadpasta',
+      repo: 'developerFolio',
+      description: 'Modern Cyber-Tech Glassmorphism design with interactive tech stack filtering, project showcase cards, and career timeline.',
+      badge: 'Featured Template',
+      tags: ['Cyber-Glass', 'Interactive Filter', 'GitHub Stars', 'Dark Theme'],
+      component: CustomPortfolioTemplate
+    }
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -192,86 +164,139 @@ export default function PortfolioTemplatesPage() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <RefreshCw className="w-6 h-6 animate-spin text-purple-400" />
+        <RefreshCw className="w-6 h-6 animate-spin text-cyan-400" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Studio Header Bar */}
-      <div className="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-50 backdrop-blur-md px-4 sm:px-8 py-4">
+    <main className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
+      {/* Background Radial Glow */}
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.1),transparent_35%),radial-gradient(circle_at_85%_25%,rgba(168,85,247,0.1),transparent_30%)]" />
+
+      {/* Top Navbar Bar */}
+      <div className="border-b border-slate-800/80 bg-slate-900/90 sticky top-0 z-40 backdrop-blur-xl px-4 sm:px-8 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2">
-              <Image src="/nitiai.png" alt="Niti AI" width={36} height={36} className="rounded-lg shadow-md" />
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <Image src="/nitiai.png" alt="Niti AI" width={36} height={36} className="rounded-xl shadow-md" />
             </Link>
             <div>
-              <h1 className="text-base font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Portfolio Templates Studio
+              <h1 className="text-base font-extrabold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Portfolio Templates Gallery
               </h1>
-              <p className="text-[11px] text-slate-400">Pre-seeded with your saved profile, resume &amp; skills details</p>
+              <p className="text-[11px] text-slate-400">Pre-seeded with your authenticated profile &amp; resume details</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-full text-xs font-mono">
-              <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="hidden sm:flex items-center gap-2 bg-slate-950 border border-slate-800 px-3.5 py-1.5 rounded-full text-xs font-mono">
+              <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
               <span className="text-slate-200 font-bold">{candidateData.name}</span>
               <span className="text-purple-400">(@{candidateData.username})</span>
             </div>
 
-            {/* Export Code Button */}
             <button
               onClick={handleExportCode}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-lg shadow-cyan-400/20 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
-              {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Download className="w-3.5 h-3.5" />}
-              {copiedCode ? 'Portfolio Code Exported!' : 'Export Portfolio Code'}
+              {copiedCode ? <Check className="w-3.5 h-3.5 text-slate-950" /> : <Download className="w-3.5 h-3.5" />}
+              {copiedCode ? 'TSX Code Exported!' : 'Export React TSX'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Template Selector Grid */}
-      <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Layout className="w-5 h-5 text-purple-400" />
-            <h2 className="text-lg font-bold text-slate-100">Select Developer Portfolio Template Design:</h2>
+      {/* Main Studio Content */}
+      <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 relative z-10">
+        {/* Intro Banner */}
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-800 text-cyan-300 text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" /> Select &amp; Preview Portfolio Designs
           </div>
-          <p className="text-xs text-slate-400">
-            Preview how your seeded profile &amp; resume details look across 4 developer portfolio designs.
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Available Developer Portfolio Templates</h2>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
+            Choose a portfolio template design below. Each template is automatically seeded with your real candidate name, resume skills, projects, and work experience.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {TEMPLATES.map((tmpl) => {
-            const isSelected = activeTemplate === tmpl.id;
+        {/* LIST FORMAT TEMPLATE ROWS */}
+        <div className="space-y-8">
+          {templatesList.map((tmpl, idx) => {
+            const isSelected = selectedTemplateId === tmpl.id;
+            const TemplateComponent = tmpl.component;
+
             return (
               <div
                 key={tmpl.id}
-                onClick={() => setActiveTemplate(tmpl.id)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 relative ${
+                className={`rounded-3xl border transition-all overflow-hidden bg-slate-900/80 backdrop-blur-xl ${
                   isSelected
-                    ? 'bg-purple-950/40 border-purple-500 shadow-xl shadow-purple-500/10'
-                    : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                    ? 'border-cyan-400/60 shadow-2xl shadow-cyan-950/30'
+                    : 'border-slate-800 hover:border-slate-700'
                 }`}
               >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] bg-purple-950 border border-purple-800 text-purple-300 px-2 py-0.5 rounded-full font-mono font-bold">
-                      {tmpl.badge}
-                    </span>
-                    {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                {/* Row Template Information Bar */}
+                <div className="p-6 sm:p-8 border-b border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950 border border-cyan-800 px-2.5 py-0.5 rounded-md">
+                        0{idx + 1}
+                      </span>
+                      <h3 className="text-xl font-bold text-white">{tmpl.title}</h3>
+                      <span className="text-xs font-bold text-purple-300 bg-purple-950 border border-purple-800 px-3 py-0.5 rounded-full">
+                        {tmpl.badge}
+                      </span>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
+                      {tmpl.description}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {tmpl.tags.map((t, i) => (
+                        <span key={i} className="text-[10px] bg-slate-950 border border-slate-800 text-slate-400 px-2.5 py-0.5 rounded-md font-mono">
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-100">{tmpl.title}</h3>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">{tmpl.description}</p>
+
+                  {/* Action Controls for this Template */}
+                  <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    <button
+                      onClick={() => setFullscreenPreview(true)}
+                      className="bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4 text-cyan-400" /> Fullscreen Live Preview
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedTemplateId(tmpl.id)}
+                      className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? 'bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-300/20 font-extrabold'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                      }`}
+                    >
+                      {isSelected ? <Check className="w-4 h-4 text-slate-950" /> : <Sparkles className="w-4 h-4 text-cyan-400" />}
+                      {isSelected ? 'Active Template' : 'Select Template'}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="text-[10px] text-slate-500 font-mono pt-2 border-t border-slate-800 flex items-center justify-between">
-                  <span>{tmpl.repoAuthor}/{tmpl.repoName}</span>
-                  <span className="text-purple-400 flex items-center gap-0.5">Preview <ArrowRight className="w-3 h-3" /></span>
+                {/* INLINE LIVE SEEDED PREVIEW CONTAINER */}
+                <div className="relative p-4 sm:p-6 bg-slate-950/60">
+                  <div className="mb-3 flex items-center justify-between text-xs text-slate-400 font-mono px-2">
+                    <span className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                      <UserCheck className="w-3.5 h-3.5" /> Inline Live Seeded Preview (Using Your Profile &amp; Resume)
+                    </span>
+                    <span>Template Ref: {tmpl.author}/{tmpl.repo}</span>
+                  </div>
+
+                  {/* Scaled Preview Frame Container */}
+                  <div className="rounded-2xl border border-slate-800 overflow-hidden shadow-2xl max-h-[560px] overflow-y-auto relative">
+                    <TemplateComponent data={candidateData} />
+                  </div>
                 </div>
               </div>
             );
@@ -279,33 +304,32 @@ export default function PortfolioTemplatesPage() {
         </div>
       </div>
 
-      {/* LIVE SEEDED PORTFOLIO PREVIEW WINDOW */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
-        <div className="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl space-y-2">
-          {/* Mock Browser Header Bar */}
-          <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block" />
-              <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
-              <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
+      {/* FULLSCREEN MODAL LIVE PREVIEW OVERLAY */}
+      {fullscreenPreview && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl overflow-y-auto flex flex-col">
+          {/* Modal Header */}
+          <div className="sticky top-0 z-50 bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-cyan-300 bg-cyan-950 border border-cyan-800 px-3 py-1 rounded-full font-mono">
+                Fullscreen Live Seeded Preview
+              </span>
+              <span className="text-sm font-bold text-white">Cyber-Glass Developer Portfolio</span>
             </div>
-            <div className="bg-slate-950 border border-slate-800 rounded-lg px-4 py-1 text-xs text-slate-400 font-mono">
-              https://{candidateData.username.toLowerCase()}.dev
-            </div>
-            <span className="text-xs text-emerald-400 font-bold flex items-center gap-1 font-mono">
-              <UserCheck className="w-3.5 h-3.5" /> User Profile &amp; Resume Details Seeded
-            </span>
+
+            <button
+              onClick={() => setFullscreenPreview(false)}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+            >
+              <X className="w-4 h-4 text-red-400" /> Close Preview
+            </button>
           </div>
 
-          {/* Render Selected Live Seeded Template */}
-          <div className="overflow-x-hidden">
-            {activeTemplate === 'developerFolio' && <DeveloperFolioTemplate data={candidateData} />}
-            {activeTemplate === 'gitProfile' && <GitProfileTemplate data={candidateData} />}
-            {activeTemplate === 'framerCreative' && <FramerCreativeTemplate data={candidateData} />}
-            {activeTemplate === 'academicCV' && <AcademicCVTemplate data={candidateData} />}
+          {/* Modal Content Frame */}
+          <div className="flex-1">
+            <CustomPortfolioTemplate data={candidateData} />
           </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }
