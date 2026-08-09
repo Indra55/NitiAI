@@ -14,12 +14,13 @@ export default function GitHubDemoPage() {
   const [activeUsername, setActiveUsername] = useState<string>('');
   const [targetRole, setTargetRole] = useState<string>('Senior Backend & Systems Engineer');
   
-  // Authorization States
+  // Authorization & Profile States
   const [checkingAuth, setCheckingAuth] = useState<boolean>(false);
   const [tokenExists, setTokenExists] = useState<boolean>(false);
   const [tokenExpired, setTokenExpired] = useState<boolean>(false);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [profile, setProfile] = useState<any>(null);
+  const [publicRepoCount, setPublicRepoCount] = useState<number>(0);
 
   // Scanning & Analysis States
   const [loading, setLoading] = useState<boolean>(false);
@@ -87,6 +88,7 @@ export default function GitHubDemoPage() {
         setTokenExpired(Boolean(data.tokenExpired));
         setIsAuthorized(Boolean(data.isAuthorized));
         if (data.profile) setProfile(data.profile);
+        if (data.publicRepoCount) setPublicRepoCount(data.publicRepoCount);
         
         if (data.hasStoredScan) {
           await fetchStoredScan(userToCheck);
@@ -340,7 +342,7 @@ export default function GitHubDemoPage() {
                 type="text"
                 value={githubInput}
                 onChange={(e) => setGithubInput(e.target.value)}
-                placeholder="e.g. https://github.com/SujalChoudhari or torvalds"
+                placeholder="e.g. https://github.com/Indra55 or SujalChoudhari"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
               />
             </div>
@@ -349,14 +351,14 @@ export default function GitHubDemoPage() {
               disabled={checkingAuth || !githubInput.trim()}
               className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              {checkingAuth ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Check Token Status
+              {checkingAuth ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Check Account Status
             </button>
           </form>
 
           {activeUsername && (
             <div className="text-xs text-slate-400 flex items-center justify-between pt-1">
               <div className="flex items-center gap-2">
-                <span>Active Candidate:</span>
+                <span>Active Target Candidate:</span>
                 <span className="bg-slate-950 border border-slate-800 text-indigo-300 font-mono px-2 py-0.5 rounded font-bold">
                   @{activeUsername}
                 </span>
@@ -390,90 +392,15 @@ export default function GitHubDemoPage() {
             <Github className="w-12 h-12 text-slate-600 mx-auto" />
             <h3 className="text-lg font-bold text-slate-300">Enter a Candidate GitHub Link Above</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Paste any candidate's GitHub profile link (e.g. <code>https://github.com/username</code>) or type their username in Step 1 to check token authorization in PostgreSQL.
+              Paste any candidate's GitHub profile link (e.g. <code>https://github.com/Indra55</code>) or type their username in Step 1 to check token authorization in PostgreSQL.
             </p>
           </div>
         )}
 
-        {/* CONDITION 1A: USERNAME ENTERED & TOKEN DOES NOT EXIST IN DB */}
-        {activeUsername && !tokenExists && !checkingAuth && (
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6 max-w-2xl mx-auto">
-            <div className="w-16 h-16 bg-purple-950 border border-purple-800 rounded-full flex items-center justify-center mx-auto text-purple-400">
-              <Lock className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-2">
-              <span className="bg-amber-950 border border-amber-800 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold">
-                New Candidate: No Token in Database for @{activeUsername}
-              </span>
-              <h2 className="text-2xl font-bold text-slate-100 mt-2">Authorization Required</h2>
-              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                Candidate <strong>@{activeUsername}</strong> does not have a saved OAuth token in the database. Authorize via GitHub OAuth to save the access token and scan all public &amp; private repositories.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                onClick={handleAuthorize}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 cursor-pointer"
-              >
-                <Github className="w-5 h-5" /> 🔐 Authorize GitHub Account (@{activeUsername})
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3.5 px-5 rounded-xl text-sm transition-all border border-slate-700 cursor-pointer"
-              >
-                <UserCheck className="w-4 h-4 text-indigo-400" /> Switch Candidate
-              </button>
-            </div>
-
-            <div className="pt-6 border-t border-slate-800 flex items-center justify-center gap-3 text-xs text-slate-500">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Tokens Stored Securely in PostgreSQL Database (`github_tokens` table)</span>
-            </div>
-          </div>
-        )}
-
-        {/* CONDITION 1B: TOKEN EXISTS IN DB BUT EXPIRED / REVOKED */}
-        {activeUsername && tokenExists && !isAuthorized && !checkingAuth && (
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6 max-w-2xl mx-auto">
-            <div className="w-16 h-16 bg-red-950 border border-red-800 rounded-full flex items-center justify-center mx-auto text-red-400">
-              <AlertCircle className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-2">
-              <span className="bg-red-950 border border-red-800 text-red-300 text-xs px-3 py-1 rounded-full font-semibold">
-                Stored Token Expired or Revoked for @{activeUsername}
-              </span>
-              <h2 className="text-2xl font-bold text-slate-100 mt-2">Re-authorization Required</h2>
-              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                The stored token for <strong>@{activeUsername}</strong> failed GitHub API verification. Please re-authorize to generate and save a fresh token.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                onClick={handleReauthorize}
-                className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-red-600/25 cursor-pointer"
-              >
-                <RefreshCw className="w-4 h-4" /> 🔄 Re-authorize GitHub Account (@{activeUsername})
-              </button>
-
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3.5 px-5 rounded-xl text-sm transition-all border border-slate-700 cursor-pointer"
-              >
-                <UserCheck className="w-4 h-4 text-indigo-400" /> Switch Candidate
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* CONDITION 2: AUTHORIZATION VERIFIED IN DB -> SHOW SCAN ACTION & RESULTS */}
+        {/* CONDITION 1: ACCOUNT VERIFIED -> READY TO SCAN */}
         {activeUsername && isAuthorized && !checkingAuth && (
           <div className="space-y-6">
-            {/* Valid Token Status Banner */}
+            {/* Status Banner */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-emerald-950 border border-emerald-800 rounded-full flex items-center justify-center text-emerald-400">
@@ -481,12 +408,25 @@ export default function GitHubDemoPage() {
                 </div>
                 <div>
                   <div className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <span>Verified OAuth Token Found in Database</span>
+                    <span>GitHub Account Verified</span>
                     <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold">
                       @{activeUsername}
                     </span>
+                    {tokenExists ? (
+                      <span className="bg-purple-950 border border-purple-800 text-purple-300 text-[10px] px-2 py-0.5 rounded-full font-mono flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" /> OAuth Token Active
+                      </span>
+                    ) : (
+                      <span className="bg-slate-950 border border-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full font-mono">
+                        🌐 Public Mode ({publicRepoCount} Repos)
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-400">Active OAuth access token verified in PostgreSQL `github_tokens` table.</p>
+                  <p className="text-xs text-slate-400">
+                    {tokenExists 
+                      ? 'Verified OAuth access token active in PostgreSQL database (Public + Private access).' 
+                      : `Public repositories active for @${activeUsername}. Click Connect OAuth to include private repos.`}
+                  </p>
                 </div>
               </div>
 
@@ -498,6 +438,16 @@ export default function GitHubDemoPage() {
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />} 🚀 Scan Repositories &amp; Generate Roadmap Learnings
                 </button>
+
+                {!tokenExists && (
+                  <button
+                    onClick={handleAuthorize}
+                    className="text-xs bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-800 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                    title="Connect OAuth to include private repositories"
+                  >
+                    <Lock className="w-3.5 h-3.5" /> Connect OAuth
+                  </button>
+                )}
 
                 <button
                   onClick={handleLogout}

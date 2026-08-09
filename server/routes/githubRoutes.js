@@ -12,7 +12,7 @@ const audioUpload = multer({
 
 /**
  * 1. GET /api/github/check-status
- * Checks if candidate username exists in PostgreSQL DB and has a valid authorized OAuth token
+ * Checks candidate username token status in DB or verifies public repository availability
  */
 router.get('/check-status', async (req, res) => {
   try {
@@ -30,13 +30,28 @@ router.get('/check-status', async (req, res) => {
     const status = await githubService.checkUserToken(username);
     const existingScan = await githubService.getScanFromDb(username);
 
+    // Check if public user exists on GitHub
+    let publicProfile = null;
+    let publicRepoCount = 0;
+    try {
+      const userRes = await axios.get(`https://api.github.com/users/${username}`, {
+        headers: { 'User-Agent': 'NitiAI-Career-Studio' }
+      });
+      publicProfile = userRes.data;
+      publicRepoCount = userRes.data.public_repos || 0;
+    } catch (e) {
+      console.warn(`[GitHubCheck] Public user fetch warning for "${username}":`, e.message);
+    }
+
     res.json({
       success: true,
-      username: status.username || username,
+      username: publicProfile ? publicProfile.login : username,
       tokenExists: Boolean(status.exists),
       tokenExpired: Boolean(status.expired),
-      isAuthorized: Boolean(status.hasValidToken),
-      profile: status.profile || null,
+      isAuthorized: Boolean(status.hasValidToken || publicProfile),
+      isOAuthAuthorized: Boolean(status.hasValidToken),
+      profile: status.profile || publicProfile || null,
+      publicRepoCount,
       hasStoredScan: Boolean(existingScan),
       scanSummary: existingScan ? {
         reposCount: existingScan.reposCount,
@@ -148,18 +163,18 @@ router.get('/auth/callback', async (req, res) => {
     });
 
     const authenticatedUsername = userResponse.data.login;
-    const requestedUsername = (state || authenticatedUsername).trim();
+    const targetUsername = (state || authenticatedUsername).trim();
 
-    // Save token persistently in PostgreSQL database & memory cache under requested candidate handle
-    await githubService.setAccessToken(requestedUsername, accessToken);
-    if (authenticatedUsername.toLowerCase() !== requestedUsername.toLowerCase()) {
+    // Save token persistently in PostgreSQL database & memory cache under both handles
+    await githubService.setAccessToken(targetUsername, accessToken);
+    if (authenticatedUsername.toLowerCase() !== targetUsername.toLowerCase()) {
       await githubService.setAccessToken(authenticatedUsername, accessToken);
     }
 
-    console.log(`[GitHubOAuth] Successfully stored token in DB for candidate: "@${requestedUsername}" (Authenticated GitHub user: "@${authenticatedUsername}")`);
+    console.log(`[GitHubOAuth] Successfully stored token in DB for candidate: "@${targetUsername}" (Authenticated GitHub user: "@${authenticatedUsername}")`);
 
     // Redirect back to demo page for requested candidate username
-    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(requestedUsername)}`);
+    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUsername)}`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
     res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);
