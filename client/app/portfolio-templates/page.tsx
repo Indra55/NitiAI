@@ -11,6 +11,7 @@ import { getResumeInfo, getCurrentUser } from '@/lib/api';
 
 import CustomPortfolioTemplate from '@/portfolios/CustomPortfolioTemplate';
 import SecondPortfolioTemplate from '@/portfolios/page';
+import ThirdPortfolioTemplate from '@/portfolios/ThirdPortfolioTemplate';
 
 interface PortfolioTemplateOption {
   id: string;
@@ -105,6 +106,16 @@ export default function PortfolioTemplatesPage() {
       badge: 'Featured Template 2',
       tags: ['Visual Hero', 'Folder Explorer', 'Orange Gradient Card', 'Interactive Files'],
       component: SecondPortfolioTemplate
+    },
+    {
+      id: 'particle-hero-fullstack',
+      title: 'Particle Hero & Interactive Canvas Showcase',
+      author: 'shinekyaw',
+      repo: 'shinekyaw-portfolio',
+      description: 'Interactive canvas particle effect hero, animated skill proficiency bars, mouse tracker, and glassmorphic contact card.',
+      badge: 'Featured Template 3',
+      tags: ['Canvas Particles', 'Mouse Tracker', 'Progress Bars', 'Dark Glassmorphism'],
+      component: ThirdPortfolioTemplate
     }
   ];
 

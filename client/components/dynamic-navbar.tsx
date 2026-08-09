@@ -47,7 +47,7 @@ const moreNavItems = [
   { label: "Resume Arena", href: "/resume-arena", icon: FileText },
   { label: "Coding Practice", href: "/coding-practice", icon: FileSearch },
   { label: "Opportunities", href: "/opportunities", icon: Users },
-  { label: "Portfolio", href: "/portfolio", icon: Briefcase },
+  { label: "Portfolio Studio", href: "/portfolio-templates", icon: Briefcase },
   { label: "AI Planned Learning", href: "/ai-planner", icon: Brain },
   { label: "Interview", href: "/interview", icon: Mic },
 ]
