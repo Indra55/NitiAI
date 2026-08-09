@@ -17,7 +17,6 @@ const pool = new Pool({
  */
 class GitHubService {
   constructor() {
-    // Tier 1 In-Memory Caches & Inverted Index
     this.invertedIndex = new Map(); // ToolName -> Set(RepoName)
     this.repoGraphMemory = new Map(); // RepoName -> { tools, language, pushed_at }
     this.shaCache = new Map(); // RepoName -> CommitSHA/PushedAt
@@ -78,7 +77,15 @@ class GitHubService {
       try {
         const client = await pool.connect();
         try {
-          const res = await client.query(`SELECT access_token FROM github_tokens WHERE username = $1`, [key]);
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS github_tokens (
+              username VARCHAR(100) PRIMARY KEY,
+              access_token TEXT NOT NULL,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+          `);
+
+          const res = await client.query(`SELECT access_token FROM github_tokens WHERE LOWER(username) = $1`, [key]);
           if (res.rows.length > 0) {
             const token = res.rows[0].access_token;
             this.userTokens.set(key, token);
@@ -109,8 +116,8 @@ class GitHubService {
       try {
         const client = await pool.connect();
         try {
-          await client.query(`DELETE FROM github_tokens WHERE username = $1`, [key]);
-          await client.query(`DELETE FROM github_scans WHERE username = $1`, [key]);
+          await client.query(`DELETE FROM github_tokens WHERE LOWER(username) = $1`, [key]);
+          await client.query(`DELETE FROM github_scans WHERE LOWER(username) = $1`, [key]);
           console.log(`[GitHubService] Deleted token and scan record for "${key}" from PostgreSQL DB.`);
         } finally {
           client.release();
@@ -145,25 +152,31 @@ class GitHubService {
   }
 
   /**
-   * Check if user has a valid authorized OAuth token
+   * Check if input username exists in DB and has a valid authorized OAuth token
    */
   async checkUserToken(username) {
-    if (!username) return { hasValidToken: false, username: null, token: null };
-    const token = await this.getAccessToken(username);
+    if (!username) return { exists: false, hasValidToken: false, username: null, token: null };
+    const key = username.toLowerCase().trim();
+    const token = await this.getAccessToken(key);
+
     if (!token) {
-      return { hasValidToken: false, username, token: null };
+      console.log(`[GitHubService] DB Lookup for "${key}": TOKEN NOT FOUND IN DB`);
+      return { exists: false, hasValidToken: false, username: key, token: null };
     }
 
+    console.log(`[GitHubService] DB Lookup for "${key}": TOKEN FOUND IN DB. Validating against GitHub API...`);
     const validation = await this.validateToken(token);
+
     if (!validation.valid) {
-      // Token is expired or revoked, delete it
-      await this.deleteUserToken(username);
-      return { hasValidToken: false, username, token: null };
+      console.warn(`[GitHubService] Token for "${key}" in DB is invalid or expired. Purging token...`);
+      await this.deleteUserToken(key);
+      return { exists: true, hasValidToken: false, username: key, token: null, expired: true };
     }
 
     return {
+      exists: true,
       hasValidToken: true,
-      username: validation.user.login,
+      username: key,
       token,
       profile: validation.user
     };
@@ -250,7 +263,7 @@ class GitHubService {
       try {
         const client = await pool.connect();
         try {
-          const res = await client.query(`SELECT scan_json FROM github_scans WHERE username = $1`, [key]);
+          const res = await client.query(`SELECT scan_json FROM github_scans WHERE LOWER(username) = $1`, [key]);
           if (res.rows.length > 0) {
             const scanData = res.rows[0].scan_json;
             this.scanCache.set(key, scanData);

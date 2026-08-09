@@ -16,6 +16,8 @@ export default function GitHubDemoPage() {
   
   // Authorization States
   const [checkingAuth, setCheckingAuth] = useState<boolean>(false);
+  const [tokenExists, setTokenExists] = useState<boolean>(false);
+  const [tokenExpired, setTokenExpired] = useState<boolean>(false);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [profile, setProfile] = useState<any>(null);
 
@@ -81,7 +83,9 @@ export default function GitHubDemoPage() {
       const res = await fetch(`/api/github/check-status?username=${encodeURIComponent(userToCheck)}`);
       const data = await res.json();
       if (data.success) {
-        setIsAuthorized(data.isAuthorized);
+        setTokenExists(Boolean(data.tokenExists));
+        setTokenExpired(Boolean(data.tokenExpired));
+        setIsAuthorized(Boolean(data.isAuthorized));
         if (data.profile) setProfile(data.profile);
         
         if (data.hasStoredScan) {
@@ -93,6 +97,7 @@ export default function GitHubDemoPage() {
     } catch (e) {
       console.error('Check status error:', e);
       setIsAuthorized(false);
+      setTokenExists(false);
     } finally {
       setCheckingAuth(false);
     }
@@ -342,8 +347,8 @@ export default function GitHubDemoPage() {
           </div>
         )}
 
-        {/* CONDITION 1: NO VALID AUTHORIZATION TOKEN FOR ACTIVE USER */}
-        {activeUsername && !isAuthorized && !checkingAuth && (
+        {/* CONDITION 1A: USERNAME ENTERED & TOKEN DOES NOT EXIST IN DB */}
+        {activeUsername && !tokenExists && !checkingAuth && (
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6 max-w-2xl mx-auto">
             <div className="w-16 h-16 bg-purple-950 border border-purple-800 rounded-full flex items-center justify-center mx-auto text-purple-400">
               <Lock className="w-8 h-8" />
@@ -351,34 +356,51 @@ export default function GitHubDemoPage() {
 
             <div className="space-y-2">
               <span className="bg-amber-950 border border-amber-800 text-amber-300 text-xs px-3 py-1 rounded-full font-semibold">
-                No Valid Token in Database for @{activeUsername}
+                No OAuth Token Found in Database for @{activeUsername}
               </span>
-              <h2 className="text-2xl font-bold text-slate-100 mt-2">Connect &amp; Save OAuth Token</h2>
+              <h2 className="text-2xl font-bold text-slate-100 mt-2">Authorization Required</h2>
               <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                Authorize NitiAI via GitHub OAuth for candidate <strong>@{activeUsername}</strong> to securely store the access token in PostgreSQL database and fetch <strong>all public &amp; private repositories</strong>.
+                Candidate <strong>@{activeUsername}</strong> does not have a saved OAuth token in the database. Authorize via GitHub OAuth to save the access token and scan all public &amp; private repositories.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                onClick={handleAuthorize}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 cursor-pointer"
-              >
-                <Github className="w-5 h-5" /> 🔐 Authorize GitHub Account (@{activeUsername})
-              </button>
-
-              <button
-                onClick={handleReauthorize}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3.5 px-5 rounded-xl text-sm transition-all border border-slate-700 cursor-pointer"
-              >
-                <RefreshCw className="w-4 h-4 text-purple-400" /> Re-authorize (Clear Stale Token)
-              </button>
-            </div>
+            <button
+              onClick={handleAuthorize}
+              className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 cursor-pointer"
+            >
+              <Github className="w-5 h-5" /> 🔐 Authorize GitHub Account (@{activeUsername})
+            </button>
 
             <div className="pt-6 border-t border-slate-800 flex items-center justify-center gap-3 text-xs text-slate-500">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <span>Tokens Stored Securely in PostgreSQL Database (`github_tokens` table)</span>
             </div>
+          </div>
+        )}
+
+        {/* CONDITION 1B: TOKEN EXISTS IN DB BUT EXPIRED / REVOKED */}
+        {activeUsername && tokenExists && !isAuthorized && !checkingAuth && (
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6 max-w-2xl mx-auto">
+            <div className="w-16 h-16 bg-red-950 border border-red-800 rounded-full flex items-center justify-center mx-auto text-red-400">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="bg-red-950 border border-red-800 text-red-300 text-xs px-3 py-1 rounded-full font-semibold">
+                Stored Token Expired or Revoked for @{activeUsername}
+              </span>
+              <h2 className="text-2xl font-bold text-slate-100 mt-2">Re-authorization Required</h2>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                The stored token for <strong>@{activeUsername}</strong> failed GitHub API verification. Please re-authorize to generate and save a fresh token.
+              </p>
+            </div>
+
+            <button
+              onClick={handleReauthorize}
+              className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-red-600/25 cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" /> 🔄 Re-authorize GitHub Account (@{activeUsername})
+            </button>
           </div>
         )}
 

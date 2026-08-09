@@ -12,7 +12,7 @@ const audioUpload = multer({
 
 /**
  * 1. GET /api/github/check-status
- * Checks if user has a valid authorized OAuth token in PostgreSQL DB
+ * Checks if user exists in PostgreSQL DB and has a valid authorized OAuth token
  */
 router.get('/check-status', async (req, res) => {
   try {
@@ -21,6 +21,7 @@ router.get('/check-status', async (req, res) => {
       return res.json({
         success: true,
         username: null,
+        tokenExists: false,
         isAuthorized: false,
         hasStoredScan: false
       });
@@ -32,7 +33,9 @@ router.get('/check-status', async (req, res) => {
     res.json({
       success: true,
       username: status.username || username,
-      isAuthorized: status.hasValidToken,
+      tokenExists: Boolean(status.exists),
+      tokenExpired: Boolean(status.expired),
+      isAuthorized: Boolean(status.hasValidToken),
       profile: status.profile || null,
       hasStoredScan: Boolean(existingScan),
       scanSummary: existingScan ? {
