@@ -18,11 +18,8 @@ import {
   MoreHorizontal,
   ArrowLeft,
   FileSearch,
-<<<<<<< HEAD
   Globe,
-=======
   Layout,
->>>>>>> 9d8334231f72684d1179f19b6a819c937e7bc1fc
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
