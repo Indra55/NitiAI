@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: nitiai-client
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    env_file:
+      - ./client/.env
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: ./server
+      dockerfile: dockerfile
+    container_name: nitiai-server
+    ports:
+      - "4100:4100"
+    restart: unless-stopped
+    env_file:
+      - ./server/.env

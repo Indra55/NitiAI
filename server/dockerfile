@@ -1,13 +1,21 @@
-FROM node:19
+FROM node:20-alpine
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
 
-RUN npm install
+# Install only production dependencies
+RUN npm ci --only=production || npm install --production
 
+# Copy application code
 COPY . .
 
+# Expose port (default 4100 in this project)
 EXPOSE 4100
 
-CMD ["npm","run","dev"]
+ENV PORT=4100
+ENV NODE_ENV=production
+
+# Start the server
+CMD ["node", "server.js"]
