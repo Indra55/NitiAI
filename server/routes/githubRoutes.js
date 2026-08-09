@@ -53,45 +53,62 @@ router.get('/check-status', async (req, res) => {
 
 /**
  * 2. GET /api/github/auth/login
- * Redirects candidate to GitHub OAuth Authorization page passing requested username state
+ * Redirects candidate to GitHub OAuth Authorization page passing requested username state and prompt=consent
  */
 router.get('/auth/login', (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const redirectUri = process.env.GITHUB_REDIRECT_URI || 'http://localhost:5000/api/github/auth/callback';
-  const forceReauth = req.query.forceReauth === 'true';
   const username = (req.query.username || '').trim();
 
   if (!clientId) {
     return res.status(400).send('GITHUB_CLIENT_ID is not configured in server environment.');
   }
 
-  let githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user`;
+  // Always force prompt=consent so GitHub forces account confirmation
+  let githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user&prompt=consent`;
   
   if (username) {
     githubAuthUrl += `&state=${encodeURIComponent(username)}`;
-  }
-  if (forceReauth) {
-    githubAuthUrl += '&prompt=consent';
   }
   
   res.redirect(githubAuthUrl);
 });
 
 /**
- * 3. POST /api/github/reauthorize
+ * 3. POST /api/github/logout
+ * Deletes candidate's OAuth token & scan data from PostgreSQL DB and resets session
+ */
+router.post('/logout', async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (username) {
+      await githubService.deleteUserToken(username);
+    }
+    res.json({
+      success: true,
+      message: `Session reset and token deleted for ${username || 'current user'}.`
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 4. POST /api/github/reauthorize
  * Deletes candidate's previous OAuth token from DB and returns fresh authorization URL
  */
 router.post('/reauthorize', async (req, res) => {
   try {
     const { username } = req.body;
-    if (!username) {
-      return res.status(400).json({ success: false, error: 'Username is required for re-authorization.' });
+    if (username) {
+      await githubService.deleteUserToken(username);
     }
-    await githubService.deleteUserToken(username);
+    const stateParam = username ? `?username=${encodeURIComponent(username)}&forceReauth=true` : '?forceReauth=true';
     res.json({
       success: true,
-      message: `Previous token deleted for ${username}. Please complete re-authorization.`,
-      authUrl: `/api/github/auth/login?username=${encodeURIComponent(username)}&forceReauth=true`
+      message: `Previous token deleted for ${username || 'user'}. Please complete re-authorization.`,
+      authUrl: `/api/github/auth/login${stateParam}`
     });
   } catch (error) {
     console.error('Reauthorize error:', error);
@@ -100,8 +117,8 @@ router.post('/reauthorize', async (req, res) => {
 });
 
 /**
- * 4. GET /api/github/auth/callback
- * Handles OAuth callback code, exchanges code for access_token, saves token securely in DB, and redirects candidate
+ * 5. GET /api/github/auth/callback
+ * Handles OAuth callback code, exchanges code for access_token, saves token for authenticated user in DB
  */
 router.get('/auth/callback', async (req, res) => {
   const { code, state } = req.query;
@@ -135,22 +152,23 @@ router.get('/auth/callback', async (req, res) => {
       return res.redirect(`${clientUrl}/github-demo?githubError=token_failed`);
     }
 
-    // Fetch authenticated user profile
+    // Fetch authenticated user profile directly from GitHub API
     const userResponse = await axios.get('https://api.github.com/user', {
       headers: { Authorization: `token ${accessToken}`, 'User-Agent': 'NitiAI-Career-Studio' }
     });
 
     const authenticatedUsername = userResponse.data.login;
-    const targetUsername = state || authenticatedUsername;
 
-    // Save token securely in PostgreSQL database & memory cache
-    await githubService.setAccessToken(targetUsername, accessToken);
-    if (authenticatedUsername !== targetUsername) {
-      await githubService.setAccessToken(authenticatedUsername, accessToken);
+    // Save token for authenticated user in PostgreSQL database & memory cache
+    await githubService.setAccessToken(authenticatedUsername, accessToken);
+    if (state && state.toLowerCase() !== authenticatedUsername.toLowerCase()) {
+      await githubService.setAccessToken(state, accessToken);
     }
 
-    // Redirect to frontend demo page with authorized status for candidate username
-    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUsername)}&tokenValid=true`);
+    console.log(`[GitHubOAuth] Authorized GitHub user: "@${authenticatedUsername}". Target requested: "${state || authenticatedUsername}"`);
+
+    // Redirect back to demo page with authenticated username
+    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(authenticatedUsername)}&tokenValid=true`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
     res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);
@@ -158,7 +176,7 @@ router.get('/auth/callback', async (req, res) => {
 });
 
 /**
- * 5. GET /api/github/scan-results
+ * 6. GET /api/github/scan-results
  * Retrieves stored scan results for a username directly from PostgreSQL DB / Tier 1 Cache
  */
 router.get('/scan-results', async (req, res) => {
@@ -184,7 +202,7 @@ router.get('/scan-results', async (req, res) => {
 });
 
 /**
- * 6. POST /api/github/analyze
+ * 7. POST /api/github/analyze
  * 2-Tier Hybrid GitHub Repository Analysis & Dynamic 3-6 Role Probing Questions
  * Triggered when user clicks "Scan Repositories & Generate Roadmap Learnings"
  */
@@ -230,7 +248,7 @@ router.post('/analyze', async (req, res) => {
 });
 
 /**
- * 7. POST /api/github/evaluate-answer
+ * 8. POST /api/github/evaluate-answer
  * Evaluate candidate's spoken audio / typed answer to a repo probing question
  */
 router.post('/evaluate-answer', audioUpload.single('audio'), async (req, res) => {

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Github, ShieldCheck, CheckCircle2, Sparkles, RefreshCw, Layers, Target, 
   Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff, LogOut,
-  AlertCircle, Play, Check, FolderGit2, Globe, Search, Link2
+  AlertCircle, Play, Check, FolderGit2, Globe, Search, Link2, LogIn
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
@@ -168,6 +168,34 @@ export default function GitHubDemoPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      setLoading(true);
+      if (activeUsername) {
+        await fetch('/api/github/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: activeUsername })
+        });
+      }
+    } catch (e) {
+      console.error('Logout error:', e);
+    } finally {
+      setGithubInput('');
+      setActiveUsername('');
+      setIsAuthorized(false);
+      setTokenExists(false);
+      setTokenExpired(false);
+      setScanResult(null);
+      setProfile(null);
+      setErrorMsg(null);
+      setLoading(false);
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', '/github-demo');
+      }
+    }
+  };
+
   const runScanAndAnalyze = async () => {
     const targetUser = activeUsername || parseUsername(githubInput);
     if (!targetUser) {
@@ -283,14 +311,26 @@ export default function GitHubDemoPage() {
 
         {/* STEP 1: CANDIDATE GITHUB LINK / USERNAME INPUT CARD */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4 max-w-3xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-950 border border-indigo-800 rounded-full flex items-center justify-center text-indigo-400">
-              <Link2 className="w-5 h-5" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-950 border border-indigo-800 rounded-full flex items-center justify-center text-indigo-400">
+                <Link2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-100">Step 1: Enter Candidate GitHub Profile URL or Username</h2>
+                <p className="text-xs text-slate-400">Input any candidate's GitHub profile link to check token status in database.</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-100">Step 1: Enter Candidate GitHub Profile URL or Username</h2>
-              <p className="text-xs text-slate-400">Input any candidate's GitHub profile link to check token status in database.</p>
-            </div>
+
+            {activeUsername && (
+              <button
+                onClick={handleLogout}
+                className="text-xs bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                title="Logout and reset session for another candidate"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Logout &amp; Reset
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleLinkSubmit} className="flex flex-col sm:flex-row gap-3">
@@ -314,11 +354,19 @@ export default function GitHubDemoPage() {
           </form>
 
           {activeUsername && (
-            <div className="text-xs text-slate-400 flex items-center gap-2 pt-1">
-              <span>Active Target Candidate:</span>
-              <span className="bg-slate-950 border border-slate-800 text-indigo-300 font-mono px-2 py-0.5 rounded font-bold">
-                @{activeUsername}
-              </span>
+            <div className="text-xs text-slate-400 flex items-center justify-between pt-1">
+              <div className="flex items-center gap-2">
+                <span>Active Candidate:</span>
+                <span className="bg-slate-950 border border-slate-800 text-indigo-300 font-mono px-2 py-0.5 rounded font-bold">
+                  @{activeUsername}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="text-xs text-slate-400 hover:text-red-400 underline cursor-pointer"
+              >
+                Switch Candidate / Logout
+              </button>
             </div>
           )}
         </div>
@@ -364,12 +412,21 @@ export default function GitHubDemoPage() {
               </p>
             </div>
 
-            <button
-              onClick={handleAuthorize}
-              className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 cursor-pointer"
-            >
-              <Github className="w-5 h-5" /> 🔐 Authorize GitHub Account (@{activeUsername})
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={handleAuthorize}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/25 cursor-pointer"
+              >
+                <Github className="w-5 h-5" /> 🔐 Authorize GitHub Account (@{activeUsername})
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3.5 px-5 rounded-xl text-sm transition-all border border-slate-700 cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-red-400" /> Cancel &amp; Switch Candidate
+              </button>
+            </div>
 
             <div className="pt-6 border-t border-slate-800 flex items-center justify-center gap-3 text-xs text-slate-500">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -395,12 +452,21 @@ export default function GitHubDemoPage() {
               </p>
             </div>
 
-            <button
-              onClick={handleReauthorize}
-              className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-red-600/25 cursor-pointer"
-            >
-              <RefreshCw className="w-4 h-4" /> 🔄 Re-authorize GitHub Account (@{activeUsername})
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={handleReauthorize}
+                className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg shadow-red-600/25 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" /> 🔄 Re-authorize GitHub Account (@{activeUsername})
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3.5 px-5 rounded-xl text-sm transition-all border border-slate-700 cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-red-400" /> Logout &amp; Reset
+              </button>
+            </div>
           </div>
         )}
 
@@ -434,11 +500,11 @@ export default function GitHubDemoPage() {
                 </button>
 
                 <button
-                  onClick={handleReauthorize}
-                  className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl transition-all cursor-pointer"
-                  title="Re-authorize GitHub account"
+                  onClick={handleLogout}
+                  className="text-xs bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                  title="Logout and reset session to test another candidate"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> Re-authorize
+                  <LogOut className="w-3.5 h-3.5" /> Logout &amp; Reset
                 </button>
               </div>
             </div>
