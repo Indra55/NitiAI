@@ -18,8 +18,8 @@ const audioUpload = multer({
  */
 router.get('/check-status', async (req, res) => {
   try {
-    const username = (req.query.username || '').trim();
-    if (!username) {
+    let username = (req.query.username || '').trim();
+    if (!username || username.includes(' ')) {
       return res.json({
         success: true,
         username: null,
@@ -119,7 +119,8 @@ router.post('/save-user-github', async (req, res) => {
 router.get('/auth/login', (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const redirectUri = process.env.GITHUB_REDIRECT_URI || 'http://localhost:5555/api/github/auth/callback';
-  const username = (req.query.username || '').trim();
+  let username = (req.query.username || '').trim();
+  if (username.includes(' ')) username = '';
 
   if (!clientId) {
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
