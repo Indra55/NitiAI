@@ -23,7 +23,7 @@ interface LanguageBridgeModalProps {
     grammarScore: number;
     relevanceScore: number;
     logicalCoherenceScore: number;
-    totalScore: number; // out of 20
+    totalScore: number; // out of 40
     explanation: string;
     grammarIssues: string[];
     suggestions: string[];
@@ -151,8 +151,8 @@ export default function LanguageBridgeModal({
     }
   };
 
-  const totalScore = evaluationResult.totalScore; // out of 20
-  const isLowScore = totalScore < 14;
+  const totalScore = evaluationResult.totalScore; // out of 40
+  const isLowScore = totalScore < 24;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
@@ -195,7 +195,7 @@ export default function LanguageBridgeModal({
               <span className={`text-lg font-black ${isLowScore ? 'text-amber-600' : 'text-emerald-600'}`}>
                 {totalScore}
               </span>
-              <span className="text-xs text-slate-400 font-semibold">/ 20</span>
+              <span className="text-xs text-slate-400 font-semibold">/ 40</span>
             </div>
           </div>
 

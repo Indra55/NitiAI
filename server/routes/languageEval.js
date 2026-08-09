@@ -74,8 +74,8 @@ Return ONLY a JSON object in this exact format (no markdown):
         const relevance = Math.min(10, Math.max(0, parsed.relevanceScore !== undefined ? parsed.relevanceScore : 7));
         const coherence = Math.min(10, Math.max(0, parsed.logicalCoherenceScore !== undefined ? parsed.logicalCoherenceScore : 7));
         
-        const totalScore = clarity + grammar; // Total out of 20
-        const requiresBridge = totalScore < 14 || grammar < 6;
+        const totalScore = clarity + grammar + relevance + coherence; // Total out of 40
+        const requiresBridge = totalScore < 24 || grammar < 6; // < 60% or poor grammar
 
         res.json({
             clarityScore: clarity,
@@ -95,7 +95,7 @@ Return ONLY a JSON object in this exact format (no markdown):
             relevanceScore: 7,
             grammarScore: 7,
             logicalCoherenceScore: 7,
-            totalScore: 14,
+            totalScore: 28,
             requiresBridge: false,
             explanation: "Evaluated using baseline metric.",
             grammarIssues: [],

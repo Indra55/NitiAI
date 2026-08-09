@@ -73,7 +73,7 @@ export function VoiceInterviewer({ onUserPaused, openingQuestion, introMessage, 
       const form = new FormData()
       form.append("audio", blob, "utterance.webm")
       form.append("languageCode", languageRef.current)
-      const response = await fetch(`${API_URL}/api/system-design/transcribe`, { method: "POST", body: form })
+      const response = await fetch(`${API_URL}/api/sarvam/transcribe`, { method: "POST", body: form })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || "Could not transcribe this utterance.")
       if (data.transcript?.trim()) {

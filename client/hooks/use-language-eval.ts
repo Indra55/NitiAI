@@ -8,7 +8,7 @@ export interface LanguageEvalResult {
   relevanceScore: number;
   logicalCoherenceScore: number;
   totalScore: number; // out of 20
-  requiresBridge: boolean; // true if totalScore < 8
+  requiresBridge: boolean; // true if totalScore < 24 (out of 40)
   explanation: string;
   grammarIssues: string[];
   suggestions: string[];
@@ -45,7 +45,7 @@ export function useLanguageEval() {
         setEvalResult(data);
 
         // Threshold check: if totalScore < 8 (out of 20), trigger bridge modal
-        if (data.requiresBridge || data.totalScore < 8) {
+        if (data.requiresBridge || data.totalScore < 24) {
           setIsBridgeModalOpen(true);
         }
         return data;
