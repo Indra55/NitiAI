@@ -84,6 +84,55 @@ class VoiceResumeService {
   }
 
   /**
+   * Return formatted step question object
+   */
+  getStepQuestion(stepIndex = 0, languageCode = "en-IN") {
+    const step = INTERVIEW_STEPS[stepIndex] || INTERVIEW_STEPS[0];
+    const questionText = step.questions[languageCode] || step.questions["en-IN"] || step.questions["hi-IN"];
+    return {
+      stepId: step.id,
+      title: step.title,
+      text: questionText,
+      fields: step.fields,
+      stepIndex,
+      totalSteps: INTERVIEW_STEPS.length
+    };
+  }
+
+  /**
+   * Translation service using Sarvam Mayura:v1
+   */
+  async translateText(text, sourceLang = "en-IN", targetLang = "hi-IN") {
+    if (sourceLang === targetLang || !text) {
+      return { translatedText: text };
+    }
+    if (!this.apiKey) {
+      return { translatedText: text };
+    }
+    try {
+      const response = await axios.post(
+        `${SARVAM_BASE_URL}/translate`,
+        {
+          input: text,
+          source_language_code: sourceLang,
+          target_language_code: targetLang,
+          speaker_gender: "female",
+          mode: "formal",
+          model: "mayura:v1"
+        },
+        {
+          headers: this.getHeaders(),
+          timeout: 15000
+        }
+      );
+      return { translatedText: response.data.translated_text || text };
+    } catch (error) {
+      console.warn("⚠️ Sarvam Translation Notice:", error.message);
+      return { translatedText: text };
+    }
+  }
+
+  /**
    * Internal Chat Completion helper using Sarvam-105b
    */
   async chatCompletion(messages, options = {}) {
@@ -252,35 +301,48 @@ Return ONLY a JSON object with extracted fields for the current section. Do not 
     }
   }
 
-  async processVoiceInput({ audioBuffer, filename, userId, sessionId, currentStepIndex = 0, languageCode = "en-IN", typedText = null }) {
-    let transcript = typedText || "";
+  async processVoiceInput(audioBufferOrOptions, filename = "recording.webm", languageCode = "unknown", conversationHistory = [], currentResumeData = {}) {
+    let audioBuffer = null;
+    let typedText = null;
+
+    if (audioBufferOrOptions && typeof audioBufferOrOptions === "object" && !Buffer.isBuffer(audioBufferOrOptions)) {
+      audioBuffer = audioBufferOrOptions.audioBuffer;
+      filename = audioBufferOrOptions.filename || filename;
+      languageCode = audioBufferOrOptions.languageCode || languageCode;
+      typedText = audioBufferOrOptions.typedText || null;
+    } else {
+      audioBuffer = audioBufferOrOptions;
+    }
+
+    let originalTranscript = typedText || "";
+    let detectedLanguage = languageCode !== "unknown" ? languageCode : "en-IN";
 
     if (audioBuffer && !typedText) {
       const sttResult = await this.transcribeAudio(audioBuffer, filename, languageCode);
-      transcript = sttResult.transcript;
+      originalTranscript = sttResult.transcript || "Voice recording received.";
+      if (sttResult.languageCode) detectedLanguage = sttResult.languageCode;
     }
 
-    const currentStep = INTERVIEW_STEPS[currentStepIndex] || INTERVIEW_STEPS[0];
-    const isLastStep = currentStepIndex >= INTERVIEW_STEPS.length - 1;
-    const nextStepIndex = isLastStep ? currentStepIndex : currentStepIndex + 1;
-    const nextStep = INTERVIEW_STEPS[nextStepIndex];
-
-    const nextQuestion = nextStep.questions[languageCode] || nextStep.questions["en-IN"];
-    let audioBase64 = null;
-    try {
-      audioBase64 = await this.textToSpeech(nextQuestion, languageCode);
-    } catch (e) {
-      console.warn("TTS generation warning:", e.message);
+    let englishTranscript = originalTranscript;
+    if (detectedLanguage !== "en-IN" && originalTranscript) {
+      try {
+        const translation = await this.translateText(originalTranscript, detectedLanguage, "en-IN");
+        englishTranscript = translation.translatedText || originalTranscript;
+      } catch (e) {
+        console.warn("⚠️ Translation to English notice:", e.message);
+      }
     }
+
+    const extractedData = await this.extractResumeDetails(englishTranscript, "general", currentResumeData, detectedLanguage);
+    const aiResponse = `Thank you for providing that detail. Let's proceed to the next step for your resume.`;
 
     return {
       success: true,
-      transcript,
-      currentStepIndex,
-      nextStepIndex,
-      isCompleted: isLastStep,
-      nextQuestion,
-      audioBase64,
+      originalTranscript,
+      englishTranscript,
+      detectedLanguage,
+      extractedData,
+      aiResponse,
     };
   }
 
