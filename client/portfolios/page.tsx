@@ -177,7 +177,10 @@ export default function SecondPortfolioTemplate({ data }: TemplateProps) {
                 {/* Candidate Avatar Image */}
                 <div className="flex items-end justify-between pt-4 border-t border-white/20">
                   <img
-                    src={data?.avatarUrl || "https://github.com/octocat.png"}
+                    src={data?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80"}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80";
+                    }}
                     alt={data?.name}
                     className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 border-white/60 shadow-2xl bg-slate-900"
                   />
@@ -287,7 +290,10 @@ export default function SecondPortfolioTemplate({ data }: TemplateProps) {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
                       <img
-                        src={file.thumbnail}
+                        src={file.thumbnail || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80"}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80";
+                        }}
                         alt={file.name}
                         className="w-full h-full object-cover"
                       />

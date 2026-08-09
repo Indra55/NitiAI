@@ -58,7 +58,10 @@ export default function CustomPortfolioTemplate({ data }: TemplateProps) {
           <div className="relative flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
               <img
-                src={data.avatarUrl}
+                src={data.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80"}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80";
+                }}
                 alt={`${data.name} avatar`}
                 className="h-28 w-28 rounded-2xl border border-slate-700 object-cover shadow-lg shadow-cyan-950/30"
               />

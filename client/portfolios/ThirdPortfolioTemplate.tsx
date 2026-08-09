@@ -148,7 +148,10 @@ export default function ThirdPortfolioTemplate({ data }: TemplateProps) {
         <Heading title="About Me" subtitle="Candidate Background" />
         <div className="mt-12 grid items-center gap-8 md:grid-cols-2">
           <img
-            src={data?.avatarUrl || "https://github.com/octocat.png"}
+            src={data?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80"}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80";
+            }}
             alt={data?.name}
             className="aspect-square w-full max-w-sm mx-auto rounded-2xl border-2 border-purple-500/40 object-cover shadow-2xl"
           />
