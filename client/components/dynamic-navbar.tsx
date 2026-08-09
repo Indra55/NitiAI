@@ -18,6 +18,7 @@ import {
   MoreHorizontal,
   ArrowLeft,
   FileSearch,
+  Layout,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
@@ -37,6 +38,7 @@ const mainNavItems = [
   { label: "Dashboard", href: "/dashboard", icon: TrendingUp },
   { label: "Resume Builder", href: "/resume-builder", icon: FileText },
   { label: "JD Match", href: "/match-analysis", icon: FileSearch },
+  { label: "Portfolio Templates", href: "/portfolio-templates", icon: Layout },
 ]
 
 // Additional features in dropdown
