@@ -31,59 +31,31 @@ export default function PortfolioTemplatesPage() {
   const [fullscreenPreviewId, setFullscreenPreviewId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
 
-  // Candidate Live Seeded Data State (auto-fetched from user session & resume DB)
+  // Candidate Live Seeded Data State (auto-fetched from active user session)
   const [candidateData, setCandidateData] = useState({
-    name: 'Jay Dalvi',
-    username: 'jayyy255',
-    avatarUrl: 'https://github.com/jayyy255.png',
-    bio: 'Full Stack & AI Engineer specializing in scalable backend microservices, high-throughput systems, and modern WebGL architectures.',
-    location: 'Mumbai, India',
-    email: 'jaydalvi0205@gmail.com',
-    targetRole: 'Senior Full Stack & AI Engineer',
-    skills: ['TypeScript', 'React', 'Next.js', 'Node.js', 'Express', 'Python', 'PostgreSQL', 'Docker', 'Sarvam AI', 'Tailwind CSS', 'Redis', 'Rust'],
-    repos: [
-      {
-        name: 'NitiAI',
-        description: 'AI-Powered Career Studio, Socratic Tech Debate & 2-Tier Relational GitHub Graph Engine.',
-        language: 'TypeScript',
-        stars: 48,
-        forks: 14,
-        url: 'https://github.com/jayyy255/NitiAI',
-        detectedTools: ['TypeScript', 'Next.js', 'PostgreSQL', 'Sarvam AI']
-      },
-      {
-        name: 'distributed-cache-service',
-        description: 'High-throughput in-memory key-value cache engine built with Rust and LRU eviction policy.',
-        language: 'Rust',
-        stars: 32,
-        forks: 9,
-        url: 'https://github.com/jayyy255',
-        detectedTools: ['Rust', 'LRU Cache', 'Concurrency']
-      },
-      {
-        name: 'microservice-gateway',
-        description: 'Asynchronous API gateway built with Express and PostgreSQL for token authentication and rate limiting.',
-        language: 'JavaScript',
-        stars: 24,
-        forks: 6,
-        url: 'https://github.com/jayyy255',
-        detectedTools: ['Express', 'PostgreSQL', 'JWT']
-      }
-    ],
-    experiences: [
-      {
-        role: 'Full Stack AI Engineer',
-        company: 'NitiAI Systems',
-        period: '2024 - Present',
-        desc: 'Architected high-throughput AI career evaluation engine and microservices using Next.js, Node.js, and PostgreSQL.'
-      },
-      {
-        role: 'Software Engineer Intern',
-        company: 'Innovate Labs',
-        period: '2023 - 2024',
-        desc: 'Engineered RESTful APIs with Express and built interactive WebGL developer dashboards.'
-      }
-    ]
+    name: '',
+    username: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80',
+    bio: '',
+    location: '',
+    email: '',
+    targetRole: 'Software Engineer',
+    skills: ['TypeScript', 'React', 'Next.js', 'Node.js', 'Express', 'PostgreSQL'],
+    repos: [] as Array<{
+      name: string;
+      description: string;
+      language: string;
+      stars: number;
+      forks: number;
+      url: string;
+      detectedTools: string[];
+    }>,
+    experiences: [] as Array<{
+      role: string;
+      company: string;
+      period: string;
+      desc: string;
+    }>
   });
 
   const templatesList: PortfolioTemplateOption[] = [
@@ -127,21 +99,21 @@ export default function PortfolioTemplatesPage() {
   const fetchUserAndResumeInfo = async () => {
     setLoading(true);
     try {
-      let activeUsername = 'jayyy255';
+      let activeUsername = '';
 
       // 1. Fetch logged-in user account details from current active session
       const userRes = await getCurrentUser();
       if (userRes.data?.user) {
         const u = userRes.data.user;
-        activeUsername = u.username || u.name?.toLowerCase().replace(/\s+/g, '') || activeUsername;
+        activeUsername = u.username || u.name?.toLowerCase().replace(/\s+/g, '') || u.email?.split('@')[0] || '';
         setCandidateData(prev => ({
           ...prev,
-          name: u.name || u.username || prev.name,
+          name: u.name || u.username || 'Candidate Profile',
           username: activeUsername,
-          email: u.email || prev.email,
-          location: u.location || prev.location,
-          targetRole: u.career_goal_short || prev.targetRole,
-          avatarUrl: `https://github.com/${activeUsername}.png`
+          email: u.email || '',
+          location: u.location || '',
+          targetRole: u.career_goal_short || 'Software Engineer',
+          avatarUrl: activeUsername ? `https://github.com/${activeUsername}.png` : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80'
         }));
       }
 

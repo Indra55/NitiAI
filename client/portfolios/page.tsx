@@ -177,9 +177,9 @@ export default function SecondPortfolioTemplate({ data }: TemplateProps) {
                 {/* Candidate Avatar Image */}
                 <div className="flex items-end justify-between pt-4 border-t border-white/20">
                   <img
-                    src={data?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80"}
+                    src={data?.avatarUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80"}
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80";
+                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80";
                     }}
                     alt={data?.name}
                     className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 border-white/60 shadow-2xl bg-slate-900"
