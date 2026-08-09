@@ -434,23 +434,39 @@ class GitHubService {
         return scoreB - scoreA;
       });
 
-      // Fetch READMEs for top 10 engaged repositories
-      const topReposForReadme = repoSummaries.slice(0, 10);
-      await Promise.allSettled(topReposForReadme.map(async (repo) => {
+      // Fetch READMEs for all repositories to generate rich descriptions
+      await Promise.allSettled(repoSummaries.map(async (repo) => {
         try {
-          const readmeUrl = `https://api.github.com/repos/${username}/${repo.name}/readme`;
+          const repoPath = repo.fullName || `${username}/${repo.name}`;
+          const readmeUrl = `https://api.github.com/repos/${repoPath}/readme`;
           const readmeRes = await axios.get(readmeUrl, { headers });
           if (readmeRes.data && readmeRes.data.content) {
-            const decodedReadme = Buffer.from(readmeRes.data.content, 'base64').toString('utf-8');
-            // Append a 1000 character snippet of the README
-            repo.description = `${repo.description}\n\nREADME Snippet:\n${decodedReadme.substring(0, 1000)}`;
+            const rawReadme = Buffer.from(readmeRes.data.content, 'base64').toString('utf-8');
+            // Clean up markdown formatting for clean plain-text description snippet
+            const cleanedReadme = rawReadme
+              .replace(/#+\s+/g, '')
+              .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+              .replace(/```[\s\S]*?```/g, '')
+              .replace(/`([^`]+)`/g, '$1')
+              .replace(/[*_~>]/g, '')
+              .replace(/\n+/g, ' ')
+              .trim();
+
+            if (cleanedReadme.length > 15) {
+              const snippet = cleanedReadme.substring(0, 280);
+              if (repo.description === 'No description provided' || !repo.description) {
+                repo.description = snippet;
+              } else {
+                repo.description = `${repo.description} - ${snippet}`;
+              }
+            }
           }
         } catch (e) {
-          // Ignore errors, likely 404 no readme
+          // 404 if no README exists in repo
         }
       }));
 
-      console.log(`[GitHubService] Summarized ${repoSummaries.length} total repos for "${username}". Fetched READMEs for up to 10. Private count: ${repoSummaries.filter(r => r.private).length}, Public count: ${repoSummaries.filter(r => !r.private).length}`);
+      console.log(`[GitHubService] Summarized ${repoSummaries.length} total repos for "${username}". Extracted README descriptions for public & private repos.`);
 
       return repoSummaries;
     } catch (error) {
