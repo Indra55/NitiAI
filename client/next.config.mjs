@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep development artifacts in .next/dev so a running `next dev` server
+  // cannot read partially replaced production chunks from a concurrent build.
+  // This prevents missing vendor-chunk errors such as lucide-react.js.
+  isolatedDevBuild: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
