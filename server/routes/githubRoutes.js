@@ -67,7 +67,51 @@ router.get('/check-status', async (req, res) => {
 });
 
 /**
- * 2. GET /api/github/auth/login
+ * 2. POST /api/github/save-user-github
+ * Saves user's GitHub username during login/signup/profile and checks authorization status
+ */
+router.post('/save-user-github', async (req, res) => {
+  try {
+    const { githubUsername } = req.body;
+    if (!githubUsername || !githubUsername.trim()) {
+      return res.status(400).json({ success: false, error: 'GitHub username or profile link is required.' });
+    }
+
+    let parsed = githubUsername.trim();
+    if (parsed.startsWith('http://') || parsed.startsWith('https://')) {
+      try {
+        const url = new URL(parsed);
+        const parts = url.pathname.split('/').filter(Boolean);
+        if (parts.length > 0) parsed = parts[0];
+      } catch (e) {
+        const match = parsed.match(/github\.com\/([^\/]+)/i);
+        if (match) parsed = match[1];
+      }
+    }
+    parsed = parsed.replace(/^@/, '');
+
+    const status = await githubService.checkUserToken(parsed);
+    const authUrl = `/api/github/auth/login?username=${encodeURIComponent(parsed)}`;
+
+    res.json({
+      success: true,
+      githubUsername: parsed,
+      tokenExists: Boolean(status.exists),
+      isAuthorized: Boolean(status.hasValidToken),
+      authPromptRequired: !status.exists,
+      authUrl,
+      message: status.exists 
+        ? `OAuth Token verified in database for @${parsed}.` 
+        : `GitHub account @${parsed} saved. You can authorize OAuth to include private repos.`
+    });
+  } catch (error) {
+    console.error('Save user GitHub error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 3. GET /api/github/auth/login
  * Redirects candidate to GitHub OAuth Authorization page passing requested username state and prompt=consent
  */
 router.get('/auth/login', (req, res) => {
@@ -89,7 +133,7 @@ router.get('/auth/login', (req, res) => {
 });
 
 /**
- * 3. POST /api/github/logout
+ * 4. POST /api/github/logout
  * Resets local UI session without deleting stored candidate tokens from database
  */
 router.post('/logout', async (req, res) => {
@@ -100,7 +144,7 @@ router.post('/logout', async (req, res) => {
 });
 
 /**
- * 4. POST /api/github/reauthorize
+ * 5. POST /api/github/reauthorize
  * Deletes candidate's previous OAuth token from DB ONLY on explicit re-authorization request
  */
 router.post('/reauthorize', async (req, res) => {
@@ -122,7 +166,7 @@ router.post('/reauthorize', async (req, res) => {
 });
 
 /**
- * 5. GET /api/github/auth/callback
+ * 6. GET /api/github/auth/callback
  * Handles OAuth callback code, exchanges code for access_token, saves token securely in DB for requested candidate username
  */
 router.get('/auth/callback', async (req, res) => {
@@ -182,7 +226,7 @@ router.get('/auth/callback', async (req, res) => {
 });
 
 /**
- * 6. GET /api/github/scan-results
+ * 7. GET /api/github/scan-results
  * Retrieves stored scan results for a username directly from PostgreSQL DB / Tier 1 Cache
  */
 router.get('/scan-results', async (req, res) => {
@@ -208,7 +252,58 @@ router.get('/scan-results', async (req, res) => {
 });
 
 /**
- * 7. POST /api/github/analyze
+ * 8. GET /api/github/user-roadmap
+ * Fetches repository details & tech stack for candidate, generates personalized learning roadmap cards
+ */
+router.get('/user-roadmap', async (req, res) => {
+  try {
+    const username = (req.query.username || 'Indra55').trim();
+    const targetRole = (req.query.targetRole || 'Senior Backend & Systems Engineer').trim();
+
+    const repos = await githubService.fetchUserRepositories(username);
+    const syncResult = await githubService.syncHybridGraph(null, username, repos);
+    const questions = githubService.generateGraphDrivenQuestions(targetRole, repos);
+
+    const privateCount = repos.filter(r => r.private).length;
+    const publicCount = repos.filter(r => !r.private).length;
+
+    const roadmapAdvices = [
+      {
+        step: 1,
+        title: 'Master System-Level Streaming (Kafka / RabbitMQ)',
+        advice: `Your repository portfolio shows strong polyglot work across ${repos.length} repos. To excel as a ${targetRole}, expand system streaming capabilities for high-throughput event processing.`
+      },
+      {
+        step: 2,
+        title: 'Containerization & Cloud Orchestration (Kubernetes / Helm)',
+        advice: 'Practice deploying microservices using Kubernetes manifests and Helm charts to complement your Docker & Nginx project configurations.'
+      },
+      {
+        step: 3,
+        title: 'Architectural Trade-off Justification in Interviews',
+        advice: 'Be ready to defend your choice of storage engines (PostgreSQL vs MongoDB) and framework selection (FastAPI vs Express) using concrete latency & throughput metrics.'
+      }
+    ];
+
+    res.json({
+      success: true,
+      githubUsername: username,
+      targetRole,
+      totalRepos: repos.length,
+      privateRepos: privateCount,
+      publicRepos: publicCount,
+      syncResult,
+      roadmapAdvices,
+      probingQuestions: questions
+    });
+  } catch (error) {
+    console.error('User roadmap error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 9. POST /api/github/analyze
  * 2-Tier Hybrid GitHub Repository Analysis & Dynamic 3-6 Role Probing Questions
  * Triggered when user clicks "Scan Repositories & Generate Roadmap Learnings"
  */
@@ -254,7 +349,7 @@ router.post('/analyze', async (req, res) => {
 });
 
 /**
- * 8. POST /api/github/evaluate-answer
+ * 10. POST /api/github/evaluate-answer
  * Evaluate candidate's spoken audio / typed answer to a repo probing question
  */
 router.post('/evaluate-answer', audioUpload.single('audio'), async (req, res) => {
