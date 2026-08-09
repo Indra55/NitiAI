@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { 
-  Sparkles, RefreshCw, Github, Check, Download, Eye, Layout, Terminal, Code2, 
-  BookOpen, Search, ArrowRight, UserCheck, CheckCircle2, Lock, ShieldCheck 
+  Sparkles, RefreshCw, Check, Download, Layout, CheckCircle2, UserCheck, Code2, ArrowRight
 } from 'lucide-react';
+import { getResumeInfo, getCurrentUser } from '@/lib/api';
 
 import DeveloperFolioTemplate from '@/components/portfolio-templates/DeveloperFolioTemplate';
 import GitProfileTemplate from '@/components/portfolio-templates/GitProfileTemplate';
@@ -67,125 +67,121 @@ const TEMPLATES: TemplateOption[] = [
 export default function PortfolioTemplatesPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [activeTemplate, setActiveTemplate] = useState<TemplateKey>('developerFolio');
-  const [usernameInput, setUsernameInput] = useState<string>('Indra55');
-  const [activeUsername, setActiveUsername] = useState<string>('Indra55');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
 
-  // Candidate Seeded Data State
+  // Candidate Live Seeded Data State
   const [candidateData, setCandidateData] = useState({
-    name: 'Indra Hitanshu',
-    username: 'Indra55',
-    avatarUrl: 'https://github.com/Indra55.png',
-    bio: 'Software Engineer specializing in scalable backend microservices, Rust, Go, Python, and system architecture.',
-    location: 'India',
-    email: 'indra55@users.noreply.github.com',
-    targetRole: 'Senior Backend Engineer',
-    skills: ['Python', 'Rust', 'Go', 'TypeScript', 'Node.js', 'PostgreSQL', 'Docker', 'FastAPI', 'Redis', 'Kubernetes'],
+    name: 'Jay Dalvi',
+    username: 'jayyy255',
+    avatarUrl: 'https://github.com/jayyy255.png',
+    bio: 'Software Engineer specializing in scalable backend microservices, modern web applications, and AI system design.',
+    location: 'Mumbai, India',
+    email: 'jaydalvi0205@gmail.com',
+    targetRole: 'Full Stack & AI Engineer',
+    skills: ['React', 'Next.js', 'Node.js', 'Express', 'Python', 'PostgreSQL', 'Docker', 'TypeScript', 'Sarvam AI', 'Tailwind CSS'],
     repos: [
       {
         name: 'NitiAI',
         description: 'AI-Powered Career Studio, Socratic Tech Debate & 2-Tier Relational GitHub Graph Engine.',
         language: 'TypeScript',
-        stars: 42,
-        forks: 12,
-        url: 'https://github.com/Indra55/NitiAI',
+        stars: 48,
+        forks: 14,
+        url: 'https://github.com/jayyy255/NitiAI',
         detectedTools: ['TypeScript', 'Next.js', 'PostgreSQL', 'Sarvam AI']
       },
       {
-        name: 'distributed-cache-engine',
-        description: 'High-throughput in-memory key-value cache engine built with Rust and LRU eviction policy.',
-        language: 'Rust',
-        stars: 28,
-        forks: 8,
-        url: 'https://github.com/Indra55',
-        detectedTools: ['Rust', 'Concurrency', 'LRU Cache']
+        name: 'distributed-cache-service',
+        description: 'High-throughput in-memory key-value cache engine built with Node.js and LRU eviction policy.',
+        language: 'JavaScript',
+        stars: 32,
+        forks: 9,
+        url: 'https://github.com/jayyy255',
+        detectedTools: ['Node.js', 'LRU Cache', 'Concurrency']
       },
       {
-        name: 'microservices-gateway',
-        description: 'Asynchronous API gateway built with Go and gRPC protocol buffers for rate limiting.',
-        language: 'Go',
-        stars: 19,
-        forks: 5,
-        url: 'https://github.com/Indra55',
-        detectedTools: ['Go', 'gRPC', 'Docker']
+        name: 'microservice-gateway',
+        description: 'Asynchronous API gateway built with Express and PostgreSQL for token authentication and rate limiting.',
+        language: 'JavaScript',
+        stars: 24,
+        forks: 6,
+        url: 'https://github.com/jayyy255',
+        detectedTools: ['Express', 'PostgreSQL', 'JWT']
       }
     ],
     experiences: [
       {
-        role: 'Senior Software Engineer',
-        company: 'Tech Solutions Inc.',
+        role: 'Full Stack AI Developer',
+        company: 'NitiAI Tech Solutions',
         period: '2024 - Present',
-        desc: 'Architected microservices handling 50k requests/sec using Rust, PostgreSQL, and Kubernetes.'
+        desc: 'Architected high-throughput AI career evaluation engine and microservices using Next.js, Node.js, and PostgreSQL.'
       },
       {
-        role: 'Backend Engineer',
+        role: 'Software Engineer Intern',
         company: 'Innovate Labs',
-        period: '2022 - 2024',
-        desc: 'Developed RESTful and GraphQL APIs with Python FastAPI and Redis caching layer.'
+        period: '2023 - 2024',
+        desc: 'Developed RESTful APIs with Express and built interactive web dashboards.'
       }
     ]
   });
 
   useEffect(() => {
     setMounted(true);
-    fetchCandidateDetails('Indra55');
+    fetchUserAndResumeInfo();
   }, []);
 
-  const parseUsername = (input: string): string => {
-    if (!input) return '';
-    let trimmed = input.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      try {
-        const url = new URL(trimmed);
-        const parts = url.pathname.split('/').filter(Boolean);
-        if (parts.length > 0) return parts[0];
-      } catch (e) {
-        const match = trimmed.match(/github\.com\/([^\/]+)/i);
-        if (match) return match[1];
-      }
-    }
-    return trimmed.replace(/^@/, '');
-  };
-
-  const fetchCandidateDetails = async (targetUser: string) => {
-    const parsed = parseUsername(targetUser);
-    if (!parsed) return;
+  const fetchUserAndResumeInfo = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/github/user-roadmap?username=${encodeURIComponent(parsed)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.probingQuestions) {
-          setActiveUsername(parsed);
-          setCandidateData(prev => ({
-            ...prev,
-            username: parsed,
-            avatarUrl: `https://github.com/${parsed}.png`,
-            name: parsed,
-            email: `${parsed.toLowerCase()}@users.noreply.github.com`,
-            repos: data.probingQuestions.map((q: any, idx: number) => ({
-              name: q.repoName || `Repo_${idx + 1}`,
-              description: q.question || 'Scanned GitHub repository.',
-              language: 'TypeScript',
-              stars: Math.floor(Math.random() * 30) + 5,
-              forks: Math.floor(Math.random() * 10) + 1,
-              url: `https://github.com/${parsed}/${q.repoName || ''}`,
-              detectedTools: q.expectedConcepts ? q.expectedConcepts.slice(0, 3) : ['GitHub', 'Code']
-            }))
-          }));
-        }
+      // 1. Fetch user account details
+      const userRes = await getCurrentUser();
+      if (userRes.data?.user) {
+        const u = userRes.data.user;
+        setCandidateData(prev => ({
+          ...prev,
+          name: u.name || u.username || prev.name,
+          username: u.username || prev.username,
+          email: u.email || prev.email,
+          location: u.location || prev.location,
+          targetRole: u.career_goal_short || prev.targetRole,
+          avatarUrl: `https://github.com/${u.username || 'jayyy255'}.png`
+        }));
+      }
+
+      // 2. Fetch stored candidate resume info from DB
+      const resumeRes = await getResumeInfo();
+      if (resumeRes.data) {
+        const r = resumeRes.data;
+        setCandidateData(prev => ({
+          ...prev,
+          name: r.extracted_name || prev.name,
+          email: r.extracted_email || prev.email,
+          location: r.extracted_location || prev.location,
+          targetRole: r.professional_title || prev.targetRole,
+          bio: r.professional_summary || prev.bio,
+          skills: r.technical_skills && r.technical_skills.length > 0 ? r.technical_skills : prev.skills,
+          repos: r.projects && r.projects.length > 0 ? r.projects.map((p, i) => ({
+            name: p.name || `Project_${i+1}`,
+            description: p.description || 'Candidate project showcase.',
+            language: p.technologies ? p.technologies[0] : 'TypeScript',
+            stars: Math.floor(Math.random() * 25) + 5,
+            forks: Math.floor(Math.random() * 8) + 1,
+            url: p.url || `https://github.com/${prev.username}/${p.name || ''}`,
+            detectedTools: p.technologies || ['React', 'Node.js']
+          })) : prev.repos,
+          experiences: r.experience && r.experience.length > 0 ? r.experience.map(e => ({
+            role: e.title || 'Software Engineer',
+            company: e.company || 'Tech Company',
+            period: `${e.start || '2023'} - ${e.end || 'Present'}`,
+            desc: e.description || 'Engineered software solutions and full stack features.'
+          })) : prev.experiences
+        }));
       }
     } catch (e) {
-      console.error('Fetch candidate details error:', e);
+      console.warn('Auto-fetch user resume details notice:', e);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchCandidateDetails(usernameInput);
   };
 
   const handleExportCode = () => {
@@ -205,7 +201,7 @@ export default function PortfolioTemplatesPage() {
     <main className="min-h-screen bg-slate-950 text-slate-100">
       {/* Studio Header Bar */}
       <div className="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-50 backdrop-blur-md px-4 sm:px-8 py-4">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
               <Image src="/nitiai.png" alt="Niti AI" width={36} height={36} className="rounded-lg shadow-md" />
@@ -214,39 +210,26 @@ export default function PortfolioTemplatesPage() {
               <h1 className="text-base font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Portfolio Templates Studio
               </h1>
-              <p className="text-[11px] text-slate-400">Live Seed Candidate GitHub Details into Portfolio Websites</p>
+              <p className="text-[11px] text-slate-400">Pre-seeded with your saved profile, resume &amp; skills details</p>
             </div>
           </div>
 
-          {/* GitHub Live Seed Search Bar */}
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-            <div className="relative">
-              <Github className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3" />
-              <input
-                type="text"
-                value={usernameInput}
-                onChange={(e) => setUsernameInput(e.target.value)}
-                placeholder="e.g. Indra55, SujalChoudhari"
-                className="bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-mono w-48 sm:w-60"
-              />
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-full text-xs font-mono">
+              <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-slate-200 font-bold">{candidateData.name}</span>
+              <span className="text-purple-400">(@{candidateData.username})</span>
             </div>
-            <button
-              type="submit"
-              disabled={loading || !usernameInput.trim()}
-              className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />} Seed Data
-            </button>
-          </form>
 
-          {/* Export Code Button */}
-          <button
-            onClick={handleExportCode}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-          >
-            {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Download className="w-3.5 h-3.5" />}
-            {copiedCode ? 'Portfolio Code Exported!' : 'Export Portfolio Code'}
-          </button>
+            {/* Export Code Button */}
+            <button
+              onClick={handleExportCode}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            >
+              {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Download className="w-3.5 h-3.5" />}
+              {copiedCode ? 'Portfolio Code Exported!' : 'Export Portfolio Code'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -258,7 +241,7 @@ export default function PortfolioTemplatesPage() {
             <h2 className="text-lg font-bold text-slate-100">Select Developer Portfolio Template Design:</h2>
           </div>
           <p className="text-xs text-slate-400">
-            Selected candidate profile details for <span className="text-purple-300 font-bold font-mono">@{activeUsername}</span> are automatically seeded in real-time.
+            Preview how your seeded profile &amp; resume details look across 4 developer portfolio designs.
           </p>
         </div>
 
@@ -307,10 +290,10 @@ export default function PortfolioTemplatesPage() {
               <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
             </div>
             <div className="bg-slate-950 border border-slate-800 rounded-lg px-4 py-1 text-xs text-slate-400 font-mono">
-              https://{activeUsername.toLowerCase()}.dev
+              https://{candidateData.username.toLowerCase()}.dev
             </div>
             <span className="text-xs text-emerald-400 font-bold flex items-center gap-1 font-mono">
-              <UserCheck className="w-3.5 h-3.5" /> Data Seeded
+              <UserCheck className="w-3.5 h-3.5" /> User Profile &amp; Resume Details Seeded
             </span>
           </div>
 
