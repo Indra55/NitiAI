@@ -16,8 +16,8 @@ router.get("/", authenticateToken, async (req, res) => {
         );
         res.json({ skills: result.rows });
     } catch (err) {
-        console.warn("Get skills DB query timed out/failed:", err.message);
-        res.json({ skills: [{ id: "1", skill_name: "React" }, { id: "2", skill_name: "Next.js" }, { id: "3", skill_name: "TypeScript" }, { id: "4", skill_name: "Node.js" }] });
+        console.error("Get skills error:", err);
+        res.status(500).json({ error: "Failed to fetch skills" });
     }
 });
 

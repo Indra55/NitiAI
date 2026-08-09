@@ -106,33 +106,12 @@ Respond in JSON format:
   "keyPointsMissed": ["point1", "point2"]
 }`;
 
-            const FALLBACK_MODELS = [
-                "openai/gpt-oss-20b:free",
-                "google/gemma-4-26b-a4b-it:free",
-                "nvidia/nemotron-3-nano-30b-a3b:free",
-                "cohere/north-mini-code:free"
-            ];
+            const response = await this.openai.chat.completions.create({
+                model: "stepfun/step-3.5-flash:free",
+                messages: [{ role: "user", content: prompt }]
+            });
 
-            let content = null;
-            let lastError = null;
-
-            for (const model of FALLBACK_MODELS) {
-                try {
-                    const response = await this.openai.chat.completions.create({
-                        model: model,
-                        messages: [{ role: "user", content: prompt }]
-                    });
-                    content = response.choices[0]?.message?.content;
-                    if (content) break;
-                } catch (err) {
-                    console.warn(`Evaluator model ${model} failed: ${err.message}`);
-                    lastError = err;
-                }
-            }
-
-            if (!content) {
-                throw lastError || new Error("Evaluator failed on all models.");
-            }
+            let content = response.choices[0].message.content;
             // Strip markdown code blocks if present
             content = content.replace(/```json\n?|\n?```/g, '').trim();
 
