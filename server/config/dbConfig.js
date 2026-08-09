@@ -4,21 +4,14 @@ const dns = require("dns");
 const { URL } = require("url");
 
 // ─── Force IPv4 DNS so Neon's IPv6-only records don't cause ENETUNREACH ───────
-// Neon's pooler hostname currently resolves only to IPv6 addresses.
-// If the local network has no IPv6 route, every connection times out.
-// Setting the DNS lookup order to IPv4-first guarantees we always get a
-// routable address on networks that have IPv4 but not IPv6.
 dns.setDefaultResultOrder("ipv4first");
 
 // ─── Parse connection string ──────────────────────────────────────────────────
-// Strip ?sslmode=... from the URL so pg doesn't see an ambiguous SSL mode
-// that triggers the security alias warning. We set SSL explicitly below.
 function buildPoolConfig() {
   const rawUrl = process.env.DATABASE_URL || "";
   let cleanUrl = rawUrl;
   try {
     const u = new URL(rawUrl);
-    // Remove params that conflict with our explicit ssl config
     u.searchParams.delete("sslmode");
     u.searchParams.delete("channel_binding");
     u.searchParams.delete("uselibpqcompat");
@@ -36,12 +29,10 @@ function buildPoolConfig() {
 
   return {
     connectionString: cleanUrl,
-    // Always use TLS for remote DB hosts regardless of NODE_ENV
     ssl: hasRemoteDb ? { rejectUnauthorized: false } : false,
-    // Connection pool tuning for Neon serverless postgres
     max: 20,
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 30_000, // 30s to allow Neon cold compute wake-up
+    connectionTimeoutMillis: 30_000,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10_000,
   };
@@ -65,8 +56,7 @@ pool.queryWithRetry = async (text, params, retries = 2) => {
 
 // ─── Graceful error handling ──────────────────────────────────────────────────
 pool.on("error", (err) => {
-  // Silent log for idle socket drops by serverless pooler
-  console.warn("[DB Pool] Idle socket reset by remote pooler:", err.message);
+  console.warn("[PostgreSQL Pool Network Notice]", err.message);
 });
 
 // ─── Health check helper ──────────────────────────────────────────────────────

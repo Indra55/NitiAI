@@ -214,7 +214,12 @@ export interface ResumeInfo {
         technologies: string[];
         url: string;
     }>;
-    certifications: string[];
+    certifications?: string[];
+    template_layouts?: {
+        modern?: { left_column: string[], right_column: string[] },
+        classic?: { section_order: string[] },
+        minimal?: { top_section: string[], bottom_grid: string[] }
+    };
     completeness_score: number;
     ats_score: number;
     strengths: string[];
@@ -268,10 +273,10 @@ export async function tailorResume(jobDescription: string): Promise<ApiResponse<
     });
 }
 
-export async function updateResume(currentData: ResumeInfo, instruction: string): Promise<ApiResponse<ResumeInfo>> {
+export async function updateResume(currentData: ResumeInfo, instruction: string, template: string): Promise<ApiResponse<ResumeInfo>> {
     return apiRequest<ResumeInfo>("/api/resume/update", {
         method: "POST",
-        body: JSON.stringify({ currentData, instruction }),
+        body: JSON.stringify({ currentData, instruction, template }),
     });
 }
 
@@ -618,6 +623,11 @@ export async function translateVoiceQuestion(
         method: "POST",
         body: JSON.stringify({ stepIndex, targetLanguage }),
     });
+}
+
+export async function getDeepAudit(username?: string): Promise<ApiResponse<any>> {
+    const param = username ? `?username=${encodeURIComponent(username)}` : "";
+    return apiRequest(`/api/github/deep-audit${param}`);
 }
 
 // Export types

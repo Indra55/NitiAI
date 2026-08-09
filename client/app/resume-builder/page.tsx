@@ -151,7 +151,7 @@ export default function ResumeBuilderPage() {
     setLoading(true)
 
     try {
-      const response = await updateResume(resumeInfo, instruction)
+      const response = await updateResume(resumeInfo, instruction, selectedTemplate)
 
       if (response.data) {
         setResumeInfo(response.data)

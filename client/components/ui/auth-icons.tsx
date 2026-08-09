@@ -55,6 +55,7 @@ export function SocialButton({ icon, label, onClick }: { icon: ReactNode; label:
     <button
       type="button"
       onClick={onClick}
+      suppressHydrationWarning
       className="flex h-10 items-center justify-center gap-2 rounded-[10px] border border-black/25 bg-white px-3 text-sm leading-none text-black transition-colors hover:bg-black/[0.03] dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 xl:text-[19px]"
     >
       <span className="shrink-0">{icon}</span>

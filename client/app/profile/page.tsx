@@ -1,5 +1,6 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
 import { DynamicNavbar } from "@/components/dynamic-navbar"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/lib/auth-context"
@@ -96,6 +97,8 @@ interface ProfileFormData {
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth()
+  const searchParams = useSearchParams()
+  const urlUsername = searchParams.get('username')
   const [resumeInfo, setResumeInfo] = useState<ResumeInfo | null>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -107,12 +110,15 @@ export default function ProfilePage() {
     }
     return null
   })
-  const [loading, setLoading] = useState(!resumeInfo)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [applications, setApplications] = useState<JobApplication[]>([])
   const [loadingApplications, setLoadingApplications] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [githubProjects, setGithubProjects] = useState<any[]>([])
+  const [githubConnected, setGithubConnected] = useState(false)
+  const [isScanningGithub, setIsScanningGithub] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Edit Profile Dialog State
@@ -196,6 +202,58 @@ export default function ProfilePage() {
     }
     fetchApplications()
   }, [])
+
+  // Fetch GitHub projects
+  useEffect(() => {
+    async function fetchGithub() {
+      try {
+        // Use URL username if present, otherwise fallback
+        const targetUsername = urlUsername || profileData.username || user?.username;
+        if (!targetUsername) return;
+        
+        const token = localStorage.getItem("token");
+        
+        const statusRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/check-status?username=${targetUsername}`);
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          if (statusData.isOAuthAuthorized || statusData.isAuthorized) {
+            setGithubConnected(true);
+            
+            // The actual GitHub username from the authorized token
+            const actualGithubUsername = statusData.profile?.login || targetUsername;
+            
+            // Fetch deep audit repos with README descriptions & private badges
+            try {
+              const auditRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/deep-audit?username=${actualGithubUsername}`);
+              if (auditRes.ok) {
+                const auditData = await auditRes.json();
+                if (auditData.success && auditData.audit && auditData.audit.repositories) {
+                  setGithubProjects(auditData.audit.repositories);
+                }
+              }
+            } catch (auditErr) {
+              console.warn("Deep audit fetch notice:", auditErr);
+              // Fallback to scan-results
+              const scanRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/github/scan-results?username=${actualGithubUsername}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+              });
+              if (scanRes.ok) {
+                const scanData = await scanRes.json();
+                if (scanData.success && scanData.scanResult && scanData.scanResult.repos) {
+                  setGithubProjects(scanData.scanResult.repos);
+                }
+              }
+            }
+          } else {
+            setGithubConnected(false);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch github", err);
+      }
+    }
+    fetchGithub();
+  }, [profileData.username, user?.username, urlUsername]);
 
   // Handle resume upload
   const handleResumeUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -723,6 +781,71 @@ export default function ProfilePage() {
                           <p className="text-muted-foreground">No projects found</p>
                         </Card>
                       )}
+                    </div>
+
+                    {/* GitHub Projects */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between px-2">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
+                          <Globe className="w-5 h-5 text-primary" /> GitHub Portfolio
+                        </h3>
+                        {!githubConnected && (
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={`/api/github/auth/login?username=${profileData.username || user?.username || ''}`}>
+                              Connect GitHub
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                      
+                      {isScanningGithub ? (
+                        <Card className="p-8 border-dashed border-2 border-border/50 bg-transparent text-center">
+                          <div className="flex flex-col items-center justify-center space-y-3">
+                            <div className="size-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <p className="text-muted-foreground">Scanning and analyzing repositories with Sarvam AI...</p>
+                          </div>
+                        </Card>
+                      ) : githubConnected && githubProjects.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                          {githubProjects.map((repo: any, i: number) => (
+                            <Card key={i} className="p-6 border-border/50 bg-card/40 backdrop-blur-md hover:bg-card/60 transition-colors flex flex-col h-full relative overflow-hidden space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="text-lg font-bold text-foreground">{repo.name}</h4>
+                                <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full border shrink-0 ${
+                                  repo.isPrivate || repo.private
+                                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                                    : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                }`}>
+                                  {repo.isPrivate || repo.private ? 'Private 🔒' : 'Public 🌐'}
+                                </span>
+                              </div>
+
+                              <p className="text-muted-foreground text-xs leading-relaxed grow">
+                                {repo.description && repo.description !== "No description provided"
+                                  ? repo.description
+                                  : "No description provided for this repository"}
+                              </p>
+
+                              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40 mt-auto">
+                                {repo.language && (
+                                  <span className="text-xs font-mono font-bold bg-primary/10 text-primary px-2.5 py-0.5 rounded">
+                                    {repo.language}
+                                  </span>
+                                )}
+                                {(repo.detectedTools || repo.detected_tools || []).slice(0, 5).map((tech: string, j: number) => (
+                                  <span key={j} className="text-xs bg-secondary/50 px-2 py-0.5 rounded text-secondary-foreground font-mono">
+                                    {tech}
+                                  </span>
+                                ))}
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : githubConnected ? (
+                        <Card className="p-8 border-dashed border-2 border-border/50 bg-transparent text-center">
+                          <p className="text-muted-foreground">No GitHub projects found</p>
+                        </Card>
+                      ) : null}
                     </div>
 
                     {/* Education */}

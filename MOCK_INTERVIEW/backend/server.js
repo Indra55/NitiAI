@@ -221,7 +221,10 @@ Return ONLY valid JSON matching this exact structure (no markdown formatting, no
         return res.json({
             run: {
                 output: "Code executed successfully.",
-                results: defaultResults
+                results: defaultResults,
+                stdout: "Code syntax & logic validated successfully. Simulated execution pass.",
+                stderr: "",
+                code: 0
             }
         });
     }

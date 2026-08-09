@@ -18,7 +18,11 @@ import {
   MoreHorizontal,
   ArrowLeft,
   FileSearch,
+<<<<<<< HEAD
   Globe,
+=======
+  Layout,
+>>>>>>> 9d8334231f72684d1179f19b6a819c937e7bc1fc
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
@@ -45,7 +49,7 @@ const mainNavItems = [
 // Additional features in dropdown
 const moreNavItems = [
   { label: "Opportunities", href: "/opportunities", icon: Users },
-  { label: "Portfolio", href: "/portfolio", icon: Briefcase },
+  { label: "Portfolio Studio", href: "/portfolio-templates", icon: Briefcase },
   { label: "Language Agent", href: "/lingua-coach", icon: Globe },
   { label: "Interview", href: "/interview", icon: Mic },
 ]

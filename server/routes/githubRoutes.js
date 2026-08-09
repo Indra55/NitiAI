@@ -5,6 +5,7 @@ const axios = require('axios');
 const pool = require('../config/dbConfig');
 const githubService = require('../services/githubService');
 const sarvamService = require('../services/sarvamService');
+const { authenticateToken } = require('../middleware/auth');
 
 const audioUpload = multer({
   storage: multer.memoryStorage(),
@@ -17,8 +18,8 @@ const audioUpload = multer({
  */
 router.get('/check-status', async (req, res) => {
   try {
-    const username = (req.query.username || '').trim();
-    if (!username) {
+    let username = (req.query.username || '').trim();
+    if (!username || username.includes(' ')) {
       return res.json({
         success: true,
         username: null,
@@ -118,13 +119,14 @@ router.post('/save-user-github', async (req, res) => {
 router.get('/auth/login', (req, res) => {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const redirectUri = process.env.GITHUB_REDIRECT_URI || 'http://localhost:5555/api/github/auth/callback';
-  const username = (req.query.username || '').trim();
+  let username = (req.query.username || '').trim();
+  if (username.includes(' ')) username = '';
 
   if (!clientId) {
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
     const targetUser = username || 'Indra55';
     console.log(`[GitHubOAuth] GITHUB_CLIENT_ID not configured. Directing candidate @${targetUser} to public repo scan mode.`);
-    return res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUser)}`);
+    return res.redirect(`${clientUrl}/profile?githubConnected=true&username=${encodeURIComponent(targetUser)}`);
   }
 
   let githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=repo,read:user&prompt=consent`;
@@ -180,7 +182,7 @@ router.get('/auth/callback', async (req, res) => {
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
 
   if (!code) {
-    return res.redirect(`${clientUrl}/github-demo?githubError=no_code`);
+    return res.redirect(`${clientUrl}/profile?githubError=no_code`);
   }
 
   try {
@@ -202,7 +204,7 @@ router.get('/auth/callback', async (req, res) => {
         const stateParam = state ? `?username=${encodeURIComponent(state)}&forceReauth=true` : '?forceReauth=true';
         return res.redirect(`/api/github/auth/login${stateParam}`);
       }
-      return res.redirect(`${clientUrl}/github-demo?githubError=token_failed`);
+      return res.redirect(`${clientUrl}/profile?githubError=token_failed`);
     }
 
     // Fetch authenticated user profile directly from GitHub API
@@ -244,19 +246,34 @@ router.get('/auth/callback', async (req, res) => {
 
     console.log(`[GitHubOAuth] Successfully stored token in DB for candidate: "@${targetUsername}" (Authenticated GitHub user: "@${authenticatedUsername}")`);
 
+    // Perform automatic deep audit of all public & private repos with descriptions & READMEs
+    try {
+      const auditData = await githubService.deepAuditRepositories(targetUsername, accessToken);
+      await githubService.saveScanToDb(targetUsername, auditData.repositories, {
+        totalRepositories: auditData.totalRepositories,
+        publicCount: auditData.publicCount,
+        privateCount: auditData.privateCount,
+        techFrequency: auditData.techFrequency
+      });
+      console.log(`[GitHubOAuth] Deep audit complete for "${targetUsername}": ${auditData.totalRepositories} total repos (${auditData.privateCount} Private 🔒, ${auditData.publicCount} Public 🌐).`);
+    } catch (auditErr) {
+      console.warn(`[GitHubOAuth] Automatic deep audit notice:`, auditErr.message);
+    }
+
     // Redirect back to production studio with pre-seeded candidate profile details
-    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUsername)}&name=${encodeURIComponent(ghUser.name || targetUsername)}&email=${encodeURIComponent(ghUser.email || '')}&avatar=${encodeURIComponent(ghUser.avatar_url || '')}`);
+    res.redirect(`${clientUrl}/profile?githubConnected=true&username=${encodeURIComponent(targetUsername)}&name=${encodeURIComponent(ghUser.name || targetUsername)}&email=${encodeURIComponent(ghUser.email || '')}&avatar=${encodeURIComponent(ghUser.avatar_url || '')}`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
-    res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);
+    res.redirect(`${clientUrl}/profile?githubError=${encodeURIComponent(error.message)}`);
   }
 });
 
 /**
  * 7. GET /api/github/scan-results
  * Retrieves stored scan results for a username directly from PostgreSQL DB / Tier 1 Cache
+ * and ranks them based on candidate's profile/resume.
  */
-router.get('/scan-results', async (req, res) => {
+router.get('/scan-results', authenticateToken, async (req, res) => {
   try {
     const { username } = req.query;
     if (!username) {
@@ -266,6 +283,28 @@ router.get('/scan-results', async (req, res) => {
     const scanData = await githubService.getScanFromDb(username);
     if (!scanData) {
       return res.status(404).json({ success: false, error: `No stored scan found for user ${username}` });
+    }
+
+    // Try to rank projects against candidate's resume
+    let rankedRepos = scanData.repos || [];
+    try {
+      const resumeResult = await pool.query(
+          "SELECT resume_text FROM resume_info WHERE user_id = $1",
+          [req.user.id]
+      );
+      if (resumeResult.rows.length > 0 && resumeResult.rows[0].resume_text) {
+          const resumeText = resumeResult.rows[0].resume_text;
+          rankedRepos = await githubService.rankProjectsAgainstProfile(username, scanData.repos, resumeText);
+          
+          // Optionally save ranked repos back to DB
+          scanData.repos = rankedRepos;
+          await pool.query(
+            "UPDATE github_scans SET scan_json = $1 WHERE LOWER(username) = $2",
+            [JSON.stringify(scanData), username.toLowerCase().trim()]
+          );
+      }
+    } catch (dbErr) {
+      console.warn("[GitHubRoutes] Ranking failed, using original repos", dbErr);
     }
 
     res.json({
@@ -442,6 +481,25 @@ router.post('/deep-repo-analysis', async (req, res) => {
     });
   } catch (error) {
     console.error('GitHub deep-repo-analysis route error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * 12. GET /api/github/deep-audit
+ * Audits all public & private repositories for a candidate and extracts descriptions & tool usage
+ */
+router.get('/deep-audit', async (req, res) => {
+  try {
+    const username = (req.query.username || 'Indra55').trim();
+    const auditData = await githubService.deepAuditRepositories(username);
+
+    res.json({
+      success: true,
+      audit: auditData
+    });
+  } catch (error) {
+    console.error('GitHub deep-audit error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
