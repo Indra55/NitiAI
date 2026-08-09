@@ -90,9 +90,9 @@ export default function PortfolioTemplatesPage() {
       title: 'DeveloperFolio / Cyber-Glass Template',
       author: 'saadpasta',
       repo: 'developerFolio',
-      description: 'Modern Cyber-Tech Glassmorphism design with interactive tech stack filtering, project showcase cards, and career timeline.',
+      description: 'Modern developer portfolio with interactive tech stack filtering, project showcase cards, and career experience timeline.',
       badge: 'Featured Template',
-      tags: ['Cyber-Glass', 'Interactive Filter', 'GitHub Stars', 'Dark Theme'],
+      tags: ['Cyber-Glass', 'Interactive Filter', 'GitHub Stars', 'Developer Showcase'],
       component: CustomPortfolioTemplate
     }
   ];
@@ -163,59 +163,58 @@ export default function PortfolioTemplatesPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <RefreshCw className="w-6 h-6 animate-spin text-cyan-400" />
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center">
+        <RefreshCw className="w-6 h-6 animate-spin text-orange-600" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
-      {/* Background Radial Glow */}
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.1),transparent_35%),radial-gradient(circle_at_85%_25%,rgba(168,85,247,0.1),transparent_30%)]" />
-
-      {/* Top Navbar Bar */}
-      <div className="border-b border-slate-800/80 bg-slate-900/90 sticky top-0 z-40 backdrop-blur-xl px-4 sm:px-8 py-4">
+    <main className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
+      {/* Top Header Bar - White & Black with Orange Highlights */}
+      <div className="border-b border-slate-200 bg-white/90 sticky top-0 z-40 backdrop-blur-md px-4 sm:px-8 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-2">
               <Image src="/nitiai.png" alt="Niti AI" width={36} height={36} className="rounded-xl shadow-md" />
             </Link>
             <div>
-              <h1 className="text-base font-extrabold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Portfolio Templates Gallery
+              <h1 className="text-lg font-black text-slate-900 tracking-tight">
+                Portfolio Templates <span className="text-orange-600">Gallery</span>
               </h1>
-              <p className="text-[11px] text-slate-400">Pre-seeded with your authenticated profile &amp; resume details</p>
+              <p className="text-[11px] text-slate-500">Auto-seeded with your authenticated profile &amp; resume details</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 bg-slate-950 border border-slate-800 px-3.5 py-1.5 rounded-full text-xs font-mono">
-              <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-slate-200 font-bold">{candidateData.name}</span>
-              <span className="text-purple-400">(@{candidateData.username})</span>
+            <div className="hidden sm:flex items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-full text-xs font-mono">
+              <UserCheck className="w-3.5 h-3.5 text-orange-600" />
+              <span className="text-slate-900 font-bold">{candidateData.name}</span>
+              <span className="text-orange-600 font-semibold">(@{candidateData.username})</span>
             </div>
 
             <button
               onClick={handleExportCode}
-              className="bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-lg shadow-cyan-400/20 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs px-4.5 py-2 rounded-xl transition-all shadow-md shadow-orange-600/20 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
-              {copiedCode ? <Check className="w-3.5 h-3.5 text-slate-950" /> : <Download className="w-3.5 h-3.5" />}
+              {copiedCode ? <Check className="w-3.5 h-3.5 text-white" /> : <Download className="w-3.5 h-3.5" />}
               {copiedCode ? 'TSX Code Exported!' : 'Export React TSX'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main Studio Content */}
-      <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 relative z-10">
-        {/* Intro Banner */}
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-800 text-cyan-300 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" /> Select &amp; Preview Portfolio Designs
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8">
+        {/* Banner Section */}
+        <div className="space-y-2 bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-orange-600" /> Select &amp; Preview Portfolio Designs
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Available Developer Portfolio Templates</h2>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Developer Portfolio Templates
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
             Choose a portfolio template design below. Each template is automatically seeded with your real candidate name, resume skills, projects, and work experience.
           </p>
         </div>
@@ -229,32 +228,32 @@ export default function PortfolioTemplatesPage() {
             return (
               <div
                 key={tmpl.id}
-                className={`rounded-3xl border transition-all overflow-hidden bg-slate-900/80 backdrop-blur-xl ${
+                className={`rounded-3xl border transition-all overflow-hidden bg-white shadow-sm ${
                   isSelected
-                    ? 'border-cyan-400/60 shadow-2xl shadow-cyan-950/30'
-                    : 'border-slate-800 hover:border-slate-700'
+                    ? 'border-orange-500 ring-2 ring-orange-500/20 shadow-md'
+                    : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
                 {/* Row Template Information Bar */}
-                <div className="p-6 sm:p-8 border-b border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950">
+                <div className="p-6 sm:p-8 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/50">
                   <div className="space-y-3 flex-1">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950 border border-cyan-800 px-2.5 py-0.5 rounded-md">
+                      <span className="text-xs font-mono font-bold text-white bg-slate-900 px-2.5 py-0.5 rounded-md">
                         0{idx + 1}
                       </span>
-                      <h3 className="text-xl font-bold text-white">{tmpl.title}</h3>
-                      <span className="text-xs font-bold text-purple-300 bg-purple-950 border border-purple-800 px-3 py-0.5 rounded-full">
+                      <h3 className="text-xl font-bold text-slate-900">{tmpl.title}</h3>
+                      <span className="text-xs font-bold text-orange-700 bg-orange-100 border border-orange-200 px-3 py-0.5 rounded-full">
                         {tmpl.badge}
                       </span>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-3xl">
                       {tmpl.description}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       {tmpl.tags.map((t, i) => (
-                        <span key={i} className="text-[10px] bg-slate-950 border border-slate-800 text-slate-400 px-2.5 py-0.5 rounded-md font-mono">
+                        <span key={i} className="text-[10px] bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-0.5 rounded-md font-mono font-semibold">
                           #{t}
                         </span>
                       ))}
@@ -265,36 +264,36 @@ export default function PortfolioTemplatesPage() {
                   <div className="flex flex-wrap items-center gap-3 shrink-0">
                     <button
                       onClick={() => setFullscreenPreview(true)}
-                      className="bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                     >
-                      <Eye className="w-4 h-4 text-cyan-400" /> Fullscreen Live Preview
+                      <Eye className="w-4 h-4 text-orange-600" /> Fullscreen Live Preview
                     </button>
 
                     <button
                       onClick={() => setSelectedTemplateId(tmpl.id)}
-                      className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                      className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
                         isSelected
-                          ? 'bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-300/20 font-extrabold'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                          ? 'bg-orange-600 text-white shadow-orange-600/20 font-extrabold'
+                          : 'bg-slate-900 hover:bg-slate-800 text-white'
                       }`}
                     >
-                      {isSelected ? <Check className="w-4 h-4 text-slate-950" /> : <Sparkles className="w-4 h-4 text-cyan-400" />}
+                      {isSelected ? <Check className="w-4 h-4 text-white" /> : <Sparkles className="w-4 h-4 text-orange-400" />}
                       {isSelected ? 'Active Template' : 'Select Template'}
                     </button>
                   </div>
                 </div>
 
                 {/* INLINE LIVE SEEDED PREVIEW CONTAINER */}
-                <div className="relative p-4 sm:p-6 bg-slate-950/60">
-                  <div className="mb-3 flex items-center justify-between text-xs text-slate-400 font-mono px-2">
-                    <span className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                <div className="relative p-4 sm:p-6 bg-slate-100/60">
+                  <div className="mb-3 flex items-center justify-between text-xs text-slate-500 font-mono px-2">
+                    <span className="flex items-center gap-1.5 text-orange-600 font-bold">
                       <UserCheck className="w-3.5 h-3.5" /> Inline Live Seeded Preview (Using Your Profile &amp; Resume)
                     </span>
                     <span>Template Ref: {tmpl.author}/{tmpl.repo}</span>
                   </div>
 
                   {/* Scaled Preview Frame Container */}
-                  <div className="rounded-2xl border border-slate-800 overflow-hidden shadow-2xl max-h-[560px] overflow-y-auto relative">
+                  <div className="rounded-2xl border border-slate-300 overflow-hidden shadow-lg max-h-[560px] overflow-y-auto relative">
                     <TemplateComponent data={candidateData} />
                   </div>
                 </div>
@@ -306,26 +305,26 @@ export default function PortfolioTemplatesPage() {
 
       {/* FULLSCREEN MODAL LIVE PREVIEW OVERLAY */}
       {fullscreenPreview && (
-        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl overflow-y-auto flex flex-col">
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md overflow-y-auto flex flex-col">
           {/* Modal Header */}
-          <div className="sticky top-0 z-50 bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+          <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-cyan-300 bg-cyan-950 border border-cyan-800 px-3 py-1 rounded-full font-mono">
+              <span className="text-xs font-bold text-orange-700 bg-orange-100 border border-orange-200 px-3 py-1 rounded-full font-mono">
                 Fullscreen Live Seeded Preview
               </span>
-              <span className="text-sm font-bold text-white">Cyber-Glass Developer Portfolio</span>
+              <span className="text-sm font-bold text-slate-900">DeveloperFolio / Cyber-Glass Template</span>
             </div>
 
             <button
               onClick={() => setFullscreenPreview(false)}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-xl border border-slate-700 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-800 p-2 rounded-xl border border-slate-300 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
             >
-              <X className="w-4 h-4 text-red-400" /> Close Preview
+              <X className="w-4 h-4 text-slate-800" /> Close Preview
             </button>
           </div>
 
           {/* Modal Content Frame */}
-          <div className="flex-1">
+          <div className="flex-1 bg-slate-950">
             <CustomPortfolioTemplate data={candidateData} />
           </div>
         </div>
