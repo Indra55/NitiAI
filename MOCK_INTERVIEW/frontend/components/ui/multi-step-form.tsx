@@ -63,8 +63,8 @@ const MultiStepForm = React.forwardRef<HTMLDivElement, MultiStepFormProps>(
     };
 
     return (
-      <Card ref={ref} className={cn(multiStepFormVariants({ size }), className)} {...props}>
-        <CardHeader>
+      <Card ref={ref} className={cn(multiStepFormVariants({ size }), "rounded-3xl border-slate-200 bg-white shadow-2xl shadow-slate-900/[0.06]", className)} {...props}>
+        <CardHeader className="p-7 pb-5 md:p-9 md:pb-6">
           <div className="flex items-start justify-between">
             <CardTitle>{title}</CardTitle>
             {onClose && (
@@ -74,15 +74,15 @@ const MultiStepForm = React.forwardRef<HTMLDivElement, MultiStepFormProps>(
             )}
           </div>
           <CardDescription>{description}</CardDescription>
-          <div className="flex items-center gap-4 pt-2">
+          <div className="flex items-center gap-4 pt-4">
             <Progress value={progress} className="w-full" />
-            <p className="text-sm text-muted-foreground whitespace-nowrap">
-              {currentStep}/{totalSteps} completed
+            <p className="text-xs font-bold text-muted-foreground whitespace-nowrap">
+              Step {currentStep} of {totalSteps}
             </p>
           </div>
         </CardHeader>
 
-        <CardContent className="min-h-[300px] overflow-hidden">
+        <CardContent className="min-h-[300px] overflow-hidden px-7 md:px-9">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -97,15 +97,15 @@ const MultiStepForm = React.forwardRef<HTMLDivElement, MultiStepFormProps>(
           </AnimatePresence>
         </CardContent>
 
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between border-t border-slate-100 px-7 py-5 md:px-9">
           <div>{footerContent}</div>
           <div className="flex gap-2">
             {currentStep > 1 && (
-              <Button type="button" variant="outline" onClick={onBack}>
+              <Button type="button" variant="outline" onClick={onBack} className="rounded-xl border-slate-200 font-bold active:scale-[0.98]">
                 {backButtonText}
               </Button>
             )}
-            <Button type="button" onClick={onNext}>
+            <Button type="button" onClick={onNext} className="rounded-xl bg-slate-900 px-5 font-bold text-white shadow-lg shadow-slate-900/10 transition-all hover:bg-orange-500 active:scale-[0.98]">
               {nextButtonText}
             </Button>
           </div>

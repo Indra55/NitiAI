@@ -64,7 +64,7 @@ export async function generateCodingQuestions(difficulty: string = "Medium"): Pr
                 "HTTP-Referer": window.location.origin,
             },
             body: JSON.stringify({
-                model: "stepfun/step-3.5-flash:free",
+                model: "google/gemma-4-26b-a4b-it:free",
                 messages: [{ role: "user", content: prompt }]
             }),
         });

@@ -666,7 +666,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <Button className="w-full mt-auto gap-2" variant="outline"
-                        onClick={() => window.location.href = "https://hacksync-interview.vercel.app/"}
+                        onClick={() => window.location.href = process.env.NEXT_PUBLIC_MOCK_INTERVIEW_URL || "http://localhost:3001"}
                       >
                         Start Practice <ArrowRight className="w-4 h-4" />
                       </Button>

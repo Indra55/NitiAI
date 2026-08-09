@@ -21,8 +21,8 @@ const corsOptions = {
 }
 // Middleware
 app.use(cors(corsOptions))
-app.use(express.urlencoded({ extended: false }))
-app.use(express.json())
+app.use(express.urlencoded({ limit: '50mb', extended: true }))
+app.use(express.json({ limit: '50mb' }))
 
 // Catch malformed JSON
 app.use((err, req, res, next) => {

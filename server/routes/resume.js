@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../config/dbConfig");
-const { authenticateToken } = require("../middleware/auth");
+const { authenticateToken, optionalAuth } = require("../middleware/auth");
 const multer = require("multer");
 const pdf = require("pdf-parse");
 const resumeService = require("./resumeParser");
@@ -264,6 +264,37 @@ router.get("/info", authenticateToken, async (req, res) => {
     } catch (error) {
         console.error("Error fetching resume info:", error);
         res.status(500).json({ error: "Failed to fetch resume info" });
+    }
+});
+
+/**
+ * @route GET /api/resume/latest
+ * @desc Get latest stored resume info from DB
+ * @access Public / Private
+ */
+router.get("/latest", optionalAuth, async (req, res) => {
+    try {
+        let result;
+        if (req.user && req.user.id) {
+            result = await pool.query(
+                `SELECT extracted_name, professional_title, years_of_experience, professional_summary, technical_skills, soft_skills, projects, experience, education FROM resume_info WHERE user_id = $1`,
+                [req.user.id]
+            );
+        }
+        if (!result || result.rows.length === 0) {
+            result = await pool.query(
+                `SELECT extracted_name, professional_title, years_of_experience, professional_summary, technical_skills, soft_skills, projects, experience, education FROM resume_info ORDER BY updated_at DESC LIMIT 1`
+            );
+        }
+
+        if (!result || result.rows.length === 0) {
+            return res.status(404).json({ error: "No resume found in database" });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error("Error fetching latest resume info:", error);
+        res.status(500).json({ error: "Failed to fetch latest resume info" });
     }
 });
 

@@ -110,7 +110,7 @@ export function MockInterviewList() {
       </div>
 
       <div className="mt-4 pt-4 border-t border-border/40">
-        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"                   onClick={() => window.location.href = "https://hacksync-interview.vercel.app/"} >
+        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => window.location.href = process.env.NEXT_PUBLIC_MOCK_INTERVIEW_URL || "http://localhost:3001"} >
           Create New Room
         </Button>
       </div>

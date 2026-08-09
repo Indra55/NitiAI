@@ -19,7 +19,7 @@ export function FieldBox({
   const [isEditing, setIsEditing] = useState(value !== "");
 
   return (
-    <label className="flex h-14 items-center justify-between gap-4 rounded-[10px] border border-black/25 bg-white px-5 text-lg leading-none dark:border-white/15 dark:bg-white/5 xl:text-xl">
+    <label className="flex h-14 items-center justify-between gap-4 rounded-[10px] border border-slate-300 bg-slate-50/80 px-5 text-lg leading-none transition-colors focus-within:border-slate-800 dark:border-white/20 dark:bg-white/5 xl:text-xl">
       <input
         type={type}
         value={value}
@@ -33,10 +33,10 @@ export function FieldBox({
           if (onChange) onChange(e);
           setIsEditing(true);
         }}
-        className="min-w-0 flex-1 truncate bg-transparent text-black/80 outline-none placeholder:text-black/30 dark:text-white dark:placeholder:text-white/35 disabled:opacity-50"
+        className="min-w-0 flex-1 truncate bg-transparent text-slate-900 font-medium outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-white/40 disabled:opacity-50"
       />
       {!isEditing && !value && (
-        <span className="shrink-0 text-black dark:text-white pointer-events-none">{label}</span>
+        <span className="shrink-0 text-slate-600 dark:text-slate-300 font-medium pointer-events-none">{label}</span>
       )}
     </label>
   );
@@ -44,11 +44,11 @@ export function FieldBox({
 
 export function CheckboxLine({ children }: { children: ReactNode }) {
   return (
-    <label className="flex items-start gap-3 cursor-pointer">
+    <label className="flex items-start gap-3 cursor-pointer text-slate-800 dark:text-slate-200">
       <span className="relative mt-1 size-3.5 shrink-0">
         <input
           type="checkbox"
-          className="peer size-full appearance-none rounded-[2px] border border-black/25 bg-white checked:border-black checked:bg-black dark:border-white/30 dark:bg-white/5 dark:checked:border-white dark:checked:bg-white cursor-pointer"
+          className="peer size-full appearance-none rounded-[2px] border border-slate-400 bg-white checked:border-slate-900 checked:bg-slate-900 dark:border-white/30 dark:bg-white/5 dark:checked:border-white dark:checked:bg-white cursor-pointer"
         />
         <svg
           viewBox="0 0 12 12"
@@ -86,9 +86,10 @@ export function AuthButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="mt-9 flex h-12 w-full items-center justify-center rounded-[10px] border border-black/40 bg-black text-xl font-medium text-white transition-colors hover:bg-black/85 dark:border-white/40 dark:bg-white dark:text-black dark:hover:bg-white/85 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="mt-9 flex h-12 w-full items-center justify-center rounded-[10px] bg-slate-900 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
     >
       {children}
     </button>
   );
 }
+

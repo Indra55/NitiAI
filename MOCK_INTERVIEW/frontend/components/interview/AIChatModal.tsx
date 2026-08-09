@@ -53,11 +53,11 @@ export default function AIChatModal({ isOpen, onClose, currentCode, problem }: A
         headers: {
           "Authorization": `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost:3000",
+          "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3001",
           "X-Title": "Niti AI Interview",
         },
         body: JSON.stringify({
-          model: "stepfun/step-3.5-flash:free",
+          model: "google/gemma-4-26b-a4b-it:free",
           messages: [
             {
               role: "system",
@@ -113,11 +113,11 @@ export default function AIChatModal({ isOpen, onClose, currentCode, problem }: A
          headers: {
            "Authorization": `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
            "Content-Type": "application/json",
-           "HTTP-Referer": "http://localhost:3000",
+           "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3001",
            "X-Title": "Niti AI Interview",
          },
          body: JSON.stringify({
-           model: "stepfun/step-3.5-flash:free",
+           model: "google/gemma-4-26b-a4b-it:free",
            messages: [
              {
                role: "system",

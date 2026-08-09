@@ -11,6 +11,7 @@ const server = http.createServer(app);
 // CORS configuration for production
 const allowedOrigins = [
     "http://localhost:3000",
+    "http://localhost:3001",
     "https://*.vercel.app",
     process.env.FRONTEND_URL // Add your Vercel domain here
 ].filter(Boolean);
@@ -60,7 +61,8 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
 app.get('/health', (req, res) => {
@@ -84,7 +86,7 @@ app.get('/api/rooms/:roomId', (req, res) => {
 
 // Get all available rooms
 app.get('/api/rooms', (req, res) => {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const availableRooms = Array.from(rooms.values()).map(room => ({
         roomId: room.id,
         link: `${frontendUrl}/interview/${room.id}`,
@@ -180,6 +182,60 @@ app.post('/api/execute', async (req, res) => {
                 output: `Error connecting to execution environment: ${error.message}\nPlease check EXECUTION_API_URL in backend .env`
             }
         });
+    }
+});
+
+// Sarvam AI Voice & Multilingual Endpoints
+const sarvamVoiceService = require('./services/sarvamVoiceService');
+
+app.post('/api/sarvam/voice-turn', async (req, res) => {
+    const { candidateTranscript, questions, conversationHistory, languageCode, activeRound } = req.body;
+    try {
+        const result = await sarvamVoiceService.generateRecruiterTurn({
+            candidateTranscript: candidateTranscript || "",
+            questions: questions || [],
+            conversationHistory: conversationHistory || [],
+            languageCode: languageCode || "en-IN",
+            activeRound: activeRound || "technical"
+        });
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error("Sarvam Voice Turn Error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/sarvam/tts', async (req, res) => {
+    const { text, languageCode, speaker } = req.body;
+    try {
+        const audioBase64 = await sarvamVoiceService.textToSpeech(
+            text || "Hello", 
+            languageCode || "en-IN", 
+            speaker || "ritu"
+        );
+        res.json({ success: true, audioBase64 });
+    } catch (error) {
+        console.error("Sarvam TTS Endpoint Error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/sarvam/stt', async (req, res) => {
+    const { audioBase64, languageCode } = req.body;
+    try {
+        if (!audioBase64) {
+            return res.status(400).json({ error: "Missing audioBase64 string" });
+        }
+        const audioBuffer = Buffer.from(audioBase64, 'base64');
+        const result = await sarvamVoiceService.speechToText(
+            audioBuffer,
+            "recorded_candidate_audio.wav",
+            languageCode || "en-IN"
+        );
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error("Sarvam STT Endpoint Error:", error.message);
+        res.status(500).json({ error: error.message });
     }
 });
 

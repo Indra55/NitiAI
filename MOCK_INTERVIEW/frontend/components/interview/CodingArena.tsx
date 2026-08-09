@@ -16,9 +16,9 @@ interface CodingArenaProps {
 }
 
 const BOILERPLATES: Record<string, string> = {
-  javascript: `function solution(nums, target) {\n  // Write your code here\n  \n}`,
-  python: `def solution(nums, target):\n    # Write your code here\n    pass`,
-  cpp: `#include <iostream>\n#include <vector>\n\nusing namespace std;\n\nclass Solution {\npublic:\n    vector<int> solution(vector<int>& nums, int target) {\n        // Write your code here\n        return {};\n    }\n};`
+  javascript: `function solution(nums, target) {\n  // Write your solution here\n  \n}`,
+  python: `def solution(nums, target):\n    # Write your solution here\n    pass`,
+  cpp: `#include <iostream>\n#include <vector>\n\nusing namespace std;\n\nclass Solution {\npublic:\n    vector<int> solution(vector<int>& nums, int target) {\n        // Write your solution here\n        return {};\n    }\n};`
 };
 
 const CodingArena = ({ problems = [], isDarkMode, setIsDarkMode, onFinishCoding }: CodingArenaProps) => {
@@ -26,7 +26,6 @@ const CodingArena = ({ problems = [], isDarkMode, setIsDarkMode, onFinishCoding 
   const problem = problems[currentIdx];
 
   const [language, setLanguage] = useState('javascript');
-  // Initialize with dynamic boilerplate if available
   const [code, setCode] = useState(problems[0]?.boilerplates?.['javascript'] || BOILERPLATES.javascript);
   const [output, setOutput] = useState('');
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -35,7 +34,6 @@ const CodingArena = ({ problems = [], isDarkMode, setIsDarkMode, onFinishCoding 
 
   const handleLanguageChange = (newLang: string) => {
     setLanguage(newLang);
-    // Use AI-generated boilerplate if available, otherwise fallback to hardcoded defaults
     const newCode = problem?.boilerplates?.[newLang] || BOILERPLATES[newLang] || "";
     setCode(newCode);
     setIsSolved(false);
@@ -44,7 +42,7 @@ const CodingArena = ({ problems = [], isDarkMode, setIsDarkMode, onFinishCoding 
   const handleRunCode = async () => {
     if (isEvaluating) return;
     setIsEvaluating(true);
-    setOutput("Compiling and running against test cases...");
+    setOutput("Compiling code against test cases...");
 
     try {
       const result = await evaluateCode({
@@ -58,27 +56,27 @@ const CodingArena = ({ problems = [], isDarkMode, setIsDarkMode, onFinishCoding 
 
       if (result.results && result.results.length > 0) {
         consoleLogs += result.results.map((res: any, i: number) => {
-          let log = `> Test Case ${i + 1}: ${res.passed ? '✅ PASS' : '❌ FAIL'}\n  Input: ${res.input}\n  Expected: ${res.expected}\n  Output: ${res.actual}`;
+          let log = `> Test Case ${i + 1}: ${res.passed ? 'PASSED' : 'FAILED'}\n  Input: ${res.input}\n  Expected: ${res.expected}\n  Output: ${res.actual}`;
           if (res.stdout) {
             log += `\n  Stdout: ${res.stdout}`;
           }
           return log;
         }).join('\n\n');
       } else {
-        consoleLogs += result.success ? "All tests passed!" : "Generation failed to return specific test results.";
+        consoleLogs += result.success ? "All test cases passed." : "Test suite did not produce detailed logs.";
       }
 
       setOutput(consoleLogs);
       setIsSolved(result.success);
 
       toaster.create({
-        title: result.success ? "Tests Passed!" : "Tests Failed",
-        description: result.success ? "Your solution passed all sample cases." : "Check the console for errors.",
+        title: result.success ? "Test Cases Passed" : "Tests Failed",
+        description: result.success ? "Your code passed all validation tests." : "Check the output console for details.",
         type: result.success ? "success" : "error",
       });
     } catch (err: any) {
       console.error(err);
-      setOutput(`Error: ${err.message || "Failed to contact code runner service."}`);
+      setOutput(`Error: ${err.message || "Execution service unavailable."}`);
     } finally {
       setIsEvaluating(false);
     }
@@ -91,19 +89,14 @@ const CodingArena = ({ problems = [], isDarkMode, setIsDarkMode, onFinishCoding 
       setCode(nextProblem?.boilerplates?.[language] || BOILERPLATES[language] || BOILERPLATES.javascript);
       setOutput("");
       setIsSolved(false);
-      toaster.create({
-        title: `Question ${currentIdx + 2}`,
-        description: "Moving to the next challenge.",
-        type: "info"
-      });
     }
   };
 
   const handleSubmit = async () => {
     if (!isSolved) {
       toaster.create({
-        title: "Incomplete Solution",
-        description: "You must pass the tests for the final question before submitting.",
+        title: "Validation Required",
+        description: "Please run and pass all test cases before submitting.",
         type: "warning"
       });
       return;
@@ -112,67 +105,77 @@ const CodingArena = ({ problems = [], isDarkMode, setIsDarkMode, onFinishCoding 
     setIsEvaluating(true);
     try {
       toaster.create({
-        title: "Submission Successful",
-        description: "All solutions saved. Proceeeding to Voice round.",
+        title: "Solutions Submitted",
+        description: "Code saved. Advancing to Voice Viva.",
         type: "success",
       });
 
       if (onFinishCoding) onFinishCoding(code);
     } catch (err) {
-      toaster.create({ title: "Submission Failed", type: "error" });
+      toaster.create({ title: "Submission Error", type: "error" });
     } finally {
       setIsEvaluating(false);
     }
   };
 
   return (
-    <div className={`flex flex-col h-[calc(100vh-64px)] transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
+    <div className={`flex flex-col h-[calc(100vh-64px)] font-sans ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-white text-slate-900'}`}>
       <div className="flex flex-1 overflow-hidden">
-        {/* Problem Panel */}
-        <div className={`w-1/3 p-8 overflow-y-auto border-r transition-colors ${isDarkMode ? 'border-gray-800 bg-gray-950' : 'border-gray-100 bg-white'}`}>
+        
+        {/* Left: Problem Description Panel */}
+        <div className={`w-1/3 p-8 overflow-y-auto border-r ${isDarkMode ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'}`}>
           <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2">
-              <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-500/10' : 'bg-orange-100'}`}>
-                <Layout className={`w-5 h-5 ${isDarkMode ? 'text-orange-500' : 'text-orange-600'}`} />
-              </div>
-              <h2 className="text-xl font-black tracking-tight">{problem?.title || "Problem Loading..."}</h2>
+            <div className="flex items-center gap-2.5">
+              <Layout className="w-5 h-5 text-orange-500" />
+              <h2 className={`text-lg font-semibold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                {problem?.title || "Loading Problem..."}
+              </h2>
             </div>
-            <span className={`px-3 py-1 text-[10px] font-black uppercase rounded-full border transition-colors ${isDarkMode ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-orange-50 text-orange-600 border-orange-100'
-              }`}>{problem?.difficulty || "Medium"}</span>
+            <span className={`px-3 py-1 text-xs font-medium rounded-full border ${
+              isDarkMode ? 'border-slate-700 bg-slate-800 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'
+            }`}>
+              {problem?.difficulty || "Medium"}
+            </span>
           </div>
 
-          <div className={`space-y-6 text-sm leading-relaxed font-medium transition-colors ${isDarkMode ? 'text-gray-400' : 'text-black'}`}>
-            <p className={`font-bold ${isDarkMode ? 'text-gray-200' : 'text-black'}`}>{problem?.description || "In this challenge, you need to find two numbers in an array that add up to a specific target."}</p>
+          <div className={`space-y-6 text-sm leading-relaxed font-normal ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+            <p className={`font-medium ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+              {problem?.description || "Find two numbers in an array that add up to the specified target value."}
+            </p>
 
-            <div className={`p-5 rounded-2xl border font-mono text-xs transition-colors ${isDarkMode ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-50 border-gray-100'
-              }`}>
-              <span className="text-orange-500 font-black tracking-widest uppercase block mb-2 opacity-50">Example</span>
+            {/* Example Box */}
+            <div className={`p-4 rounded-xl border font-mono text-xs space-y-2 ${
+              isDarkMode ? 'border-slate-800 bg-slate-950 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-800'
+            }`}>
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Example</span>
               <div className="space-y-1">
                 <div className="flex gap-2">
-                  <span className={isDarkMode ? 'text-gray-500' : 'text-black/40'}>Input:</span>
-                  <code className={`font-black ${isDarkMode ? 'text-gray-200' : 'text-black'}`}>{problem?.example?.input || "nums = [2,7,11,15], target = 9"}</code>
+                  <span className="text-slate-400">Input:</span>
+                  <code className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{problem?.example?.input || "nums = [2,7,11,15], target = 9"}</code>
                 </div>
                 <div className="flex gap-2">
-                  <span className={isDarkMode ? 'text-gray-500' : 'text-black/40'}>Output:</span>
-                  <code className={`font-black ${isDarkMode ? 'text-gray-200' : 'text-black'}`}>{problem?.example?.output || "[0,1]"}</code>
+                  <span className="text-slate-400">Output:</span>
+                  <code className="font-semibold text-orange-500">{problem?.example?.output || "[0,1]"}</code>
                 </div>
               </div>
             </div>
 
+            {/* Test Cases */}
             {problem?.testCases && (
-              <div className="space-y-4">
-                <h3 className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-black/40'}`}>Sample Test Cases</h3>
-                <div className="space-y-3">
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Sample Cases</h3>
+                <div className="space-y-2">
                   {problem.testCases.map((tc: any, i: number) => (
-                    <div key={i} className={`p-4 rounded-xl border font-mono text-[11px] transition-colors ${isDarkMode ? 'bg-gray-900/30 border-gray-800/50' : 'bg-white border-gray-100'
-                      }`}>
-                      <div className="flex gap-2 mb-1">
-                        <span className="opacity-40">IN:</span>
-                        <span className={isDarkMode ? 'text-gray-300' : 'text-black'}>{tc.input}</span>
-                      </div>
+                    <div key={i} className={`p-3.5 rounded-xl border font-mono text-xs space-y-1 ${
+                      isDarkMode ? 'border-slate-800 bg-slate-950 text-slate-200' : 'border-slate-200 bg-white text-slate-800'
+                    }`}>
                       <div className="flex gap-2">
-                        <span className="opacity-40 text-orange-500">OUT:</span>
-                        <span className="text-orange-500 font-bold">{tc.output}</span>
+                        <span className="text-slate-400">In:</span>
+                        <span>{tc.input}</span>
+                      </div>
+                      <div className="flex gap-2 text-orange-500 font-semibold">
+                        <span className="text-slate-400">Out:</span>
+                        <span>{tc.output}</span>
                       </div>
                     </div>
                   ))}
@@ -182,79 +185,81 @@ const CodingArena = ({ problems = [], isDarkMode, setIsDarkMode, onFinishCoding 
           </div>
         </div>
 
-        {/* Editor Panel */}
-        <div className={`w-2/3 flex flex-col ${isDarkMode ? 'bg-black' : 'bg-gray-50/30'}`}>
-          {/* Header */}
-          <div className={`h-14 border-b flex items-center justify-between px-6 transition-colors ${isDarkMode ? 'bg-gray-950 border-gray-800' : 'bg-white border-gray-100'}`}>
-            <div className="flex items-center gap-6">
+        {/* Right: Code Editor & Console */}
+        <div className={`w-2/3 flex flex-col ${isDarkMode ? 'bg-slate-950' : 'bg-slate-50'}`}>
+          
+          {/* Header Controls */}
+          <div className={`h-14 border-b flex items-center justify-between px-6 ${
+            isDarkMode ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900'
+          }`}>
+            <div className="flex items-center gap-4">
               <select
                 value={language}
                 onChange={(e) => handleLanguageChange(e.target.value)}
-                className={`bg-transparent text-sm font-black uppercase tracking-widest border-none focus:ring-0 cursor-pointer transition-colors ${isDarkMode ? 'text-gray-400 hover:text-orange-500' : 'text-black'}`}
+                className={`bg-transparent text-xs font-semibold uppercase tracking-wider border-none outline-none cursor-pointer ${
+                  isDarkMode ? 'text-white bg-slate-900' : 'text-slate-900 bg-white'
+                }`}
               >
-                <option value="javascript">JavaScript</option>
-                <option value="python">Python</option>
-                <option value="cpp">C++</option>
+                <option value="javascript" className={isDarkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>JavaScript</option>
+                <option value="python" className={isDarkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>Python</option>
+                <option value="cpp" className={isDarkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}>C++</option>
               </select>
 
               <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
-                className={`p-2 rounded-xl transition-all ${isDarkMode ? 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20' : 'bg-gray-100 text-gray-500 hover:bg-orange-100 hover:text-orange-600'}`}
+                className={`p-2 rounded-lg transition-colors ${
+                  isDarkMode ? 'text-slate-300 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                title="Toggle Dark Mode"
               >
-                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
               </button>
 
               <Button
                 onClick={() => setIsAIModalOpen(true)}
-                className={`h-9 px-4 rounded-xl font-black text-xs gap-2 transition-all ${isDarkMode
-                  ? 'bg-orange-500/20 border border-orange-500/30 text-orange-400 hover:bg-orange-500 hover:text-white'
-                  : 'bg-orange-50 border border-orange-100 text-orange-600 hover:bg-orange-500 hover:text-white'
-                  }`}
+                variant="outline"
+                className={`h-9 px-3.5 rounded-xl font-medium text-xs gap-1.5 ${
+                  isDarkMode ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
               >
-                <Sparkles size={14} /> AI HELP
+                <Sparkles size={14} className="text-orange-500" /> AI Assistant
               </Button>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
               <Button
                 onClick={handleRunCode}
-                variant="outline"
                 disabled={isEvaluating}
-                className={`h-9 px-4 font-black transition-all ${isDarkMode
-                  ? 'bg-transparent border-gray-800 text-gray-400 hover:bg-gray-900 hover:text-white'
-                  : 'border-gray-200 text-black hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
-                  }`}
+                variant="outline"
+                className={`h-9 px-4 font-medium text-xs rounded-xl ${
+                  isDarkMode ? 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700' : 'border-slate-200 text-slate-800 hover:bg-slate-50'
+                }`}
               >
-                {isEvaluating ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Play size={14} className="mr-2" />} RUN
+                {isEvaluating ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Play size={14} className="mr-2 text-slate-400" />} Run Code
               </Button>
 
               {currentIdx < problems.length - 1 ? (
                 <Button
                   onClick={handleNextQuestion}
                   disabled={!isSolved || isEvaluating}
-                  className={`h-9 px-5 font-black transition-all ${isSolved
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/20'
-                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-                    }`}
+                  className="h-9 px-5 bg-orange-500 hover:bg-orange-600 text-white font-medium text-xs rounded-xl transition-colors disabled:opacity-40"
                 >
-                  NEXT QUESTION
+                  Next Question
                 </Button>
               ) : (
                 <Button
                   onClick={handleSubmit}
                   disabled={!isSolved || isEvaluating}
-                  className={`h-9 px-5 font-black transition-all ${isSolved
-                    ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/20'
-                    : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-                    }`}
+                  className="h-9 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl transition-colors disabled:opacity-40"
                 >
-                  {isEvaluating ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Send size={14} className="mr-2" />} SUBMIT
+                  {isEvaluating ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Send size={14} className="mr-2" />} Submit Solution
                 </Button>
               )}
             </div>
           </div>
 
-          <div className={`flex-1 relative border-b transition-colors ${isDarkMode ? 'border-gray-800' : 'border-gray-100 bg-white'}`}>
+          {/* Monaco Editor */}
+          <div className={`flex-1 relative border-b ${isDarkMode ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-white'}`}>
             <Editor
               key={language}
               height="100%"
@@ -269,37 +274,28 @@ const CodingArena = ({ problems = [], isDarkMode, setIsDarkMode, onFinishCoding 
                 lineHeight: 24,
                 scrollBeyondLastLine: false,
                 automaticLayout: true,
-                padding: { top: 24, bottom: 24 },
+                padding: { top: 20, bottom: 20 },
                 fontFamily: "'Geist Mono', 'Fira Code', monospace",
                 renderLineHighlight: 'none',
-                hideCursorInOverviewRuler: true,
-                bracketPairColorization: { enabled: true },
-                quickSuggestions: {
-                  other: true,
-                  comments: true,
-                  strings: true
-                },
-                suggestOnTriggerCharacters: true,
-                wordBasedSuggestions: "allDocuments",
-                acceptSuggestionOnEnter: "on",
-                tabCompletion: "on",
-                parameterHints: { enabled: true },
               }}
             />
           </div>
 
-          {/* Console */}
-          <div className={`h-1/3 overflow-hidden flex flex-col transition-colors ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`}>
-            <div className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] border-b flex items-center gap-2 transition-colors ${isDarkMode ? 'text-gray-600 border-gray-800' : 'text-black/40 border-gray-50'
-              }`}>
-              <Terminal size={12} className="text-orange-500" />
+          {/* Output Console */}
+          <div className={`h-1/3 flex flex-col ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-white text-slate-900'}`}>
+            <div className={`px-6 py-2.5 text-xs font-semibold uppercase tracking-wider border-b flex items-center gap-2 ${
+              isDarkMode ? 'border-slate-800 text-slate-400 bg-slate-900' : 'border-slate-200 text-slate-500 bg-white'
+            }`}>
+              <Terminal size={13} className="text-orange-500" />
               Console Output
             </div>
-            <div className={`flex-1 p-6 font-mono text-sm font-medium overflow-y-auto transition-colors ${isDarkMode ? 'bg-black text-orange-400/80' : 'bg-gray-50/50 text-black'
-              }`}>
-              <pre>{output || "Click 'RUN' to execute test cases against your code..."}</pre>
+            <div className={`flex-1 p-5 font-mono text-xs overflow-y-auto ${
+              isDarkMode ? 'bg-slate-950 text-orange-400' : 'bg-slate-50 text-slate-800'
+            }`}>
+              <pre className="whitespace-pre-wrap">{output || "Click 'Run Code' to test your solution..."}</pre>
             </div>
           </div>
+
         </div>
       </div>
 

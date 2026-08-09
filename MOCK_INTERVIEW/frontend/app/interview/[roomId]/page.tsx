@@ -8,6 +8,7 @@ import InterviewNavbar from '@/components/interview/InterviewNavbar';
 import Lobby from '@/components/interview/Lobby';
 import CodingArena from '@/components/interview/CodingArena';
 import VoiceArena from '@/components/interview/VoiceArena';
+import InterviewLoadingScreen from '@/components/interview/InterviewLoadingScreen';
 import { generateInterviewContent, InterviewContent } from '@/lib/ai-generator';
 import { toaster } from '@/components/ui/toaster';
 import { Brain } from 'lucide-react';
@@ -117,7 +118,9 @@ export default function InterviewPage({ params: paramsPromise }: { params: Promi
         difficulty: config.difficulty || 'Medium',
         dsaCount: (config.includeDSA !== false) ? (config.dsaCount || 1) : 0,
         vivaCount: config.vivaCount || 2,
-        type: config.type || 'technical'
+        type: config.type || 'technical',
+        rounds: config.rounds || ['technical', 'behavioral', 'cultural'],
+        resumeContext: config.resumeText || config.resumeContext || ''
       });
       
       console.log("AI returned content successfully:", generatedContent);
@@ -149,7 +152,8 @@ export default function InterviewPage({ params: paramsPromise }: { params: Promi
         }] : [],
         voice: [{
           question: "Explain the time complexity of your solution.",
-          answer: "The time complexity is O(n) using a hash map."
+          answer: "The time complexity is O(n) using a hash map.",
+          round: "technical"
         }]
       };
       
@@ -207,30 +211,16 @@ export default function InterviewPage({ params: paramsPromise }: { params: Promi
           />
         )}
         {phase === 'coding' && !content && (
-          <div className="flex flex-col items-center justify-center h-[calc(100vh-80px)] space-y-6">
-             <div className="relative">
-                <Brain className="w-16 h-16 text-orange-500 animate-pulse" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-200 rounded-full animate-ping" />
-             </div>
-             <div className="text-center space-y-2">
-                <p className="text-black font-black uppercase tracking-widest text-sm">Crafting your challenges...</p>
-                <p className="text-black/40 text-xs font-medium">This usually takes 5-10 seconds</p>
-             </div>
-             
-             <Button 
-               variant="outline" 
-               size="sm"
-               onClick={() => {
-                 const configStr = searchParams.get('config');
-                 const config = configStr ? JSON.parse(decodeURIComponent(configStr)) : null;
-                 if (config && socket) triggerGeneration(socket, config);
-                 else toaster.create({ title: "Retry Unavailable", description: "Config missing in URL.", type: "error" });
-               }}
-               className="mt-4 border-orange-100 text-orange-600 hover:bg-orange-50 font-black uppercase tracking-widest text-[10px]"
-             >
-               Force Retry AI
-             </Button>
-          </div>
+          <InterviewLoadingScreen 
+            title="Crafting Technical Challenges"
+            subtitle="Synthesizing custom DSA problems and test cases..."
+            onRetry={() => {
+              const configStr = searchParams.get('config');
+              const config = configStr ? JSON.parse(decodeURIComponent(configStr)) : null;
+              if (config && socket) triggerGeneration(socket, config);
+              else toaster.create({ title: "Retry Unavailable", description: "Config missing in URL.", type: "error" });
+            }}
+          />
         )}
         {phase === 'voice' && content && (
           <VoiceArena 
@@ -245,10 +235,10 @@ export default function InterviewPage({ params: paramsPromise }: { params: Promi
           />
         )}
         {phase === 'voice' && !content && (
-          <div className="flex flex-col items-center justify-center h-[calc(100vh-80px)] space-y-4">
-             <Brain className="w-12 h-12 text-orange-500 animate-pulse" />
-             <p className="text-black font-black uppercase tracking-widest text-sm">Preparing voice challenges...</p>
-          </div>
+          <InterviewLoadingScreen 
+            title="Preparing Sarvam Voice Arena"
+            subtitle="Configuring voice evaluation protocol & multilingual models..."
+          />
         )}
       </main>
     </div>

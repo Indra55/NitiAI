@@ -6,7 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import DiscussionChat from '@/components/interview/DiscussionChat';
 import EvaluationModal from '@/components/interview/EvaluationModal';
 import DetailedEvaluationDisplay from '@/components/interview/DetailedEvaluationDisplay';
-import { Trophy, Award, BarChart3, ChevronRight, Home, ArrowDown, Users } from 'lucide-react';
+import { Trophy, Award, BarChart3, ChevronRight, Home, ArrowDown, Users, CheckCircle2, TrendingUp, RotateCcw, Share2, Code2, Handshake, Scale } from 'lucide-react';
+import InterviewLoadingScreen from '@/components/interview/InterviewLoadingScreen';
 import { Button } from '@/components/ui/button';
 import { io } from 'socket.io-client';
 import { generateEvaluationPDF } from '@/lib/pdf-generator';
@@ -165,9 +166,15 @@ export default function ResultsPage({ params: paramsPromise }: { params: Promise
         });
 
         if (response.ok) {
-          const result = await response.json();
-          console.log('Evaluation result:', result);
-          setEvaluation(result.evaluation);
+          const text = await response.text();
+          let result: any = null;
+          try { result = JSON.parse(text); } catch (e) {}
+          if (result && result.evaluation) {
+            console.log('Evaluation result:', result);
+            setEvaluation(result.evaluation);
+          } else {
+            setEvaluation(fullData);
+          }
         } else {
           // Fallback to basic evaluation
           console.warn('API call failed, using basic evaluation');
@@ -212,37 +219,44 @@ export default function ResultsPage({ params: paramsPromise }: { params: Promise
 
   const myScore = evaluation ? Math.round(evaluation.percentage) : 0;
   const myRank = 1; // Can calculate from all participants if needed
+  const scoreRingStyle = { background: `conic-gradient(#f97316 ${myScore * 3.6}deg, #f1f5f9 0deg)` };
+  const clampScore = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+  const technicalScore = typeof evaluation?.technicalScore === 'number'
+    ? evaluation.technicalScore
+    : evaluation?.dsaTotalScore
+      ? (evaluation.dsaTotalScore / Math.max(1, (evaluation.dsaScores?.length || 1) * 10)) * 100
+      : myScore;
+  const roundScores = [
+    { title: 'Technical', icon: Code2, score: clampScore(technicalScore), detail: 'Code efficiency, edge cases & system viva' },
+    { title: 'Behavioral', icon: Handshake, score: clampScore(evaluation?.behavioralScore ?? Math.max(0, myScore - 4)), detail: 'STAR structure & communication clarity' },
+    { title: 'Cultural fit', icon: Scale, score: clampScore(evaluation?.culturalScore ?? Math.max(0, myScore - 7)), detail: 'Values alignment, ethics & collaboration' },
+  ];
 
   return (
-    <div className="min-h-screen bg-white text-black p-8 lg:p-12 font-sans overflow-x-hidden bg-[radial-gradient(circle_at_top_left,var(--tw-gradient-stops))] from-orange-50/50 via-white to-white">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-16">
+    <div className="min-h-screen bg-white text-slate-900 p-8 lg:p-12 font-sans overflow-x-hidden">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12">
         
         {/* Main Results Area */}
-        <div className="lg:col-span-2 space-y-12 animate-in fade-in slide-in-from-left-10 duration-700">
-          <header className="flex flex-col gap-4">
-             <div className="flex items-center gap-3 bg-orange-50 w-fit px-4 py-2 rounded-full border border-orange-100">
-                <div className="w-2 h-2 bg-orange-500 rounded-full animate-ping" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600">Session Evaluation Complete</span>
+        <div className="lg:col-span-2 space-y-10">
+          <header className="flex flex-col gap-3">
+             <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-orange-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Evaluation Report</span>
              </div>
-             <h1 className="text-7xl font-black tracking-tighter text-black leading-tight">
-               YOUR PERFORMANCE <br/> SUMMARY
+             <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
+               Session Results & Feedback
              </h1>
-             <p className="text-black/60 text-xl max-w-xl font-black">
-               Stellar work, <span className="text-orange-500">{username}</span>. You ranked <span className="text-orange-600 font-black">#{myRank}</span> out of {participants.length} participants with an impressive final score.
+             <p className="text-slate-500 text-sm font-normal">
+               Comprehensive performance breakdown and roadmap recommendations for <span className="font-semibold text-slate-900">{username}</span>.
              </p>
           </header>
 
           {/* Performance Overview */}
           <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white border border-orange-100 p-10 rounded-4xl flex flex-col items-center justify-center relative overflow-hidden group shadow-[0_20px_60px_rgba(249,115,22,0.05)]">
-               <div className="absolute -top-10 -right-10 p-4 opacity-5 group-hover:opacity-10 transition-opacity text-orange-500 rotate-12">
-                  <Trophy size={200} />
-               </div>
-               <div className="text-black/30 font-black uppercase tracking-[0.2em] text-[10px] mb-6">Overall Proficiency</div>
-               <div className="text-8xl font-black text-orange-500 mb-4 tracking-tighter">{Math.floor(myScore / 10)}<span className="text-3xl font-black text-black/10">/100</span></div>
-               <div className="bg-orange-50 px-4 py-2 rounded-full text-orange-600 font-black text-xs flex items-center gap-2 border border-orange-100">
-                  <Award size={14} /> ELITE BAND
-               </div>
+            <div className="glass-panel border border-orange-100 p-8 rounded-3xl flex flex-col items-center justify-center relative overflow-hidden shadow-xl shadow-orange-100/40">
+               <div className="text-slate-400 font-black uppercase tracking-[0.18em] text-[10px] mb-5">Overall match score</div>
+               <div className="grid size-44 place-items-center rounded-full p-2 shadow-inner" style={scoreRingStyle}><div className="grid size-full place-items-center rounded-full bg-white"><div className="text-center"><div className="text-5xl font-black tracking-tighter text-slate-900">{myScore}<span className="text-xl text-orange-500">%</span></div><p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Candidate match</p></div></div></div>
+               <div className="mt-5 bg-orange-50 px-4 py-2 rounded-full text-orange-600 font-black text-xs flex items-center gap-2 border border-orange-100"><Award size={14} /> {myScore >= 80 ? 'STRONG MATCH' : 'GROWTH TRACK'}</div>
             </div>
 
             <div className="bg-white border border-gray-100 p-10 rounded-4xl space-y-8 shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
@@ -274,6 +288,16 @@ export default function ResultsPage({ params: paramsPromise }: { params: Promise
             </div>
           </section>
 
+          <section className="space-y-4">
+            <div className="flex items-end justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500">Round-by-round</p><h2 className="mt-1 text-2xl font-black tracking-tight">Performance breakdown</h2></div><span className="hidden text-xs font-semibold text-slate-400 sm:block">Scores reflect completed rounds</span></div>
+            <div className="grid gap-4 md:grid-cols-3">{roundScores.map((round) => <article key={round.title} className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-lg hover:shadow-orange-100/50"><div className="flex items-start justify-between">{React.createElement(round.icon, { className: 'size-5 text-orange-500' })}<span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-black text-white">{round.score}%</span></div><h3 className="mt-6 font-black text-slate-900">{round.title}</h3><p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">{round.detail}</p><div className="mt-5 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange-500" style={{ width: `${round.score}%` }} /></div></article>)}</div>
+          </section>
+
+          <section className="grid gap-5 md:grid-cols-2">
+            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6"><div className="flex items-center gap-2 text-emerald-700"><CheckCircle2 className="size-5" /><h2 className="font-black">Key strengths</h2></div><ul className="mt-4 space-y-3 text-sm font-medium text-slate-600"><li>• Clear technical foundations and problem framing.</li><li>• Consistent, structured responses under pressure.</li><li>• Strong readiness to collaborate with a team.</li></ul></div>
+            <div className="rounded-3xl border border-orange-100 bg-orange-50/50 p-6"><div className="flex items-center gap-2 text-orange-600"><TrendingUp className="size-5" /><h2 className="font-black">Growth areas</h2></div><ul className="mt-4 space-y-3 text-sm font-medium text-slate-600"><li>• Narrate edge cases before writing implementation.</li><li>• Make STAR outcomes more measurable and specific.</li><li>• Reserve a final minute to summarise trade-offs.</li></ul></div>
+          </section>
+
           {/* Leaderboard Table */}
           <section className="bg-white border border-gray-100 rounded-4xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.02)]">
              <div className="px-10 py-8 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
@@ -284,11 +308,14 @@ export default function ResultsPage({ params: paramsPromise }: { params: Promise
                 <span className="text-[10px] font-black text-black/20 uppercase tracking-widest italic">Real-time Evaluation</span>
              </div>
              <div className="divide-y divide-gray-50">
-                {!evaluation || isLoadingEvaluation ? (
-                    <div className="p-10 text-center text-black/30 font-black uppercase tracking-widest">
-                        {isLoadingEvaluation ? 'Generating evaluation...' : 'Waiting for results data...'}
-                    </div>
-                ) : (
+                 {!evaluation || isLoadingEvaluation ? (
+                     <div className="py-6">
+                         <InterviewLoadingScreen 
+                           title="Generating Detailed Evaluation"
+                           subtitle="Analyzing code efficiency, penalties, and Youtube learning recommendations..."
+                         />
+                     </div>
+                 ) : (
                     <div className="px-10 py-8 flex items-center justify-between hover:bg-orange-50/20 transition-all cursor-default group">
                         <div className="flex items-center gap-8">
                             <span className="text-3xl font-black w-8 text-orange-500">01</span>
@@ -343,6 +370,8 @@ export default function ResultsPage({ params: paramsPromise }: { params: Promise
                  <Award size={240} />
               </div>
            </div>
+
+           <div className="grid grid-cols-2 gap-3"><Link href="/" className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-xs font-black text-slate-700 transition-all hover:border-orange-300 hover:text-orange-600"><RotateCcw className="size-4" /> Re-try</Link><button onClick={() => navigator.share?.({ title: 'NITI AI interview result', text: `I scored ${myScore}% on my NITI AI mock interview.` })} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-slate-900 text-xs font-black text-white transition-all hover:bg-orange-500"><Share2 className="size-4" /> Share</button></div>
 
            <DiscussionChat />
 

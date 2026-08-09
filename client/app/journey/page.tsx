@@ -296,10 +296,10 @@ export default function JourneyOnboarding() {
       <AuthLayout>
         {isComplete ? (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 py-12">
-            <h1 className="whitespace-nowrap text-3xl font-medium tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
+            <h1 className="whitespace-nowrap text-3xl font-bold text-slate-900 dark:text-white tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
               Perfect!
             </h1>
-            <p className="whitespace-nowrap text-lg leading-snug text-black/60 dark:text-white/55 sm:text-xl lg:text-2xl xl:text-3xl mb-12">
+            <p className="whitespace-nowrap text-lg leading-snug text-slate-600 dark:text-slate-300 sm:text-xl lg:text-2xl xl:text-3xl mb-12">
               Your profile is ready.
             </p>
 
@@ -307,7 +307,7 @@ export default function JourneyOnboarding() {
               <AuthButton onClick={handleStart}>
                 Go to Dashboard
               </AuthButton>
-              <button onClick={() => router.push("/profile")} className="w-full flex h-12 items-center justify-center rounded-[10px] border border-black/25 bg-white text-xl font-medium text-black transition-colors hover:bg-black/[0.03] dark:border-white/20 dark:bg-[#0a0a0a] dark:text-white dark:hover:bg-white/5">
+              <button onClick={() => router.push("/profile")} className="w-full flex h-12 items-center justify-center rounded-[10px] border border-slate-300 bg-slate-50 text-xl font-medium text-slate-900 transition-colors hover:bg-slate-100 dark:border-white/20 dark:bg-[#0a0a0a] dark:text-white dark:hover:bg-white/5">
                 Complete Profile
               </button>
             </div>
@@ -321,16 +321,16 @@ export default function JourneyOnboarding() {
                   <div
                     key={i}
                     className={`h-1.5 flex-1 rounded-[10px] transition-all duration-300 ${
-                      i <= step ? "bg-black dark:bg-white" : "bg-black/10 dark:bg-white/10"
+                      i <= step ? "bg-slate-900 dark:bg-white" : "bg-slate-200 dark:bg-white/20"
                     }`}
                   />
                 ))}
               </div>
-              <p className="text-sm text-black/40 dark:text-white/40 font-medium whitespace-nowrap">Step {step + 1} of 4</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 font-semibold whitespace-nowrap">Step {step + 1} of 4</p>
             </div>
 
             {apiError && (
-              <div className="mb-6 p-4 rounded-[10px] bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm">
+              <div className="mb-6 p-4 rounded-[10px] bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm font-medium">
                 {apiError}
               </div>
             )}
@@ -338,10 +338,10 @@ export default function JourneyOnboarding() {
             {/* Page 1 */}
             {step === 0 && (
               <div className="flex-1">
-                <h1 className="text-3xl font-medium tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
                   About yourself
                 </h1>
-                <p className="text-lg leading-snug text-black/60 dark:text-white/55 sm:text-xl mb-8">
+                <p className="text-lg leading-snug text-slate-600 dark:text-slate-300 sm:text-xl mb-8">
                   We'll use this to personalize your experience.
                 </p>
 
@@ -371,20 +371,20 @@ export default function JourneyOnboarding() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-black/60 dark:text-white/60 mb-3 block">Gender</label>
+                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 block">Gender</label>
                     <div className="grid grid-cols-2 gap-3">
                       {genders.map((gender) => (
                         <button
                           key={gender.id}
                           onClick={() => setFormData({ ...formData, gender: gender.id })}
                           disabled={isSaving}
-                          className={`flex h-12 items-center justify-center rounded-[10px] border px-4 transition-colors ${
+                          className={`flex h-12 items-center justify-center rounded-[10px] border px-4 transition-colors font-medium ${
                             formData.gender === gender.id
-                              ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                              : "border-black/20 bg-transparent text-black/70 hover:bg-black/5 dark:border-white/20 dark:text-white/70 dark:hover:bg-white/5"
+                              ? "border-slate-900 bg-slate-900 text-white shadow-sm dark:border-white dark:bg-white dark:text-slate-900"
+                              : "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 dark:border-white/20 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                           }`}
                         >
-                          <span className="text-sm font-medium">{gender.label}</span>
+                          <span className="text-sm font-semibold">{gender.label}</span>
                         </button>
                       ))}
                     </div>
@@ -407,10 +407,10 @@ export default function JourneyOnboarding() {
             {/* Page 2 */}
             {step === 1 && (
               <div className="flex-1 flex flex-col">
-                <h1 className="text-3xl font-medium tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
                   What's your role?
                 </h1>
-                <p className="text-lg leading-snug text-black/60 dark:text-white/55 sm:text-xl mb-8">
+                <p className="text-lg leading-snug text-slate-600 dark:text-slate-300 sm:text-xl mb-8">
                   Select the role that best describes your profession.
                 </p>
 
@@ -422,14 +422,14 @@ export default function JourneyOnboarding() {
                       disabled={isSaving}
                       className={`flex flex-col items-start justify-center text-left p-4 rounded-[10px] border transition-colors ${
                         formData.role === role.id
-                          ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                          : "border-black/20 bg-transparent text-black/70 hover:bg-black/5 dark:border-white/20 dark:text-white/70 dark:hover:bg-white/5"
+                          ? "border-slate-900 bg-slate-900 text-white shadow-sm dark:border-white dark:bg-white dark:text-slate-900"
+                          : "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 dark:border-white/20 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                       }`}
                     >
-                      <span className={`font-medium mb-1 ${formData.role === role.id ? "text-white dark:text-black" : "text-black dark:text-white"}`}>
+                      <span className={`font-semibold mb-1 ${formData.role === role.id ? "text-white dark:text-slate-900" : "text-slate-900 dark:text-white"}`}>
                         {role.label}
                       </span>
-                      <span className={`text-xs ${formData.role === role.id ? "text-white/80 dark:text-black/80" : "text-black/50 dark:text-white/50"}`}>
+                      <span className={`text-xs ${formData.role === role.id ? "text-slate-200 dark:text-slate-700" : "text-slate-600 dark:text-slate-400 font-medium"}`}>
                         {role.desc}
                       </span>
                     </button>
@@ -437,7 +437,7 @@ export default function JourneyOnboarding() {
                 </div>
 
                 <div className="mt-auto pt-8 flex">
-                  <button onClick={handleBack} disabled={isSaving} className="inline-flex h-12 items-center justify-center rounded-lg border border-black/20 px-6 text-sm font-medium text-black transition-colors hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:bg-white/5 disabled:opacity-50">
+                  <button onClick={handleBack} disabled={isSaving} className="inline-flex h-12 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 px-6 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 disabled:opacity-50">
                     ← Back
                   </button>
                 </div>
@@ -447,16 +447,16 @@ export default function JourneyOnboarding() {
             {/* Page 3 */}
             {step === 2 && (
               <div className="flex-1 flex flex-col">
-                <h1 className="text-3xl font-medium tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
                   Current status?
                 </h1>
-                <p className="text-lg leading-snug text-black/60 dark:text-white/55 sm:text-xl mb-8">
+                <p className="text-lg leading-snug text-slate-600 dark:text-slate-300 sm:text-xl mb-8">
                   Help us understand your career journey.
                 </p>
 
                 <div className="space-y-8">
                   <div>
-                    <label className="text-sm font-medium text-black/60 dark:text-white/60 mb-3 block">Status</label>
+                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 block">Status</label>
                     <div className="grid gap-3 sm:grid-cols-3">
                       {currentStatuses.map((status) => (
                         <button
@@ -465,11 +465,11 @@ export default function JourneyOnboarding() {
                           disabled={isSaving}
                           className={`flex flex-col items-start p-4 rounded-[10px] border transition-colors ${
                             formData.currentStatus === status.id
-                              ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                              : "border-black/20 bg-transparent text-black/70 hover:bg-black/5 dark:border-white/20 dark:text-white/70 dark:hover:bg-white/5"
+                              ? "border-slate-900 bg-slate-900 text-white shadow-sm dark:border-white dark:bg-white dark:text-slate-900"
+                              : "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 dark:border-white/20 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                           }`}
                         >
-                          <span className={`font-medium mb-1 ${formData.currentStatus === status.id ? "text-white dark:text-black" : "text-black dark:text-white"}`}>
+                          <span className={`font-semibold mb-1 ${formData.currentStatus === status.id ? "text-white dark:text-slate-900" : "text-slate-900 dark:text-white"}`}>
                             {status.label}
                           </span>
                         </button>
@@ -478,7 +478,7 @@ export default function JourneyOnboarding() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-black/60 dark:text-white/60 mb-3 block">Experience</label>
+                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 block">Experience</label>
                     <div className="grid gap-3 sm:grid-cols-2">
                       {experienceLevels.map((level) => (
                         <button
@@ -487,14 +487,14 @@ export default function JourneyOnboarding() {
                           disabled={isSaving}
                           className={`flex flex-col items-start p-4 rounded-[10px] border transition-colors ${
                             formData.experience === level.id
-                              ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                              : "border-black/20 bg-transparent text-black/70 hover:bg-black/5 dark:border-white/20 dark:text-white/70 dark:hover:bg-white/5"
+                              ? "border-slate-900 bg-slate-900 text-white shadow-sm dark:border-white dark:bg-white dark:text-slate-900"
+                              : "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100 dark:border-white/20 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                           }`}
                         >
-                          <span className={`font-medium mb-1 ${formData.experience === level.id ? "text-white dark:text-black" : "text-black dark:text-white"}`}>
+                          <span className={`font-semibold mb-1 ${formData.experience === level.id ? "text-white dark:text-slate-900" : "text-slate-900 dark:text-white"}`}>
                             {level.label}
                           </span>
-                          <span className={`text-xs ${formData.experience === level.id ? "text-white/80 dark:text-black/80" : "text-black/50 dark:text-white/50"}`}>
+                          <span className={`text-xs ${formData.experience === level.id ? "text-slate-200 dark:text-slate-700 font-medium" : "text-slate-600 dark:text-slate-400 font-medium"}`}>
                             {level.desc}
                           </span>
                         </button>
@@ -503,7 +503,7 @@ export default function JourneyOnboarding() {
                   </div>
 
                   <div className="flex items-center gap-4 mt-8">
-                    <button onClick={handleBack} disabled={isSaving} className="inline-flex h-12 items-center justify-center rounded-lg border border-black/20 px-6 text-sm font-medium text-black transition-colors hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:bg-white/5 disabled:opacity-50">
+                    <button onClick={handleBack} disabled={isSaving} className="inline-flex h-12 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 px-6 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 disabled:opacity-50">
                       ← Back
                     </button>
                     <div className="flex-1">
@@ -519,23 +519,23 @@ export default function JourneyOnboarding() {
             {/* Page 4 */}
             {step === 3 && (
               <div className="flex-1 flex flex-col">
-                <h1 className="text-3xl font-medium tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-[-0.04em] sm:text-4xl lg:text-[42px] lg:leading-[1.05] xl:text-[50px] mb-3">
                   Add Skills
                 </h1>
-                <p className="text-lg leading-snug text-black/60 dark:text-white/55 sm:text-xl mb-8">
+                <p className="text-lg leading-snug text-slate-600 dark:text-slate-300 sm:text-xl mb-8">
                   Upload your resume or add manually.
                 </p>
 
                 <div className="space-y-6">
                   {/* Resume Upload */}
-                  <div className="rounded-[10px] border border-black/20 p-6 dark:border-white/10 dark:bg-white/5 bg-black/[0.02]">
+                  <div className="rounded-[10px] border border-slate-300 p-6 dark:border-white/10 dark:bg-white/5 bg-slate-50/80">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="text-lg font-medium text-black dark:text-white">Upload Resume</h3>
-                        <p className="text-sm text-black/50 dark:text-white/50">Auto-fill your profile details</p>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Upload Resume</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Auto-fill your profile details</p>
                       </div>
-                      <div className="p-3 bg-black/5 dark:bg-white/10 rounded-[10px]">
-                        <Upload className="w-5 h-5 text-black dark:text-white" />
+                      <div className="p-3 bg-slate-200 dark:bg-white/10 rounded-[10px]">
+                        <Upload className="w-5 h-5 text-slate-800 dark:text-white" />
                       </div>
                     </div>
                     <input
@@ -548,13 +548,13 @@ export default function JourneyOnboarding() {
                     />
                     <label
                       htmlFor="resume-upload"
-                      className={`flex w-full h-12 items-center justify-center gap-2 rounded-[10px] border border-black/25 bg-white text-sm font-medium text-black transition-colors hover:bg-black/[0.03] dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 cursor-pointer ${
+                      className={`flex w-full h-12 items-center justify-center gap-2 rounded-[10px] border border-slate-300 bg-white text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 cursor-pointer ${
                         isUploadingResume || isSaving ? "opacity-50 cursor-not-allowed" : ""
                       }`}
                     >
                       {isUploadingResume ? (
                         <>
-                          <Spinner className="w-4 h-4 text-black dark:text-white" />
+                          <Spinner className="w-4 h-4 text-slate-800 dark:text-white" />
                           <span>Uploading...</span>
                         </>
                       ) : (
@@ -565,16 +565,16 @@ export default function JourneyOnboarding() {
                       )}
                     </label>
                     {formData.resumeAutoFill && (
-                      <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                      <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 font-semibold">
                         ✓ Resume parsed! Review and continue.
                       </p>
                     )}
                   </div>
 
                   {!formData.resumeAutoFill && (
-                    <div className="rounded-[10px] border border-black/20 p-6 dark:border-white/10 dark:bg-white/5 bg-black/[0.02]">
-                      <h3 className="text-lg font-medium text-black dark:text-white mb-1">Select Skills</h3>
-                      <p className="text-sm text-black/50 dark:text-white/50 mb-4">Or choose from the list below</p>
+                    <div className="rounded-[10px] border border-slate-300 p-6 dark:border-white/10 dark:bg-white/5 bg-slate-50/80">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Select Skills</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 font-medium mb-4">Or choose from the list below</p>
                       
                       <div className="grid gap-2 grid-cols-2">
                         {skillCategories.map((skill) => {
@@ -593,11 +593,11 @@ export default function JourneyOnboarding() {
                               disabled={isSaving}
                               className={`flex h-10 items-center justify-center rounded-[10px] border transition-colors ${
                                 isSelected
-                                  ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                                  : "border-black/20 bg-white text-black/70 hover:bg-black/5 dark:border-white/20 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
+                                  ? "border-slate-900 bg-slate-900 text-white font-semibold dark:border-white dark:bg-white dark:text-slate-900"
+                                  : "border-slate-300 bg-white text-slate-800 hover:bg-slate-100 dark:border-white/20 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 font-medium"
                               }`}
                             >
-                              <span className="text-xs font-medium">{skill.label}</span>
+                              <span className="text-xs font-semibold">{skill.label}</span>
                             </button>
                           )
                         })}
@@ -606,7 +606,7 @@ export default function JourneyOnboarding() {
                   )}
 
                   <div className="flex items-center gap-4 mt-8 pt-4">
-                    <button onClick={handleBack} disabled={isSaving} className="inline-flex h-12 items-center justify-center rounded-lg border border-black/20 px-6 text-sm font-medium text-black transition-colors hover:bg-black/5 dark:border-white/20 dark:text-white dark:hover:bg-white/5 disabled:opacity-50">
+                    <button onClick={handleBack} disabled={isSaving} className="inline-flex h-12 items-center justify-center rounded-lg border border-slate-300 bg-slate-50 px-6 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10 disabled:opacity-50">
                       ← Back
                     </button>
                     <div className="flex-1">

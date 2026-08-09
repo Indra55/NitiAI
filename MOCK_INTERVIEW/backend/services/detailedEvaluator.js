@@ -137,14 +137,35 @@ JSON FORMAT:
 
 Be extremely thorough, specific, and actionable. This report should serve as a complete roadmap for the candidate's improvement.`;
 
-        try {
-            const response = await this.openai.chat.completions.create({
-                model: "stepfun/step-3.5-flash:free",
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.7
-            });
+        const FALLBACK_MODELS = [
+            "openai/gpt-oss-20b:free",
+            "google/gemma-4-26b-a4b-it:free",
+            "nvidia/nemotron-3-nano-30b-a3b:free",
+            "cohere/north-mini-code:free"
+        ];
 
-            let content = response.choices[0].message.content;
+        let content = null;
+        let lastError = null;
+
+        for (const model of FALLBACK_MODELS) {
+            try {
+                console.log(`Generating detailed evaluation report using model: ${model}...`);
+                const response = await this.openai.chat.completions.create({
+                    model: model,
+                    messages: [{ role: "user", content: prompt }],
+                    temperature: 0.7
+                });
+                content = response.choices[0]?.message?.content;
+                if (content) break;
+            } catch (err) {
+                console.warn(`Model ${model} failed (${err.message}). Trying next fallback model...`);
+                lastError = err;
+            }
+        }
+
+        if (!content) {
+            throw lastError || new Error("All AI models failed to generate detailed evaluation report.");
+        }
             // Strip markdown code blocks if present
             content = content.replace(/```json\n?|\n?```/g, '').trim();
 
