@@ -29,7 +29,10 @@ const languageChoices = [
   ["od-IN", "Odia"],
 ]
 
-export function VoiceInterviewer({ onUserPaused }: { onUserPaused?: (entry: TranscriptEntry) => void }) {
+type InterviewCritique = { text: string; languageCode: string }
+type InterviewStage = "discovery" | "drawing" | "deep_dive" | "feedback"
+
+export function VoiceInterviewer({ onUserPaused, openingQuestion, introMessage, critiques = [], stage }: { onUserPaused?: (entry: TranscriptEntry) => void; openingQuestion: string; introMessage?: string | null; critiques?: InterviewCritique[]; stage: InterviewStage }) {
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -94,7 +97,17 @@ export function VoiceInterviewer({ onUserPaused }: { onUserPaused?: (entry: Tran
     recorder.onstop = () => {
       const utterance = new Blob(chunks, { type: recorder.mimeType || "audio/webm" })
       if (heardSpeech.current) void sendUtterance(utterance)
-      if (listeningRef.current) window.setTimeout(beginUtterance, 100)
+      // One microphone activation equals one candidate turn. This prevents the
+      // interviewer audio or a second silence from being mistaken for an answer.
+      listeningRef.current = false
+      if (animationRef.current) cancelAnimationFrame(animationRef.current)
+      streamRef.current?.getTracks().forEach((track) => track.stop())
+      contextRef.current?.close().catch(() => undefined)
+      streamRef.current = null
+      contextRef.current = null
+      analyserRef.current = null
+      setIsListening(false)
+      setIsSpeaking(false)
     }
     recorder.start()
   }, [sendUtterance])
@@ -159,17 +172,23 @@ export function VoiceInterviewer({ onUserPaused }: { onUserPaused?: (entry: Tran
   useEffect(() => () => stopListening(), [stopListening])
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+    <section className="rounded-xl border border-[#e8e1da] bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <div><div className="flex items-center gap-2 text-sm font-semibold"><Volume2 size={16} className="text-orange-400" /> Explain your design</div><p className="mt-1 text-xs leading-5 text-slate-400">VAD ends an utterance after 1.7s of silence, then transcribes it with Saaras.</p></div>
-        <span className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${isSpeaking ? "bg-emerald-400/15 text-emerald-300" : "bg-slate-800 text-slate-400"}`}><Radio size={14} /></span>
+        <div><div className="flex items-center gap-2 text-sm font-semibold text-gray-900"><Volume2 size={16} className="text-[#ef4a18]" /> Interview room <span className="rounded-full bg-[#fff0eb] px-2 py-0.5 text-[10px] font-medium text-[#ef4a18]">{stage === "discovery" ? "Warm-up" : stage === "drawing" ? "Build" : stage === "deep_dive" ? "Trade-offs" : "Review"}</span></div><p className="mt-1 text-xs leading-5 text-gray-500">Speak naturally. A pause ends your turn and gives the tech lead a chance to respond.</p></div>
+        <span className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${isSpeaking ? "bg-[#eaf6ee] text-[#287443]" : "bg-[#f4f1ed] text-gray-400"}`}><Radio size={14} /></span>
       </div>
-      <label className="mb-3 flex items-center gap-2 text-xs text-slate-400"><Languages size={14} /><select value={languageMode} onChange={(event) => setLanguageMode(event.target.value)} className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-200 outline-none"><option value="auto">Auto-detect (Saaras `unknown`)</option>{languageChoices.slice(1).map(([value, label]) => <option value={value} key={value}>{label} fallback</option>)}</select></label>
-      <button onClick={isListening ? stopListening : startListening} disabled={isTranscribing} className={`flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition ${isListening ? "bg-red-500/15 text-red-200 hover:bg-red-500/25" : "bg-orange-500 text-slate-950 hover:bg-orange-400"}`}>
-        {isListening ? <MicOff size={16} /> : <Mic size={16} />}{isTranscribing ? "Transcribing…" : isListening ? "Stop listening" : "Start explaining"}
+      <div className="mb-4 max-h-72 space-y-3 overflow-y-auto pr-1">
+        <article className="mr-5 rounded-xl rounded-tl-sm border border-[#ef4a18]/20 bg-[#fff0eb] p-3"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#ef4a18]">Mentor</p><p className="text-xs leading-5 text-gray-900">{introMessage || `Welcome. I’ll be your senior tech lead today. The scenario is: ${openingQuestion} I’ll first ask about requirements, then I’ll ask you to draw the architecture, and finally we’ll review your trade-offs.`}</p></article>
+        <article className="mr-5 rounded-xl rounded-tl-sm border border-[#e8e1da] bg-white p-3 shadow-sm"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">First question</p><p className="text-xs leading-5 text-gray-800">Before drawing, what are the most important requirements and assumptions you would clarify for this system?</p></article>
+        {transcripts.map((entry) => <article key={`${entry.timestamp}-${entry.text}`} className="ml-5 rounded-xl rounded-tr-sm bg-[#f4f1ed] p-3"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">You · {entry.languageCode}</p><p className="text-xs leading-5 text-gray-900">{entry.text}</p></article>)}
+        {critiques.map((critique, index) => <article key={`${index}-${critique.text}`} className="mr-5 rounded-xl rounded-tl-sm border border-[#ef4a18]/20 bg-[#fff0eb] p-3"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#ef4a18]">Mentor · {critique.languageCode}</p><p className="text-xs leading-5 text-gray-900">{critique.text}</p></article>)}
+        {transcripts.length === 0 && <p className="px-2 text-xs text-gray-400">The mentor is waiting for your first answer.</p>}
+      </div>
+      <label className="mb-3 flex items-center gap-2 text-xs text-gray-500"><Languages size={14} /><select value={languageMode} onChange={(event) => setLanguageMode(event.target.value)} className="min-w-0 flex-1 rounded-md border border-[#e8e1da] bg-[#fdfaf7] px-2 py-1.5 text-gray-700 outline-none"><option value="auto">Auto-detect (Saaras `unknown`)</option>{languageChoices.slice(1).map(([value, label]) => <option value={value} key={value}>{label} fallback</option>)}</select></label>
+      <button onClick={isListening ? stopListening : startListening} disabled={isTranscribing} className={`flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition ${isListening ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-[#ef4a18] text-white hover:bg-[#d93d10] shadow-sm hover:-translate-y-0.5"}`}>
+        {isListening ? <MicOff size={16} /> : <Mic size={16} />}{isTranscribing ? "Mentor is listening…" : isListening ? isSpeaking ? "Your turn — keep explaining" : "Listening for your answer…" : transcripts.length ? "Answer the mentor" : "Begin your answer"}
       </button>
       {error && <p className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-200">{error}</p>}
-      <div className="mt-4 space-y-2"><p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Transcript history</p>{transcripts.length === 0 ? <p className="text-xs text-slate-500">Your recognized explanations will appear here.</p> : transcripts.slice().reverse().map((entry) => <article key={`${entry.timestamp}-${entry.text}`} className="rounded-lg border border-slate-800 bg-slate-900/70 p-2.5"><div className="mb-1 flex justify-between gap-2 text-[10px] text-slate-500"><span>{entry.languageCode}{entry.languageProbability !== null ? ` · ${Math.round(entry.languageProbability * 100)}%` : ""}</span><span>{new Date(entry.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div><p className="text-xs leading-5 text-slate-200">{entry.text}</p></article>)}</div>
     </section>
   )
 }

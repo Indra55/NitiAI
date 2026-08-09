@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import "@/app/dashboard/dashboard.css"
 
-const primary = [{ label: "Dashboard", href: "/dashboard" }, { label: "Resume Arena", href: "/resume-arena" }, { label: "JD Match", href: "/match-analysis" }]
+const primary = [{ label: "Dashboard", href: "/dashboard" }, { label: "System Design", href: "/system-design" }, { label: "Resume Arena", href: "/resume-arena" }, { label: "JD Match", href: "/match-analysis" }]
 const secondary = [{ label: "Interview", href: "/interview" }, { label: "Opportunities", href: "/opportunities" }, { label: "Learning", href: "/ai-planner" }]
 
 export function DynamicNavbar() {

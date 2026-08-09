@@ -19,7 +19,6 @@ export const LandingNavbar = () => {
             <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </Link>
-        <Link href="/system-design" className="hover:text-gray-900 transition-colors">System Design</Link>
         <Link href="#features" className="hover:text-gray-900 transition-colors">Features</Link>
         <Link href="#plans" className="hover:text-gray-900 transition-colors">Plans</Link>
       </div>

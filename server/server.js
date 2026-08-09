@@ -209,13 +209,49 @@ function keepThreeSentences(text) {
     return sentences.slice(0, 3).join(" ").trim()
 }
 
-async function phraseWireItUpCritique({ issue, graph, transcript, languageCode }) {
-    if (!process.env.SARVAM_API_KEY) {
-        const error = new Error("SARVAM_API_KEY is not configured on the server.")
-        error.code = "SARVAM_NOT_CONFIGURED"
-        throw error
+function hasAny(text, terms) {
+    return terms.some((term) => new RegExp(`\\b${term}\\b`, "i").test(String(text || "")))
+}
+
+function discoveryRubric(transcript) {
+    const requirements = hasAny(transcript, ["requirement", "latency", "scale", "traffic", "throughput", "availability", "consistency", "read", "write"])
+    return requirements
+        ? { passed: true, feedback: "Great job identifying a meaningful product or scale requirement." }
+        : { passed: false, feedback: "A good tip is to name concrete requirements before choosing a framework: try thinking about expected traffic, latency, availability, consistency, read/write patterns, or growth assumptions." }
+}
+
+function drawingRubric(nodes, edges) {
+    const kinds = new Set(nodes.map((node) => node.data?.kind))
+    const adjacency = new Map(nodes.map((node) => [node.id, []]))
+    edges.forEach((edge) => adjacency.get(edge.source)?.push(edge.target))
+    const canReach = (fromKind, toKind) => nodes.filter((node) => node.data?.kind === fromKind).some((start) => {
+        const visited = new Set([start.id]); const queue = [start.id]
+        while (queue.length) {
+            const current = queue.shift()
+            if (nodes.find((node) => node.id === current)?.data?.kind === toKind) return true
+            for (const next of adjacency.get(current) || []) if (!visited.has(next)) { visited.add(next); queue.push(next) }
+        }
+        return false
+    })
+    const hasRequestPath = canReach("client", "web-server") && canReach("web-server", "database")
+    if (!kinds.has("client") || !kinds.has("web-server") || !kinds.has("database")) {
+        return { passed: false, feedback: "We need a complete request path first. Try adding a Client, Web Server, and Database." }
     }
-    const prompt = `You are an aggressive but fair senior tech lead running a system design interview. Current architecture (JSON): ${JSON.stringify(graph)}. Candidate's recent explanation, spoken in ${languageCode}: ${transcript || "No spoken explanation yet."}. Check ONLY for this already-detected issue: ${issue.description}. Respond with ONE short, conversational critique or challenge question under 3 sentences, written in ${languageCode}, the same language the candidate just spoke. Do not mention other issues. Return only the critique.`
+    if (!hasRequestPath) return { passed: false, feedback: "Make sure to connect the request path so traffic can flow from Client to Web Server to Database. Intermediate nodes are fine." }
+    return { passed: true, feedback: "Excellent, the core request path is represented and connected." }
+}
+
+function deepDiveRubric(transcript) {
+    const covered = hasAny(transcript, ["cache", "replica", "queue", "idempot", "retry", "failure", "availability", "consistency", "partition", "rate limit", "load", "scale", "fan-out"])
+    return covered
+        ? { passed: true, feedback: "Great explanation of a concrete reliability or scaling trade-off." }
+        : { passed: false, feedback: "Try to be a bit more specific about one failure or scale trade-off: caching, retries, idempotency, queues, replicas, consistency, rate limits, or load spikes." }
+}
+
+async function phraseWireItUpCritique({ issue, graph, transcript, languageCode }) {
+    const fallback = `Let's think about this part: ${issue.description} How might we improve or fix that?`
+    if (!process.env.SARVAM_API_KEY) return { critique: fallback, usedFallback: true }
+    const prompt = `You are a supportive tech lead acting as a mentor in a system design learning session. Current architecture (JSON): ${JSON.stringify(graph)}. Candidate's recent explanation, spoken in ${languageCode}: ${transcript || "No spoken explanation yet."}. Check ONLY for this already-detected issue: ${issue.description}. Respond with ONE short, conversational hint or guiding question under 3 sentences, written in ${languageCode}, the same language the candidate just spoke. Do not give the exact answer immediately unless they seem completely stuck or have failed multiple times. Help them figure it out. Return only the hint.`
     try {
         const response = await axios.post("https://api.sarvam.ai/v1/chat/completions", {
             model: "sarvam-105b",
@@ -228,11 +264,73 @@ async function phraseWireItUpCritique({ issue, graph, transcript, languageCode }
             timeout: 45_000,
         })
         const critique = keepThreeSentences(response.data?.choices?.[0]?.message?.content)
-        if (!critique) throw new Error("Sarvam-105B returned an empty critique.")
-        return { critique }
+        return { critique: critique || fallback, usedFallback: !critique }
     } catch (error) {
         console.error("[wire-it-up] Sarvam-105B critique failed:", error.response?.data || error.message)
-        throw error
+        return { critique: fallback, usedFallback: true }
+    }
+}
+
+const interviewFallbacks = {
+    "flash-sale": [
+        "Good start. Now imagine hundreds of thousands of buyers hit Checkout together. How do you reserve inventory without overselling?",
+        "Where would you make the payment and inventory operations idempotent, and why?",
+        "What work can leave the request path and move into a queue without hurting the buyer experience?",
+    ],
+    "social-feed": [
+        "Good start. Would you fan out posts when they are written, or build feeds when users read them? Walk me through that trade-off.",
+        "How do you protect the feed database when a celebrity publishes a post?",
+        "Which parts of this path would you cache, and how would you handle invalidation?",
+    ],
+    "photo-sharing": [
+        "Good start. What happens immediately after a user uploads a large image, and which work should be asynchronous?",
+        "How will a user in another region receive a popular image quickly?",
+        "How would you retry failed image transformations without duplicating work?",
+    ],
+}
+
+async function phraseWireItUpFollowup({ graph, transcript, languageCode, challengeId, challengePrompt, turn }) {
+    const fallbackList = interviewFallbacks[challengeId] || ["What is the first scaling bottleneck you expect in this design, and how would you address it?"]
+    const fallback = fallbackList[Math.min(turn, fallbackList.length - 1)]
+    if (!process.env.SARVAM_API_KEY) return { critique: fallback, usedFallback: true }
+    const prompt = `You are a supportive tech lead acting as a mentor in a live system design learning session. The exercise is: ${challengePrompt}. The candidate just said in ${languageCode}: ${transcript}. Their current architecture is: ${JSON.stringify(graph)}. Ask exactly ONE concise, natural follow-up question that gives them a hint to explain a missing trade-off, bottleneck, failure mode, or scaling decision. Guide them gently instead of giving the answer outright, but provide the answer if they seem completely stuck. Write in ${languageCode} in under two sentences. Return only the question or guidance.`
+    try {
+        const response = await axios.post("https://api.sarvam.ai/v1/chat/completions", {
+            model: "sarvam-105b",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.45,
+            max_tokens: 160,
+            reasoning_effort: null,
+        }, {
+            headers: { "api-subscription-key": process.env.SARVAM_API_KEY, "Content-Type": "application/json" },
+            timeout: 45_000,
+        })
+        return { critique: keepThreeSentences(response.data?.choices?.[0]?.message?.content) || fallback, usedFallback: false }
+    } catch (error) {
+        console.error("[wire-it-up] Sarvam-105B follow-up failed:", error.response?.data || error.message)
+        return { critique: fallback, usedFallback: true }
+    }
+}
+
+async function phraseWireItUpFinalFeedback({ graph, challengePrompt, languageCode }) {
+    const fallback = "That completes our learning session. You made the core request path clear; now you can continue to strengthen failure handling, capacity assumptions, and the consistency trade-offs we discussed."
+    if (!process.env.SARVAM_API_KEY) return { critique: fallback, usedFallback: true }
+    const prompt = `You are closing a system design learning session. Question: ${challengePrompt}. Architecture JSON: ${JSON.stringify(graph)}. Give the candidate a balanced closing review in ${languageCode}: one concrete strength, one concrete improvement, and one next step. Keep it conversational, encouraging, and under three sentences. Return only the feedback.`
+    try {
+        const response = await axios.post("https://api.sarvam.ai/v1/chat/completions", {
+            model: "sarvam-105b",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.35,
+            max_tokens: 180,
+            reasoning_effort: null,
+        }, {
+            headers: { "api-subscription-key": process.env.SARVAM_API_KEY, "Content-Type": "application/json" },
+            timeout: 45_000,
+        })
+        return { critique: keepThreeSentences(response.data?.choices?.[0]?.message?.content) || fallback, usedFallback: false }
+    } catch (error) {
+        console.error("[wire-it-up] Sarvam-105B final feedback failed:", error.response?.data || error.message)
+        return { critique: fallback, usedFallback: true }
     }
 }
 
@@ -288,25 +386,98 @@ io.on("connection", (socket) => {
         })
     })
 
-    socket.on("evaluate_architecture", async ({ graph, transcript, languageCode } = {}) => {
+    socket.on("interview_start", ({ challengeId, challengePrompt } = {}) => {
+        if (socket.data.wireItUpIntroSent && socket.data.wireItUpChallenge?.challengeId === challengeId) return
+        socket.data.wireItUpChallenge = { challengeId, challengePrompt }
+        socket.data.wireItUpInterviewStage = "discovery"
+        socket.data.wireItUpConversationTurn = 0
+        socket.data.wireItUpDeepDiveTurns = 0
+        socket.data.wireItUpPendingTranscript = ""
+        socket.data.wireItUpLastEvaluationId = 0
+        socket.data.wireItUpRaisedPatterns = new Set()
+        socket.data.wireItUpIntroSent = true
+        const intro = `Welcome to your system design learning session. I’ll be your tech lead and mentor. Today we'll collaboratively design this system on the canvas while you explain your decisions out loud. I’ll let you finish each thought, then I’ll provide hints and guiding questions about scale, reliability, and trade-offs to help you learn. The scenario is: ${challengePrompt} Before you draw anything, what are the key requirements and assumptions you would clarify first?`
+        socket.emit("architecture_evaluation", { critique: intro, kind: "introduction", languageCode: "en-IN", nextStage: "discovery" })
+        synthesizeWireItUpCritique(intro, "en-IN").then((audioBase64) => {
+            socket.emit("critique_audio", { audioBase64, mimeType: "audio/wav", languageCode: "en-IN" })
+        }).catch((error) => {
+            console.error("[wire-it-up] Intro synthesis failed:", error.message)
+            socket.emit("critique_audio_error", { message: "The introduction voice is unavailable; you can still continue by speaking or replaying the text." })
+        })
+    })
+
+    socket.on("evaluate_architecture", async ({ graph, transcript, languageCode, challengeId, challengePrompt, triggerSource, evaluationId } = {}) => {
         if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) return
+        if (Number.isFinite(evaluationId) && evaluationId <= (socket.data.wireItUpLastEvaluationId || 0)) return
+        if (Number.isFinite(evaluationId)) socket.data.wireItUpLastEvaluationId = evaluationId
         socket.data.wireItUpRaisedPatterns ??= new Set()
         const issue = selectWireItUpIssue(graph, socket.data.wireItUpRaisedPatterns)
-        if (!issue) return socket.emit("architecture_evaluation", { critique: null })
+        socket.data.wireItUpConversationTurn ??= 0
+        socket.data.wireItUpInterviewStage ??= "discovery"
 
-        // Mark before the remote call so close-together pause/edge events cannot duplicate it.
-        socket.data.wireItUpRaisedPatterns.add(issue.id)
         try {
-            const result = await phraseWireItUpCritique({
-                issue,
-                graph,
-                transcript,
-                languageCode: languageCode || "en-IN",
-            })
+            // Specific architecture critiques take precedence; otherwise this is a
+            // normal interview follow-up so the session feels conversational.
+            // A canvas edge can raise a concrete architecture concern, but it is
+            // never treated as a candidate answer that warrants a new question.
+            const stage = socket.data.wireItUpInterviewStage
+            if (!issue && triggerSource !== "user_pause") {
+                return socket.emit("architecture_evaluation", { critique: null })
+            }
+            let candidateTranscript = transcript || ""
+            if (triggerSource === "user_pause") {
+                socket.data.wireItUpPendingTranscript = `${socket.data.wireItUpPendingTranscript || ""} ${candidateTranscript}`.trim()
+                candidateTranscript = socket.data.wireItUpPendingTranscript
+                // VAD pauses are not necessarily complete thoughts. Hold short
+                // fragments such as “Okay” or “Yeah, so my main…” until the next
+                // pause instead of advancing the interview state.
+                if (candidateTranscript.length < 35) {
+                    return socket.emit("architecture_evaluation", { critique: null, waitingForMoreSpeech: true })
+                }
+            }
+            let result
+            let nextStage = stage
+            if (triggerSource === "user_pause" && stage === "discovery") {
+                const rubric = discoveryRubric(candidateTranscript)
+                result = { critique: rubric.passed ? `Great job identifying those requirements. Before you draw, what do you think about the feed's latency target, read and write shape, and how fresh the content needs to be? Then we’ll sketch the main request path.` : `I heard the framework choice, but let’s ground this in the product first as a learning exercise. What latency, traffic pattern, availability, and freshness should this feed support?`, usedFallback: true }
+                nextStage = rubric.passed ? "drawing" : "discovery"
+            } else if (triggerSource === "user_pause" && stage === "drawing" && !issue) {
+                const rubric = drawingRubric(graph.nodes, graph.edges)
+                if (!rubric.passed) {
+                    result = { critique: `Let's hold off on the trade-offs for a moment. ${rubric.feedback} Try adding that core path, then walk me through the request flow.`, usedFallback: true }
+                } else {
+                    const followup = await phraseWireItUpFollowup({ graph, transcript: candidateTranscript, languageCode: languageCode || "en-IN", challengeId, challengePrompt, turn: socket.data.wireItUpConversationTurn })
+                    result = { critique: `Great, I can see the core request path now. ${followup.critique}`, usedFallback: followup.usedFallback }
+                    nextStage = "deep_dive"
+                }
+            } else if (stage === "deep_dive" && triggerSource === "user_pause") {
+                const rubric = deepDiveRubric(candidateTranscript)
+                if (!rubric.passed) {
+                    result = { critique: `You're on the right track, but let's consider one more concrete trade-off. ${rubric.feedback} Try thinking about a specific failure or scale scenario.`, usedFallback: true }
+                } else {
+                    socket.data.wireItUpDeepDiveTurns = (socket.data.wireItUpDeepDiveTurns || 0) + 1
+                    if (socket.data.wireItUpDeepDiveTurns >= 3) {
+                    result = await phraseWireItUpFinalFeedback({ graph, challengePrompt, languageCode: languageCode || "en-IN" })
+                    nextStage = "feedback"
+                    } else {
+                        result = await phraseWireItUpFollowup({ graph, transcript: candidateTranscript, languageCode: languageCode || "en-IN", challengeId, challengePrompt, turn: socket.data.wireItUpConversationTurn })
+                    }
+                }
+            } else if (issue) {
+                result = await phraseWireItUpCritique({ issue, graph, transcript: candidateTranscript, languageCode: languageCode || "en-IN" })
+            } else {
+                return socket.emit("architecture_evaluation", { critique: null })
+            }
+            if (issue) result.critique = `Let's pause here and look at one design risk to learn from. ${result.critique}`
+            if (issue) socket.data.wireItUpRaisedPatterns.add(issue.id)
+            if (triggerSource === "user_pause") socket.data.wireItUpPendingTranscript = ""
+            if (stage !== "deep_dive") socket.data.wireItUpConversationTurn += 1
+            socket.data.wireItUpInterviewStage = nextStage
             socket.emit("architecture_evaluation", {
-                issueId: issue.id,
+                issueId: issue?.id || null,
                 critique: result.critique,
                 languageCode: languageCode || "en-IN",
+                nextStage,
             })
             try {
                 const audioBase64 = await synthesizeWireItUpCritique(result.critique, languageCode || "en-IN")
@@ -318,7 +489,7 @@ io.on("connection", (socket) => {
                 })
             }
         } catch (error) {
-            socket.data.wireItUpRaisedPatterns.delete(issue.id)
+            if (issue) socket.data.wireItUpRaisedPatterns.delete(issue.id)
             socket.emit("architecture_evaluation_error", {
                 message: error.code === "SARVAM_NOT_CONFIGURED" ? error.message : "The critique service is temporarily unavailable.",
             })
