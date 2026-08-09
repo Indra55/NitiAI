@@ -221,15 +221,16 @@ router.get('/auth/callback', async (req, res) => {
     try {
       if (pool) {
         await pool.query(
-          `INSERT INTO users (username, name, email, location, onboarding_completed, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, true, NOW(), NOW())
+          `INSERT INTO users (username, name, email, location, password, onboarding_completed, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
            ON CONFLICT (email) 
            DO UPDATE SET username = EXCLUDED.username, name = COALESCE(users.name, EXCLUDED.name), location = COALESCE(users.location, EXCLUDED.location), updated_at = NOW()`,
           [
             targetUsername,
             ghUser.name || targetUsername,
             ghUser.email || `${targetUsername.toLowerCase()}@users.noreply.github.com`,
-            ghUser.location || 'Remote'
+            ghUser.location || 'Remote',
+            'OAUTH_USER_GITHUB'
           ]
         );
         console.log(`[GitHubOAuth] Pre-seeded candidate user profile in PostgreSQL database for "${targetUsername}".`);

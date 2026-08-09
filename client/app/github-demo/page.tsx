@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { 
   Github, ShieldCheck, CheckCircle2, Sparkles, RefreshCw, Layers, Target, 
   Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff, LogOut,
@@ -11,6 +12,7 @@ import {
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 export default function GitHubDemoPage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState<boolean>(false);
   const [githubInput, setGithubInput] = useState<string>('');
   const [activeUsername, setActiveUsername] = useState<string>('');
@@ -200,8 +202,10 @@ export default function GitHubDemoPage() {
       setProfile(null);
       setErrorMsg(null);
       setLoading(false);
+      
+      // Clean redirect to Auth (Signup / Login) page
       if (typeof window !== 'undefined') {
-        window.history.replaceState({}, '', '/auth');
+        window.location.href = '/auth';
       }
     }
   };
@@ -335,7 +339,7 @@ export default function GitHubDemoPage() {
           <button
             onClick={handleLogout}
             className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
-            title="Log out or switch user"
+            title="Log out and return to sign up / login page"
           >
             <LogOut className="w-3.5 h-3.5 text-red-400" /> Log Out
           </button>
