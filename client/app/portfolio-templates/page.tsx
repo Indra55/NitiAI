@@ -115,19 +115,22 @@ export default function PortfolioTemplatesPage() {
 
   const fetchUserAndResumeInfo = async () => {
     setLoading(true);
+    const targetGithubUser = 'jayyy255';
+
     try {
       // 1. Fetch user account details
       const userRes = await getCurrentUser();
       if (userRes.data?.user) {
         const u = userRes.data.user;
+        const userGithub = u.username && u.username.toLowerCase() !== 'mihir patil' ? u.username : targetGithubUser;
         setCandidateData(prev => ({
           ...prev,
-          name: u.name || u.username || prev.name,
-          username: u.username || prev.username,
+          name: u.name || prev.name,
+          username: userGithub,
           email: u.email || prev.email,
           location: u.location || prev.location,
           targetRole: u.career_goal_short || prev.targetRole,
-          avatarUrl: `https://github.com/${u.username || 'jayyy255'}.png`
+          avatarUrl: `https://github.com/${userGithub}.png`
         }));
       }
 
@@ -147,9 +150,9 @@ export default function PortfolioTemplatesPage() {
             name: p.name || `Project_${i+1}`,
             description: p.description || 'Candidate project showcase.',
             language: p.technologies ? p.technologies[0] : 'TypeScript',
-            stars: Math.floor(Math.random() * 25) + 5,
-            forks: Math.floor(Math.random() * 8) + 1,
-            url: p.url || `https://github.com/${prev.username}/${p.name || ''}`,
+            stars: Math.floor(Math.random() * 25) + 10,
+            forks: Math.floor(Math.random() * 8) + 2,
+            url: p.url || `https://github.com/${targetGithubUser}/${p.name || ''}`,
             detectedTools: p.technologies || ['React', 'Node.js']
           })) : prev.repos,
           experiences: r.experience && r.experience.length > 0 ? r.experience.map(e => ({
@@ -159,6 +162,32 @@ export default function PortfolioTemplatesPage() {
             desc: e.description || 'Engineered software solutions and full stack features.'
           })) : prev.experiences
         }));
+      }
+
+      // 3. Attempt to fetch GitHub repo scan data for jayyy255
+      try {
+        const ghRes = await fetch(`/api/github/user-roadmap?username=${targetGithubUser}`);
+        if (ghRes.ok) {
+          const ghData = await ghRes.json();
+          if (ghData.success && ghData.probingQuestions && ghData.probingQuestions.length > 0) {
+            setCandidateData(prev => ({
+              ...prev,
+              username: targetGithubUser,
+              avatarUrl: `https://github.com/${targetGithubUser}.png`,
+              repos: ghData.probingQuestions.map((q: any, idx: number) => ({
+                name: q.repoName || `Repo_${idx + 1}`,
+                description: q.question || 'Scanned GitHub repository.',
+                language: 'TypeScript',
+                stars: 35 + idx * 8,
+                forks: 12 + idx * 3,
+                url: `https://github.com/${targetGithubUser}/${q.repoName || ''}`,
+                detectedTools: q.expectedConcepts ? q.expectedConcepts.slice(0, 3) : ['TypeScript', 'GitHub']
+              }))
+            }));
+          }
+        }
+      } catch (ghErr) {
+        console.warn('GitHub scan fetch notice:', ghErr);
       }
     } catch (e) {
       console.warn('Auto-fetch user resume details notice:', e);
