@@ -177,7 +177,7 @@ export default function MatchAnalysisPage() {
                                     <Button
                                         onClick={handleAnalyze}
                                         disabled={loading || jdText.trim().length < 20}
-                                        className="gap-2 bg-linear-to-r from-primary to-accent hover:opacity-90 text-white rounded-xl px-6 shadow-lg"
+                                        className="gap-2 bg-[#ef4a18] hover:bg-[#d93d10] text-white font-semibold rounded-xl px-6 shadow-xs transition disabled:opacity-50"
                                     >
                                         {loading ? (
                                             <>
@@ -217,7 +217,7 @@ export default function MatchAnalysisPage() {
                                 {/* Top Overview Section — Consolidated Match Info & Heatmap */}
                                 <section>
                                     <Card className="p-8 bg-card/50 backdrop-blur-sm border-none shadow-none no-zoom overflow-hidden relative group">
-                                        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-primary/30 via-primary to-primary/30" />
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-[#ef4a18]" />
                                         
                                         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
                                             {/* Score & Verdict Column */}
@@ -405,7 +405,7 @@ export default function MatchAnalysisPage() {
                                             </div>
                                             <div className="h-2.5 rounded-full bg-border overflow-hidden">
                                                 <div
-                                                    className="h-full rounded-full bg-linear-to-r from-primary to-accent transition-all duration-1000"
+                                                    className="h-full rounded-full bg-[#ef4a18] transition-all duration-1000"
                                                     style={{ width: `${result.keyword_analysis?.keyword_match_rate || 0}%` }}
                                                 />
                                             </div>

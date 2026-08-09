@@ -51,7 +51,7 @@ app.use("/api/skills", require("./routes/skills"))
 app.use("/api/resume", require("./routes/resume"))
 app.use("/api/planner", require("./routes/planner"))
 app.use("/api/execute", require("./routes/execute"))
-app.use("/api/voice-resume", require("./routes/voiceResume"))
+app.use("/api/coding", require("./routes/coding"))
 
 // Wire It Up Phase 2 — utterances are intentionally request/response. Saaras
 // streaming remains an upgrade path; VAD creates clean, short REST utterances.
@@ -102,6 +102,7 @@ app.post("/api/system-design/transcribe", wireItUpUpload.single("audio"), async 
         return res.status(status).json({ error: message, code: "SARVAM_STT_FAILED" })
     }
 })
+app.use("/api/coding", require("./routes/coding"))
 // Health check endpoint
 app.get("/", (req, res) => {
     res.json({

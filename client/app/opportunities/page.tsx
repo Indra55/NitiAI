@@ -45,13 +45,15 @@ import { toaster } from "@/lib/toaster"
         if (dashboardResult.data) {
           setDashboardData(dashboardResult.data)
         } else if (dashboardResult.error) {
-          console.error("Dashboard API error (opportunities):", dashboardResult.error)
+          console.warn("Dashboard API info (opportunities):", dashboardResult.error)
           setError(dashboardResult.error)
-          toaster.create({
-            title: "Opportunities Error",
-            description: dashboardResult.error,
-            type: "error"
-          })
+          if (!dashboardResult.error.toLowerCase().includes("token") && !dashboardResult.error.toLowerCase().includes("unauthorized")) {
+            toaster.create({
+              title: "Opportunities Error",
+              description: dashboardResult.error,
+              type: "error"
+            })
+          }
         }
       } catch (err) {
         console.error("Failed to fetch dashboard data (opportunities):", err)

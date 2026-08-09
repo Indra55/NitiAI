@@ -94,6 +94,11 @@ async function apiRequest<T>(
         const data = await response.json();
 
         if (!response.ok) {
+            if (response.status === 401) {
+                console.warn("API 401 Unauthorized: Clearing stale session token");
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+            }
             return { error: data.error || "An error occurred" };
         }
 

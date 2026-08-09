@@ -3,74 +3,85 @@ const router = express.Router();
 const axios = require("axios");
 const { authenticateToken } = require("../middleware/auth");
 
-// Mock data for fallback
+// Mock data for fallback (Mumbai, India focus with 100% valid working LinkedIn URLs)
 const mockJobs = [
     {
         id: "1",
-        title: "Senior Software Engineer - AI/ML",
-        company: "TechCorp",
-        location: "San Francisco, CA",
-        salary: "$180K - $220K",
-        match: 94,
+        title: "Senior Frontend Engineer - React / Next.js",
+        company: "Jio Platforms",
+        location: "Mumbai, MH",
+        salary: "₹24L - ₹34L PA",
+        match: 96,
         posted: "2 hours ago",
         type: "new",
-        description: "Looking for an experienced engineer to build AI-powered features for our core platform using Python and TensorFlow.",
-        url: "https://www.linkedin.com/jobs/view/123456789"
+        description: "Looking for an experienced Frontend Engineer to build high-scale web interfaces for AI and media services using Next.js, React, and TypeScript.",
+        url: "https://www.linkedin.com/jobs/search/?keywords=Jio%20Platforms%20Senior%20Frontend%20Engineer&location=Mumbai%2C%20Maharashtra%2C%20India"
     },
     {
         id: "2",
-        title: "Full-Stack Developer",
-        company: "StartupXYZ",
-        location: "New York, NY",
-        salary: "$140K - $170K",
-        match: 87,
-        posted: "5 hours ago",
+        title: "Full Stack AI Engineer",
+        company: "Sarvam AI",
+        location: "Mumbai, MH",
+        salary: "₹28L - ₹40L PA",
+        match: 94,
+        posted: "4 hours ago",
         type: "recommended",
-        description: "Join our fast-growing team to build the next generation platform using React, Node.js, and PostgreSQL.",
-        url: "https://www.linkedin.com/jobs/view/987654321"
+        description: "Join our core team in Mumbai to build multimodal Generative AI applications, API integrations, and low-latency LLM inference pipelines.",
+        url: "https://www.linkedin.com/jobs/search/?keywords=Sarvam%20AI%20Full%20Stack%20AI%20Engineer&location=Mumbai%2C%20Maharashtra%2C%20India"
     },
     {
         id: "3",
-        title: "Tech Lead - Infrastructure",
-        company: "CloudScale",
-        location: "Remote",
-        salary: "$200K - $250K",
+        title: "Software Development Engineer II (SDE-2)",
+        company: "CRED",
+        location: "Mumbai, MH",
+        salary: "₹30L - ₹42L PA",
         match: 91,
         posted: "1 day ago",
         type: "updated",
-        description: "Lead infrastructure initiatives for our cloud-native platform. Kubernetes and AWS experience required.",
-        url: "https://www.linkedin.com/jobs/view/456789123"
+        description: "Architect high-throughput financial infrastructure and microservices with Node.js, Go, PostgreSQL, and AWS.",
+        url: "https://www.linkedin.com/jobs/search/?keywords=CRED%20Software%20Development%20Engineer&location=Mumbai%2C%20Maharashtra%2C%20India"
     },
     {
         id: "4",
-        title: "Product Manager - Developer Tools",
-        company: "DevTools Inc",
-        location: "Seattle, WA",
-        salary: "$150K - $190K",
-        match: 82,
-        posted: "2 days ago",
-        type: "recommended",
-        description: "Shape the future of developer experience with cutting-edge tools. Technical background preferred.",
-        url: "https://www.linkedin.com/jobs/view/789123456"
+        title: "Backend Engineer - Microservices & Distributed Systems",
+        company: "Tata Consultancy Services (TCS)",
+        location: "Mumbai, MH",
+        salary: "₹22L - ₹30L PA",
+        match: 88,
+        posted: "1 day ago",
+        type: "new",
+        description: "Design resilient REST APIs and distributed edge message queues using Node.js, Golang, and Docker containers.",
+        url: "https://www.linkedin.com/jobs/search/?keywords=TCS%20Backend%20Engineer%20Microservices&location=Mumbai%2C%20Maharashtra%2C%20India"
     },
     {
         id: "5",
-        title: "Data Scientist",
-        company: "DataMinds",
-        location: "Boston, MA",
-        salary: "$160K - $190K",
+        title: "Senior React Native / Mobile Frontend Lead",
+        company: "BookMyShow",
+        location: "Mumbai, MH",
+        salary: "₹25L - ₹35L PA",
         match: 89,
+        posted: "2 days ago",
+        type: "recommended",
+        description: "Lead consumer experience development for ticketing and live entertainment apps across web and mobile platforms.",
+        url: "https://www.linkedin.com/jobs/search/?keywords=BookMyShow%20Senior%20React%20Native%20Developer&location=Mumbai%2C%20Maharashtra%2C%20India"
+    },
+    {
+        id: "6",
+        title: "DevOps & Cloud Infrastructure Specialist",
+        company: "Tech Mahindra",
+        location: "Navi Mumbai, MH",
+        salary: "₹18L - ₹26L PA",
+        match: 85,
         posted: "3 days ago",
-        type: "new",
-        description: "Analyze large datasets to derive actionable insights and build predictive models.",
-        url: "https://www.linkedin.com/jobs/view/321654987"
+        type: "updated",
+        description: "Manage Kubernetes clusters, CI/CD GitHub Actions pipelines, and automated cloud deployments on AWS & GCP.",
+        url: "https://www.linkedin.com/jobs/search/?keywords=Tech%20Mahindra%20DevOps%20Cloud%20Specialist&location=Mumbai%2C%20Maharashtra%2C%20India"
     }
 ];
 
 // POST /api/jobs/linkedin - Fetch jobs based on user profile
 router.post("/linkedin", authenticateToken, async (req, res) => {
     try {
-        // Debug logging
         console.log("POST /api/jobs/linkedin hit");
         console.log("User from auth middleware:", req.user ? `ID: ${req.user.id}` : "No user");
 
@@ -78,188 +89,166 @@ router.post("/linkedin", authenticateToken, async (req, res) => {
             return res.status(401).json({ error: "User context missing" });
         }
 
-        const { career_goal_short, location } = req.user;
-        console.log(`Searching for: ${career_goal_short} in ${location}`);
+        // Fetch resume information for accurate personalized matching
+        let resumeTitle = null;
+        let resumeLocation = null;
+        let technicalSkills = [];
 
-        // Check for API key
+        try {
+            const resumeRes = await pool.query(
+                "SELECT professional_title, extracted_location, technical_skills FROM user_resume_info WHERE user_id = $1",
+                [req.user.id]
+            );
+            if (resumeRes.rows.length > 0) {
+                const row = resumeRes.rows[0];
+                resumeTitle = row.professional_title;
+                resumeLocation = row.extracted_location;
+                technicalSkills = Array.isArray(row.technical_skills) ? row.technical_skills : [];
+            }
+        } catch (dbErr) {
+            console.warn("Could not query user_resume_info:", dbErr.message);
+        }
+
+        const targetTitle = resumeTitle || req.user.career_goal_short || 'Software Engineer';
+        const targetLocation = resumeLocation || req.user.location || 'Mumbai, MH, India';
+
+        console.log(`Personalized Resume Match Search: Title="${targetTitle}", Location="${targetLocation}", Skills=[${technicalSkills.join(", ")}]`);
+
+        let aggregatedJobs = [];
+
+        // 1. Fetch live jobs from Remotive API (Free live tech jobs API)
+        try {
+            const searchKeyword = targetTitle ? targetTitle.split(" ")[0] : "developer";
+            console.log("Fetching live jobs from Remotive API with keyword:", searchKeyword);
+            const remRes = await axios.get(`https://remotive.com/api/remote-jobs?search=${encodeURIComponent(searchKeyword)}&limit=12`);
+            if (remRes.data && Array.isArray(remRes.data.jobs)) {
+                remRes.data.jobs.forEach(j => {
+                    aggregatedJobs.push({
+                        id: "rem-" + j.id,
+                        title: j.title || "Software Engineer",
+                        company: j.company_name || "Tech Company",
+                        location: j.candidate_required_location || targetLocation || "Remote",
+                        salary: j.salary || "Competitive",
+                        posted: j.publication_date ? j.publication_date.split("T")[0] : "Recently",
+                        description: j.description ? j.description.replace(/<[^>]*>/g, "").substring(0, 220) + "..." : "Click Apply Now for full listing details.",
+                        url: j.url
+                    });
+                });
+                console.log(`Fetched ${remRes.data.jobs.length} live jobs from Remotive`);
+            }
+        } catch (remErr) {
+            console.warn("Remotive API error:", remErr.message);
+        }
+
+        // 2. Fetch live jobs from Arbeitnow API (Free live software engineering jobs API)
+        try {
+            console.log("Fetching live jobs from Arbeitnow API...");
+            const arbRes = await axios.get("https://www.arbeitnow.com/api/job-board-api");
+            if (arbRes.data && Array.isArray(arbRes.data.data)) {
+                arbRes.data.data.slice(0, 10).forEach(j => {
+                    aggregatedJobs.push({
+                        id: "arb-" + (j.slug || Math.random().toString(36).substring(2)),
+                        title: j.title || "Software Engineer",
+                        company: j.company_name || "Tech Company",
+                        location: j.location || targetLocation || "Remote",
+                        salary: "Competitive",
+                        posted: "Recently",
+                        description: j.description ? j.description.replace(/<[^>]*>/g, "").substring(0, 220) + "..." : "Click Apply Now for full listing details.",
+                        url: j.url
+                    });
+                });
+                console.log(`Fetched ${arbRes.data.data.length} live jobs from Arbeitnow`);
+            }
+        } catch (arbErr) {
+            console.warn("Arbeitnow API error:", arbErr.message);
+        }
+
+        // 3. Try RapidAPI if configured and available
         const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || 'dcbbcd4b71msh4678aa2113ea60cp1820aajsndf18bdd64b5c';
         const RAPIDAPI_HOST = 'linkedin-job-search-api.p.rapidapi.com';
 
-        console.log(`API Key present: ${!!RAPIDAPI_KEY}`);
-        console.log(`API Host: ${RAPIDAPI_HOST}`);
-
         if (RAPIDAPI_KEY) {
-            // Clean up title - remove hyphens and ensure proper formatting
-            const cleanTitle = (career_goal_short || 'Software Engineer').replace(/-/g, ' ');
-            const cleanLocation = location || 'United States';
-
-            const options = {
-                method: 'GET',
-                url: `https://${RAPIDAPI_HOST}/active-jb-24h`,
-                params: {
-                    title_filter: `"${cleanTitle}"`,
-                    location_filter: `"${cleanLocation}"`,
-                    limit: '10',
-                    offset: '0',
-                    description_type: 'text'
-                },
-                headers: {
-                    'x-rapidapi-key': RAPIDAPI_KEY,
-                    'x-rapidapi-host': RAPIDAPI_HOST
-                }
-            };
-
             try {
-                console.log("Sending request to RapidAPI with options:", JSON.stringify(options, (key, value) => {
-                    if (key === 'x-rapidapi-key') return 'HIDDEN';
-                    return value;
-                }, 2));
-
-                let response = await axios.request(options);
-
-                console.log("RapidAPI Response Status:", response.status);
-                console.log("RapidAPI Response Data Type:", typeof response.data);
-                console.log("RapidAPI Full Response (first 500 chars):", JSON.stringify(response.data).substring(0, 500));
-
-                // The API can return: array directly, {data: array}, {jobs: array}, or {results: array}
-                let rawJobs = [];
-                if (Array.isArray(response.data)) {
-                    rawJobs = response.data;
-                } else if (response.data && typeof response.data === 'object') {
-                    rawJobs = response.data.data || response.data.jobs || response.data.results || [];
-                }
-
-                console.log(`Raw jobs found from active-jb-24h: ${Array.isArray(rawJobs) ? rawJobs.length : 'Not an array'}`);
-
-                // If no jobs found, try a broader search with just the country
-                if (rawJobs.length === 0) {
-                    console.log("No jobs found in 24h, trying search-jobs endpoint with broader location...");
-
-                    // Try with a broader location (just country name)
-                    const broaderLocation = cleanLocation.split(',')[cleanLocation.split(',').length - 1].trim() || 'India';
-
-                    const searchOptions = {
-                        method: 'GET',
-                        url: `https://${RAPIDAPI_HOST}/search-jobs`,
-                        params: {
-                            keywords: cleanTitle,
-                            location_id: '102713980', // India location ID on LinkedIn
-                            date_posted: 'past-week',
-                            limit: '20'
-                        },
-                        headers: {
-                            'x-rapidapi-key': RAPIDAPI_KEY,
-                            'x-rapidapi-host': RAPIDAPI_HOST
-                        }
-                    };
-
-                    try {
-                        console.log("Trying search-jobs endpoint...");
-                        response = await axios.request(searchOptions);
-
-                        if (Array.isArray(response.data)) {
-                            rawJobs = response.data;
-                        } else if (response.data && typeof response.data === 'object') {
-                            rawJobs = response.data.data || response.data.jobs || response.data.results || [];
-                        }
-
-                        console.log(`Raw jobs found from search-jobs: ${Array.isArray(rawJobs) ? rawJobs.length : 'Not an array'}`);
-                    } catch (searchError) {
-                        console.log("search-jobs endpoint failed:", searchError.message);
+                const options = {
+                    method: 'GET',
+                    url: `https://${RAPIDAPI_HOST}/active-jb-24h`,
+                    params: {
+                        title_filter: `"${targetTitle.replace(/-/g, ' ')}"`,
+                        location_filter: `"${targetLocation}"`,
+                        limit: '10',
+                        offset: '0',
+                        description_type: 'text'
+                    },
+                    headers: {
+                        'x-rapidapi-key': RAPIDAPI_KEY,
+                        'x-rapidapi-host': RAPIDAPI_HOST
                     }
-                }
+                };
+                const rapidRes = await axios.request(options);
+                let rawJobs = Array.isArray(rapidRes.data) ? rapidRes.data : (rapidRes.data?.data || rapidRes.data?.jobs || []);
+                rawJobs.forEach(job => {
+                    aggregatedJobs.unshift({
+                        id: "rapid-" + (job.id || Math.random().toString(36).substring(2)),
+                        title: job.title || job.job_title || targetTitle,
+                        company: job.company_name || job.companyName || "LinkedIn Partner",
+                        location: typeof job.location === 'string' ? job.location : targetLocation,
+                        salary: job.salary || "See listing",
+                        posted: job.posted_date || "Recently",
+                        description: job.description ? job.description.substring(0, 220) + "..." : "Click Apply Now for full listing details.",
+                        url: job.url || job.job_url || `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title || targetTitle)}&location=${encodeURIComponent(targetLocation)}`
+                    });
+                });
+            } catch (rapidErr) {
+                console.warn("RapidAPI fetch skipped/failed:", rapidErr.message);
+            }
+        }
 
-                // Log the first job to see its actual structure
-                if (rawJobs.length > 0) {
-                    console.log("Sample job object structure:", JSON.stringify(rawJobs[0], null, 2));
-                }
+        // Fall back to mock dataset if all live APIs failed
+        if (aggregatedJobs.length === 0) {
+            console.warn("All live APIs failed. Using fallback dataset.");
+            aggregatedJobs = mockJobs;
+        }
 
-                const jobs = Array.isArray(rawJobs) ? rawJobs.map(job => {
-                    // Handle various API response formats for company name
-                    let companyName = "Unknown Company";
-                    if (job.company_name) companyName = job.company_name;
-                    else if (job.companyName) companyName = job.companyName;
-                    else if (job.company?.name) companyName = job.company.name;
-                    else if (typeof job.company === 'string') companyName = job.company;
-                    else if (job.organization) companyName = job.organization;
-                    else if (job.employer) companyName = job.employer;
+        // Format final jobs array with dynamic skill-match scores against user's resume technical skills
+        const userSkillsLower = technicalSkills.map(s => String(s).toLowerCase());
 
-                    // Handle various location formats
-                    let jobLocation = "Remote";
-                    if (job.location) jobLocation = typeof job.location === 'string' ? job.location : (job.location.city || job.location.name || "Remote");
-                    else if (job.job_location) jobLocation = job.job_location;
-                    else if (job.jobLocation) jobLocation = job.jobLocation;
-                    else if (job.formattedLocation) jobLocation = job.formattedLocation;
+        const finalJobs = aggregatedJobs.map(job => {
+            const jobTextLower = `${job.title || ''} ${job.company || ''} ${job.description || ''}`.toLowerCase();
+            let skillMatches = 0;
+            userSkillsLower.forEach(skill => {
+                if (jobTextLower.includes(skill)) skillMatches++;
+            });
 
-                    // Handle various URL formats
-                    let jobUrl = "#";
-                    if (job.url) jobUrl = job.url;
-                    else if (job.job_url) jobUrl = job.job_url;
-                    else if (job.linkedinJobUrl) jobUrl = job.linkedinJobUrl;
-                    else if (job.linkedin_url) jobUrl = job.linkedin_url;
-                    else if (job.applyUrl) jobUrl = job.applyUrl;
-                    else if (job.apply_url) jobUrl = job.apply_url;
-                    else if (job.link) jobUrl = job.link;
-
-                    // Handle salary
-                    let salary = "See listing";
-                    if (job.salary) salary = typeof job.salary === 'string' ? job.salary : (job.salary.text || "See listing");
-                    else if (job.compensation) salary = job.compensation;
-                    else if (job.salaryText) salary = job.salaryText;
-
-                    // Handle posted date
-                    let posted = "Recently";
-                    if (job.posted_date) posted = job.posted_date;
-                    else if (job.postDate) posted = job.postDate;
-                    else if (job.date_posted) posted = job.date_posted;
-                    else if (job.postedAt) posted = job.postedAt;
-                    else if (job.listedAt) posted = new Date(job.listedAt).toISOString().split('T')[0];
-
-                    // Handle description
-                    let description = "Click View on LinkedIn for full details.";
-                    if (job.description) {
-                        description = typeof job.description === 'string'
-                            ? job.description.substring(0, 200) + "..."
-                            : "Click View on LinkedIn for full details.";
-                    } else if (job.job_description) {
-                        description = job.job_description.substring(0, 200) + "...";
-                    }
-
-                    return {
-                        id: job.id || job.job_id || job.jobId || Math.random().toString(36).substr(2, 9),
-                        title: job.title || job.job_title || job.jobTitle || "Untitled Job",
-                        company: companyName,
-                        location: jobLocation,
-                        salary: salary,
-                        match: Math.floor(Math.random() * (99 - 70) + 70),
-                        posted: posted,
-                        type: "new",
-                        description: description,
-                        url: jobUrl
-                    };
-                }) : [];
-
-                if (jobs.length === 0) {
-                    console.warn("Both API endpoints returned no jobs. Falling back to mock data.");
-                    return res.json({ jobs: mockJobs });
-                }
-
-                console.log(`Returning ${jobs.length} valid jobs to client`);
-                return res.json({ jobs });
-            } catch (apiError) {
-                console.error("RapidAPI Request Failed.");
-                console.error("Error Message:", apiError.message);
-                if (apiError.response) {
-                    console.error("API Error Status:", apiError.response.status);
-                    console.error("API Error Data:", JSON.stringify(apiError.response.data));
-                }
-                return res.json({ jobs: mockJobs });
+            let computedMatch = 85;
+            if (userSkillsLower.length > 0) {
+                const ratio = skillMatches / userSkillsLower.length;
+                computedMatch = Math.min(98, Math.max(76, Math.round(76 + ratio * 22)));
+            } else {
+                computedMatch = Math.floor(Math.random() * (96 - 82) + 82);
             }
 
-        } else {
-            console.log("Using mock data (No API key found)");
-            return res.json({ jobs: mockJobs });
-        }
+            // Guarantee a valid active URL
+            let validUrl = job.url;
+            if (!validUrl || validUrl === "#" || !validUrl.startsWith("http")) {
+                validUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.company + ' ' + job.title)}&location=${encodeURIComponent(job.location)}`;
+            }
+
+            return {
+                id: String(job.id),
+                title: job.title,
+                company: job.company,
+                location: job.location,
+                salary: job.salary,
+                match: computedMatch,
+                posted: job.posted,
+                type: computedMatch >= 90 ? "recommended" : "new",
+                description: job.description,
+                url: validUrl
+            };
+        });
+
+        console.log(`Returning ${finalJobs.length} live matched jobs to client`);
+        return res.json({ jobs: finalJobs });
 
     } catch (error) {
         console.error("CRITICAL SERVER ERROR in /linkedin:", error);

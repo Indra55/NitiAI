@@ -70,6 +70,16 @@ interface JobApplication {
   notes: string | null
 }
 
+function formatExternalUrl(url?: string | null): string {
+  if (!url) return "#"
+  const trimmed = url.trim()
+  if (!trimmed) return "#"
+  if (/^(https?:\/\/|mailto:|tel:|\/\/)/i.test(trimmed)) {
+    return trimmed
+  }
+  return `https://${trimmed}`
+}
+
 interface ProfileFormData {
   username: string
   name: string
@@ -86,8 +96,18 @@ interface ProfileFormData {
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth()
-  const [resumeInfo, setResumeInfo] = useState<ResumeInfo | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [resumeInfo, setResumeInfo] = useState<ResumeInfo | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("niti_resume_info_cache")
+        return cached ? JSON.parse(cached) : null
+      } catch (e) {
+        return null
+      }
+    }
+    return null
+  })
+  const [loading, setLoading] = useState(!resumeInfo)
   const [error, setError] = useState<string | null>(null)
   const [applications, setApplications] = useState<JobApplication[]>([])
   const [loadingApplications, setLoadingApplications] = useState(true)
@@ -116,18 +136,34 @@ export default function ProfilePage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await getResumeInfo()
-        if (response.data) {
-          setResumeInfo(response.data)
-        } else if (response.error) {
-          // If no resume found, that's okay, we'll show empty state
-          if (!response.error.includes("No resume found")) {
-            setError(response.error)
-          }
+        const [resumeRes, profileRes] = await Promise.allSettled([
+          getResumeInfo(),
+          getProfileData()
+        ])
+
+        if (resumeRes.status === "fulfilled" && resumeRes.value.data) {
+          setResumeInfo(resumeRes.value.data)
+          try { localStorage.setItem("niti_resume_info_cache", JSON.stringify(resumeRes.value.data)) } catch (e) {}
+        }
+
+        if (profileRes.status === "fulfilled" && profileRes.value.data?.user) {
+          const uData = profileRes.value.data.user
+          setProfileData({
+            username: uData.username || "",
+            name: uData.name || user?.name || "",
+            email: uData.email || user?.email || "",
+            phone: uData.phone || "",
+            location: uData.location || "",
+            age: uData.age?.toString() || "",
+            proficiency_level: uData.proficiency_level || "",
+            preferred_work_mode: uData.preferred_work_mode || "",
+            availability_timeline: uData.availability_timeline || "",
+            career_goal_short: uData.career_goal_short || "",
+            career_goal_long: uData.career_goal_long || "",
+          })
         }
       } catch (err) {
-        console.error("Failed to fetch profile data", err)
-        setError("Failed to load profile data")
+        console.warn("Background profile revalidation notice:", err)
       } finally {
         setLoading(false)
       }
@@ -146,8 +182,11 @@ export default function ProfilePage() {
           }
         })
         if (res.ok) {
-          const data = await res.json()
-          setApplications(data.applications || [])
+          const text = await res.text()
+          if (text && text.trim().startsWith("{")) {
+            const data = JSON.parse(text)
+            setApplications(data.applications || [])
+          }
         }
       } catch (err) {
         console.error("Failed to fetch applications", err)
@@ -354,18 +393,14 @@ export default function ProfilePage() {
       <div className="dashboard-theme min-h-screen bg-background text-foreground selection:bg-primary/20">
         <DynamicNavbar />
 
-        {/* Hero Section with Glassmorphism */}
+        {/* Hero Section */}
         <div className="relative pt-32 pb-12 overflow-hidden">
-          <div className="absolute inset-0 bg-linear-to-b from-primary/20 to-transparent z-0" />
-          <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-primary/20 to-transparent" />
-
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
               <div className="relative group">
-                <div className="absolute -inset-1 bg-linear-to-r from-primary to-accent rounded-full opacity-75 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200"></div>
-                <Avatar className="w-32 h-32 border-4 border-background relative">
+                <Avatar className="w-32 h-32 border-4 border-background shadow-md relative">
                   <AvatarImage src={user?.avatar} />
-                  <AvatarFallback className="bg-linear-to-br from-gray-800 to-gray-900 text-white text-4xl font-bold">
+                  <AvatarFallback className="bg-slate-900 text-white text-4xl font-bold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
@@ -421,14 +456,14 @@ export default function ProfilePage() {
 
                     {resumeInfo?.linkedin_url && (
                       <Button variant="outline" size="icon" className="rounded-full hover:bg-[#0077b5] hover:text-white transition-colors" asChild>
-                        <a href={resumeInfo.linkedin_url} target="_blank" rel="noopener noreferrer">
+                        <a href={formatExternalUrl(resumeInfo.linkedin_url)} target="_blank" rel="noopener noreferrer">
                           <Linkedin className="w-5 h-5" />
                         </a>
                       </Button>
                     )}
                     {resumeInfo?.portfolio_url && (
                       <Button variant="outline" size="icon" className="rounded-full hover:bg-emerald-500 hover:text-white transition-colors" asChild>
-                        <a href={resumeInfo.portfolio_url} target="_blank" rel="noopener noreferrer">
+                        <a href={formatExternalUrl(resumeInfo.portfolio_url)} target="_blank" rel="noopener noreferrer">
                           <Globe className="w-5 h-5" />
                         </a>
                       </Button>
@@ -618,7 +653,7 @@ export default function ProfilePage() {
                     {/* Summary */}
                     {resumeInfo.professional_summary && (
                       <Card className="p-8 border-border/50 bg-card/40 backdrop-blur-md shadow-xl relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-linear-to-b from-primary to-accent"></div>
+                        <div className="absolute top-0 left-0 w-1 h-full bg-[#ef4a18]"></div>
                         <h3 className="text-xl font-semibold mb-4">Professional Summary</h3>
                         <p className="text-muted-foreground leading-relaxed text-lg">
                           {resumeInfo.professional_summary}
@@ -665,7 +700,7 @@ export default function ProfilePage() {
                             <div className="flex items-start justify-between mb-3">
                               <h4 className="text-lg font-bold">{project.name}</h4>
                               {project.url && (
-                                <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                                <a href={formatExternalUrl(project.url)} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                                   <Globe className="w-4 h-4" />
                                 </a>
                               )}
@@ -786,7 +821,7 @@ export default function ProfilePage() {
                           <div className="flex gap-2">
                             {app.job_url && (
                               <Button variant="outline" size="sm" asChild>
-                                <a href={app.job_url} target="_blank" rel="noopener noreferrer" className="gap-2">
+                                <a href={formatExternalUrl(app.job_url)} target="_blank" rel="noopener noreferrer" className="gap-2">
                                   View Job
                                   <ExternalLink className="w-4 h-4" />
                                 </a>

@@ -205,7 +205,7 @@ export default function ResumeBuilderPage() {
     <ProtectedRoute>
       <div className="dashboard-theme resume-studio min-h-screen bg-background">
         <DynamicNavbar />
-        <main className="pt-20 pb-4 px-4 sm:px-6 lg:px-8 max-w-[1800px] mx-auto w-full" style={{ height: 'calc(100vh - 0px)' }}>
+        <main className="pt-32 lg:pt-36 pb-6 px-6 sm:px-8 lg:px-12 max-w-[1720px] mx-auto w-full" style={{ height: 'calc(100vh - 20px)' }}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
 
             {/* Left Panel: Resume Preview (8 cols) */}
