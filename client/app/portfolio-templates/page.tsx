@@ -8,7 +8,6 @@ import {
   Code2, ArrowRight, Eye, ExternalLink, Github, Terminal, Layers, Star, GitFork, X
 } from 'lucide-react';
 import { getResumeInfo, getCurrentUser } from '@/lib/api';
-
 import { DynamicNavbar } from '@/components/dynamic-navbar';
 import { Button } from '@/components/ui/button';
 
@@ -191,7 +190,7 @@ export default function PortfolioTemplatesPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center font-sans">
         <RefreshCw className="w-6 h-6 animate-spin text-orange-600" />
       </div>
     );
@@ -201,51 +200,45 @@ export default function PortfolioTemplatesPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
-      {/* Global Client App Dynamic Navbar Component */}
+      {/* SINGLE NAVBAR: Client App DynamicNavbar */}
       <DynamicNavbar />
 
-      {/* Candidate Active Session Sub-Header */}
-      <div className="border-b border-slate-200 bg-white/90 sticky top-16 z-30 backdrop-blur-md px-4 sm:px-8 py-3 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-600">
-            <Layout className="w-4 h-4 text-orange-600" />
-            <span className="font-bold text-slate-900">Portfolio Studio</span>
-            <span className="text-slate-400">|</span>
-            <span>Pre-seeded with active logged-in session</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {candidateData.name && (
-              <div className="hidden sm:flex items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1 rounded-full text-xs font-mono">
-                <UserCheck className="w-3.5 h-3.5 text-orange-600" />
-                <span className="text-slate-900 font-bold">{candidateData.name}</span>
-                {candidateData.username && <span className="text-orange-600 font-semibold">(@{candidateData.username})</span>}
-              </div>
-            )}
-
-            <button
-              onClick={handleExportCode}
-              className="bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-            >
-              {copiedCode ? <Check className="w-3.5 h-3.5 text-white" /> : <Download className="w-3.5 h-3.5" />}
-              {copiedCode ? 'TSX Code Exported!' : 'Export React TSX'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8">
+      {/* Main Container matching client layout */}
+      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
         {/* Banner Section */}
-        <div className="space-y-2 bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold">
-            <Sparkles className="w-3.5 h-3.5 text-orange-600" /> Select &amp; Preview Portfolio Designs ({templatesList.length} Available)
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold font-mono">
+                <Sparkles className="w-3.5 h-3.5 text-orange-600" /> Portfolio Studio ({templatesList.length} Templates)
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Developer Portfolio Templates
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {candidateData.name && (
+                <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-full text-xs font-mono">
+                  <UserCheck className="w-3.5 h-3.5 text-orange-600" />
+                  <span className="text-slate-900 font-bold">{candidateData.name}</span>
+                  {candidateData.username && <span className="text-orange-600 font-semibold">(@{candidateData.username})</span>}
+                </div>
+              )}
+
+              <Button
+                onClick={handleExportCode}
+                className="bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5 text-white" /> : <Download className="w-3.5 h-3.5" />}
+                {copiedCode ? 'TSX Code Exported!' : 'Export React TSX'}
+              </Button>
+            </div>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Developer Portfolio Templates
-          </h2>
+
           <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
-            Choose a portfolio template design below. Each template is automatically seeded with your real candidate name, resume skills, projects, and work experience.
+            Choose a portfolio template design below. Each template is automatically seeded with your real candidate profile, resume skills, projects, and work experience.
           </p>
         </div>
 
@@ -292,14 +285,15 @@ export default function PortfolioTemplatesPage() {
 
                   {/* Action Controls for this Template */}
                   <div className="flex flex-wrap items-center gap-3 shrink-0">
-                    <button
+                    <Button
+                      variant="outline"
                       onClick={() => setFullscreenPreviewId(tmpl.id)}
                       className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                     >
                       <Eye className="w-4 h-4 text-orange-600" /> Fullscreen Live Preview
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       onClick={() => setSelectedTemplateId(tmpl.id)}
                       className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
                         isSelected
@@ -309,7 +303,7 @@ export default function PortfolioTemplatesPage() {
                     >
                       {isSelected ? <Check className="w-4 h-4 text-white" /> : <Sparkles className="w-4 h-4 text-orange-400" />}
                       {isSelected ? 'Active Template' : 'Select Template'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -335,7 +329,7 @@ export default function PortfolioTemplatesPage() {
 
       {/* FULLSCREEN MODAL LIVE PREVIEW OVERLAY */}
       {fullscreenPreviewId && activeFullscreenTemplate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md overflow-y-auto flex flex-col">
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md overflow-y-auto flex flex-col font-sans">
           {/* Modal Header */}
           <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-3">
@@ -345,12 +339,13 @@ export default function PortfolioTemplatesPage() {
               <span className="text-sm font-bold text-slate-900">{activeFullscreenTemplate.title}</span>
             </div>
 
-            <button
+            <Button
+              variant="outline"
               onClick={() => setFullscreenPreviewId(null)}
               className="bg-slate-100 hover:bg-slate-200 text-slate-800 p-2 rounded-xl border border-slate-300 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
             >
               <X className="w-4 h-4 text-slate-800" /> Close Preview
-            </button>
+            </Button>
           </div>
 
           {/* Modal Content Frame */}
