@@ -21,7 +21,8 @@ class SarvamVoiceService {
    */
   async textToSpeech(text, languageCode = "en-IN", speaker = "ritu") {
     if (!this.apiKey) {
-      throw new Error("SARVAM_API_KEY is not configured in backend .env");
+      console.warn("⚠️ SARVAM_API_KEY is not configured in backend .env");
+      return null;
     }
 
     try {
@@ -44,10 +45,14 @@ class SarvamVoiceService {
       if (audios && audios.length > 0) {
         return audios[0]; // Base64 audio string
       }
-      throw new Error("No audio returned from Sarvam TTS");
+      return null;
     } catch (error) {
+      if (error.code === 'ENOTFOUND') {
+        console.warn(`[Sarvam Voice Notice] Network DNS lookup failed for api.sarvam.ai: ${error.message}`);
+        return null;
+      }
       console.error("❌ Sarvam TTS Error:", error.response?.data || error.message);
-      throw new Error(`Sarvam TTS failed: ${error.response?.data?.error?.message || error.message}`);
+      return null;
     }
   }
 
@@ -87,6 +92,13 @@ class SarvamVoiceService {
         languageCode: response.data.language_code || languageCode,
       };
     } catch (error) {
+      if (error.code === 'ENOTFOUND') {
+        console.warn(`[Sarvam STT Notice] Network DNS lookup failed for api.sarvam.ai: ${error.message}`);
+        return {
+          transcript: "Network connection offline. Text-to-speech & STT fallback active.",
+          languageCode: languageCode
+        };
+      }
       const errorMsg = error.response?.data?.error?.message || error.message || "";
       console.error("❌ Sarvam STT Error:", error.response?.data || error.message);
 
@@ -186,6 +198,14 @@ INSTRUCTIONS:
         languageCode: languageCode,
       };
     } catch (error) {
+      if (error.code === 'ENOTFOUND') {
+        console.warn(`[Sarvam Chat Notice] Network DNS lookup failed for api.sarvam.ai: ${error.message}`);
+        return {
+          aiResponse: "Thank you for your answer. Let's move to the next question in our interview.",
+          audioBase64: null,
+          languageCode: languageCode
+        };
+      }
       console.error("❌ Sarvam Chat Error:", error.response?.data || error.message);
       throw new Error(`Sarvam Chat failed: ${error.response?.data?.error?.message || error.message}`);
     }
