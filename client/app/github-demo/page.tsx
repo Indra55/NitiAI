@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Github, ShieldCheck, CheckCircle2, Sparkles, RefreshCw, Layers, Target, 
   Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff, LogOut,
-  AlertCircle, Play, Check
+  AlertCircle, Play, Check, FolderGit2, Globe
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
@@ -188,6 +188,16 @@ export default function GitHubDemoPage() {
     }
   };
 
+  // Compute live actual counts from scanResult
+  const reposList = scanResult?.repos || [];
+  const actualTotalCount = reposList.length > 0 ? reposList.length : (scanResult?.reposCount || 0);
+  const actualPrivateCount = reposList.length > 0 
+    ? reposList.filter((r: any) => r.private).length 
+    : (scanResult?.privateReposCount || 0);
+  const actualPublicCount = reposList.length > 0 
+    ? reposList.filter((r: any) => !r.private).length 
+    : (scanResult?.publicReposCount || actualTotalCount - actualPrivateCount);
+
   if (!mounted || checkingAuth) {
     return (
       <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
@@ -227,7 +237,7 @@ export default function GitHubDemoPage() {
               </span>
               <h2 className="text-2xl font-bold text-slate-100 mt-2">Connect Your GitHub Account</h2>
               <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                NitiAI requires read authorization to fetch and index <strong>all 33 of your public &amp; private repositories</strong> without API rate limits.
+                NitiAI requires read authorization to fetch and index <strong>all of your public &amp; private repositories</strong> without API rate limits.
               </p>
             </div>
 
@@ -342,6 +352,7 @@ export default function GitHubDemoPage() {
             {/* Scan Results Display */}
             {scanResult && !loading && (
               <div className="space-y-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+                {/* Header Metrics */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
                   <div>
                     <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Analysis Complete</span>
@@ -350,12 +361,48 @@ export default function GitHubDemoPage() {
                     </h2>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="bg-slate-950 border border-slate-800 text-indigo-400 text-xs px-3 py-1.5 rounded-xl font-mono font-bold">
-                      {scanResult.reposCount} Repositories Indexed ({scanResult.privateReposCount || 0} Private, {scanResult.publicReposCount || scanResult.reposCount} Public)
-                    </span>
                     <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs px-3 py-1.5 rounded-xl font-bold">
                       {scanResult.analysis?.roleMatchScore || 88}% Role Match
                     </span>
+                  </div>
+                </div>
+
+                {/* ACTUAL LIVE SCAN REPOSITORIES COUNT METRICS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-slate-950 border border-indigo-900/60 rounded-xl p-4 flex items-center justify-between shadow-lg">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total Repos Scanned</span>
+                      <span className="text-3xl font-extrabold text-indigo-400 font-mono mt-1 block">
+                        {actualTotalCount}
+                      </span>
+                    </div>
+                    <div className="w-12 h-12 bg-indigo-950/80 border border-indigo-800 rounded-xl flex items-center justify-center text-indigo-400">
+                      <FolderGit2 className="w-6 h-6" />
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950 border border-purple-900/60 rounded-xl p-4 flex items-center justify-between shadow-lg">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Private Repositories</span>
+                      <span className="text-3xl font-extrabold text-purple-400 font-mono mt-1 block">
+                        {actualPrivateCount}
+                      </span>
+                    </div>
+                    <div className="w-12 h-12 bg-purple-950/80 border border-purple-800 rounded-xl flex items-center justify-center text-purple-400">
+                      <Lock className="w-6 h-6" />
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950 border border-cyan-900/60 rounded-xl p-4 flex items-center justify-between shadow-lg">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Public Repositories</span>
+                      <span className="text-3xl font-extrabold text-cyan-400 font-mono mt-1 block">
+                        {actualPublicCount}
+                      </span>
+                    </div>
+                    <div className="w-12 h-12 bg-cyan-950/80 border border-cyan-800 rounded-xl flex items-center justify-center text-cyan-400">
+                      <Globe className="w-6 h-6" />
+                    </div>
                   </div>
                 </div>
 
@@ -375,22 +422,22 @@ export default function GitHubDemoPage() {
                 </div>
 
                 {/* Scanned Repositories Breakdown (Public & Private) */}
-                {scanResult.repos && scanResult.repos.length > 0 && (
+                {reposList.length > 0 && (
                   <div className="space-y-3 pt-4 border-t border-slate-800">
                     <h3 className="text-sm font-bold text-slate-200 flex items-center justify-between">
-                      <span>Indexed Repositories List ({scanResult.repos.length} Repositories):</span>
+                      <span>Indexed Repositories List ({reposList.length} Repositories):</span>
                       <span className="text-xs text-emerald-400 font-mono">2-Tier Hybrid PostgreSQL Graph</span>
                     </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto pr-2">
-                      {scanResult.repos.map((r: any, idx: number) => (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto pr-2">
+                      {reposList.map((r: any, idx: number) => (
                         <div key={idx} className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-xs flex items-center justify-between">
-                          <span className="truncate font-medium text-slate-200">{r.name}</span>
+                          <span className="truncate font-medium text-slate-200" title={r.name}>{r.name}</span>
                           {r.private ? (
-                            <span className="bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5">
+                            <span className="bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5 shrink-0">
                               <Lock className="w-2.5 h-2.5" /> Private
                             </span>
                           ) : (
-                            <span className="bg-slate-900 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[10px]">
+                            <span className="bg-slate-900 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[10px] shrink-0">
                               Public
                             </span>
                           )}
