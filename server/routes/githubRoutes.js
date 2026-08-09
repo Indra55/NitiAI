@@ -245,6 +245,20 @@ router.get('/auth/callback', async (req, res) => {
 
     console.log(`[GitHubOAuth] Successfully stored token in DB for candidate: "@${targetUsername}" (Authenticated GitHub user: "@${authenticatedUsername}")`);
 
+    // Perform automatic deep audit of all public & private repos with descriptions & READMEs
+    try {
+      const auditData = await githubService.deepAuditRepositories(targetUsername, accessToken);
+      await githubService.saveScanToDb(targetUsername, auditData.repositories, {
+        totalRepositories: auditData.totalRepositories,
+        publicCount: auditData.publicCount,
+        privateCount: auditData.privateCount,
+        techFrequency: auditData.techFrequency
+      });
+      console.log(`[GitHubOAuth] Deep audit complete for "${targetUsername}": ${auditData.totalRepositories} total repos (${auditData.privateCount} Private 🔒, ${auditData.publicCount} Public 🌐).`);
+    } catch (auditErr) {
+      console.warn(`[GitHubOAuth] Automatic deep audit notice:`, auditErr.message);
+    }
+
     // Redirect back to production studio with pre-seeded candidate profile details
     res.redirect(`${clientUrl}/profile?githubConnected=true&username=${encodeURIComponent(targetUsername)}&name=${encodeURIComponent(ghUser.name || targetUsername)}&email=${encodeURIComponent(ghUser.email || '')}&avatar=${encodeURIComponent(ghUser.avatar_url || '')}`);
   } catch (error) {

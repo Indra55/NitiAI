@@ -625,6 +625,11 @@ export async function translateVoiceQuestion(
     });
 }
 
+export async function getDeepAudit(username?: string): Promise<ApiResponse<any>> {
+    const param = username ? `?username=${encodeURIComponent(username)}` : "";
+    return apiRequest(`/api/github/deep-audit${param}`);
+}
+
 // Export types
 export type { User, RegisterData, LoginData, BasicInfoData, CareerGoalsData, SkillsData };
 
