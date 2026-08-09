@@ -1,8 +1,7 @@
 "use client"
 
-import { Search, ChevronRight, Menu, X, Globe, Youtube, Instagram, Facebook, Twitter, Github, Mail, MapPin, Code2 } from "lucide-react"
+import { Search, ChevronRight, Menu, X, Globe, Youtube, Instagram, Facebook, Twitter, Github, Mail, MapPin, Code2, Folder, FileCode } from "lucide-react"
 import { useState } from "react"
-import Link from "next/link"
 
 export interface TemplateProps {
   data: {
@@ -33,7 +32,6 @@ export interface TemplateProps {
 }
 
 export default function SecondPortfolioTemplate({ data }: TemplateProps) {
-  // Build dynamic folder data from candidate repos and skills
   const reposList = data?.repos || []
   const skillsList = data?.skills || []
   const experiencesList = data?.experiences || []
@@ -41,7 +39,7 @@ export default function SecondPortfolioTemplate({ data }: TemplateProps) {
   const portfolioData = {
     "Featured Repositories": reposList.map((r) => ({
       name: r.name,
-      thumbnail: data?.avatarUrl || "/placeholder.svg",
+      thumbnail: data?.avatarUrl || "https://github.com/octocat.png",
       size: `${r.stars} Stars`,
       created: r.language || "Code",
       client: r.detectedTools?.slice(0, 2).join(", ") || "Open Source",
@@ -51,17 +49,17 @@ export default function SecondPortfolioTemplate({ data }: TemplateProps) {
     })),
     "Skills & Tech Stack": skillsList.map((s) => ({
       name: s,
-      thumbnail: data?.avatarUrl || "/placeholder.svg",
+      thumbnail: data?.avatarUrl || "https://github.com/octocat.png",
       size: "Proficient",
       created: "2026",
       client: "Core Competency",
       tags: "Tech Stack",
       url: "#",
-      description: `${s} development & integration`
+      description: `${s} engineering & integration`
     })),
     "Work Experience": experiencesList.map((e) => ({
       name: `${e.role} @ ${e.company}`,
-      thumbnail: data?.avatarUrl || "/placeholder.svg",
+      thumbnail: data?.avatarUrl || "https://github.com/octocat.png",
       size: e.period,
       created: e.period,
       client: e.company,
@@ -85,200 +83,164 @@ export default function SecondPortfolioTemplate({ data }: TemplateProps) {
   const filteredFiles = displayFiles.filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden font-sans">
-      {/* Decorative blob shapes */}
-      <div className="blob-shape w-[600px] h-[600px] -top-48 -left-48" />
-      <div className="blob-shape w-[500px] h-[500px] -bottom-32 -right-32" />
-      <div className="blob-shape w-[400px] h-[400px] top-1/2 -right-48" />
-      <div className="blob-shape w-[450px] h-[450px] -bottom-48 left-1/4" />
+    <div className="min-h-screen bg-slate-950 text-slate-100 relative overflow-hidden font-sans p-4 sm:p-8">
+      {/* Decorative ambient background glows */}
+      <div className="pointer-events-none absolute -top-48 -left-48 w-[500px] h-[500px] bg-orange-600/10 blur-[120px] rounded-full" />
+      <div className="pointer-events-none absolute -bottom-32 -right-32 w-[500px] h-[500px] bg-amber-500/10 blur-[120px] rounded-full" />
 
-      <div className="relative z-10 p-4 md:p-8">
-        {/* Hero Section */}
-        <section className="bg-card/60 backdrop-blur-sm rounded-3xl p-8 md:p-12 lg:p-16 mb-6 border border-border/50 overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 lg:gap-12 items-center">
+      <div className="relative z-10 space-y-6 max-w-7xl mx-auto">
+        {/* HERO SECTION */}
+        <section className="bg-slate-900/90 backdrop-blur-xl rounded-3xl p-6 sm:p-10 lg:p-12 border border-slate-800 overflow-hidden shadow-2xl">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 items-center">
+            
             {/* Left Content */}
-            <div className="space-y-8">
-              {/* Main Heading */}
+            <div className="space-y-6">
               <div>
-                <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-none tracking-tight mb-2 text-foreground">
+                <span className="inline-block px-3.5 py-1 rounded-full bg-orange-950 border border-orange-800 text-orange-400 text-xs font-mono font-bold mb-3">
+                  @{data?.username || "candidate"}
+                </span>
+                <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-tight">
                   {data?.name || "Developer Portfolio"}
                 </h1>
-                <p className="text-xl md:text-2xl font-bold text-orange-600 tracking-tight">
-                  @{data?.username || "candidate"}
+                <p className="text-lg font-bold text-orange-500 mt-2">
+                  {data?.targetRole || "Software Engineer"}
                 </p>
               </div>
 
-              {/* Subtitle */}
-              <p className="text-base md:text-lg max-w-md leading-relaxed text-foreground/80">
-                {data?.bio || "Welcome to a visual journey of software engineering and digital craft."}
+              <p className="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
+                {data?.bio || "Welcome to my interactive developer portfolio showcasing software projects, tech stack skills, and career achievements."}
               </p>
 
-              {/* Social Icons */}
-              <div className="flex items-center gap-3">
-                <a
-                  href={`https://github.com/${data?.username || ""}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-12 h-12 rounded-full border-2 border-foreground/20 flex items-center justify-center hover:border-orange-500 hover:bg-orange-500/10 transition-all"
-                  aria-label="GitHub"
-                >
-                  <Github className="w-5 h-5" />
-                </a>
-                <a
-                  href={`mailto:${data?.email || ""}`}
-                  className="w-12 h-12 rounded-full border-2 border-foreground/20 flex items-center justify-center hover:border-orange-500 hover:bg-orange-500/10 transition-all"
-                  aria-label="Mail"
-                >
-                  <Mail className="w-5 h-5" />
-                </a>
-                <div className="flex items-center gap-2 text-xs font-mono text-foreground/70 pl-2">
-                  <MapPin className="w-4 h-4 text-orange-600" /> {data?.location || "Remote"}
-                </div>
+              {/* Contact & Social Links */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                {data?.username && (
+                  <a
+                    href={`https://github.com/${data.username}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-10 h-10 rounded-full border border-slate-700 bg-slate-950 flex items-center justify-center text-slate-200 hover:border-orange-500 hover:text-orange-400 transition-all"
+                  >
+                    <Github className="w-4 h-4" />
+                  </a>
+                )}
+                {data?.email && (
+                  <a
+                    href={`mailto:${data.email}`}
+                    className="w-10 h-10 rounded-full border border-slate-700 bg-slate-950 flex items-center justify-center text-slate-200 hover:border-orange-500 hover:text-orange-400 transition-all"
+                  >
+                    <Mail className="w-4 h-4" />
+                  </a>
+                )}
+                {data?.location && (
+                  <span className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-950 px-3 py-2 rounded-full border border-slate-800">
+                    <MapPin className="w-3.5 h-3.5 text-orange-500" /> {data.location}
+                  </span>
+                )}
               </div>
 
-              {/* Statistics */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4">
+              {/* Statistics Row */}
+              <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-800/80">
                 <div>
-                  <div className="text-4xl md:text-5xl font-bold mb-2">+{data?.repos?.length || 0}</div>
-                  <p className="text-sm text-foreground/70 leading-relaxed">
-                    Live Repositories &amp; Open Source Projects
-                  </p>
+                  <div className="text-3xl sm:text-4xl font-extrabold text-orange-500">+{data?.repos?.length || 0}</div>
+                  <p className="text-xs text-slate-400 mt-1">Live Repositories &amp; Projects</p>
                 </div>
                 <div>
-                  <div className="text-4xl md:text-5xl font-bold mb-2">+{data?.skills?.length || 0}</div>
-                  <p className="text-sm text-foreground/70 leading-relaxed">
-                    Technical Skills &amp; Engineering Capabilities
-                  </p>
+                  <div className="text-3xl sm:text-4xl font-extrabold text-white">+{data?.skills?.length || 0}</div>
+                  <p className="text-xs text-slate-400 mt-1">Technical Skills &amp; Stack</p>
                 </div>
               </div>
             </div>
 
-            {/* Right Content - Orange Card */}
-            <div className="relative">
-              <div className="relative bg-gradient-to-br from-[#F5A623] to-[#FF8C00] rounded-[3rem] p-8 md:p-12 w-full lg:w-[500px] xl:w-[600px] aspect-[4/5] overflow-hidden">
-                {/* Globe Icon */}
-                <div className="absolute top-6 right-6 w-14 h-14 bg-black rounded-full flex items-center justify-center">
-                  <Globe className="w-7 h-7 text-white" />
+            {/* Right Side Signature Card */}
+            <div className="relative flex justify-center">
+              <div className="relative bg-gradient-to-br from-[#F5A623] to-[#FF8C00] rounded-[2.5rem] p-6 sm:p-8 w-full sm:w-[360px] lg:w-[380px] h-[440px] overflow-hidden flex flex-col justify-between shadow-2xl">
+                {/* Globe Badge */}
+                <div className="flex items-center justify-between">
+                  <span className="text-white text-xs font-mono font-bold uppercase tracking-wider bg-black/30 px-3 py-1 rounded-full backdrop-blur-md">
+                    {data?.targetRole || "Developer"}
+                  </span>
+                  <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center shadow-lg">
+                    <Globe className="w-5 h-5 text-white" />
+                  </div>
                 </div>
 
-                {/* Signature Text */}
-                <div className="absolute top-8 left-8 right-20">
-                  <svg viewBox="0 0 300 80" className="w-full max-w-[250px]">
-                    <text
-                      x="10"
-                      y="50"
-                      fill="white"
-                      fontSize="40"
-                      fontFamily="'Brush Script MT', cursive"
-                      style={{ fontStyle: "italic" }}
-                    >
-                      {data?.targetRole || "Engineering"}
-                    </text>
-                  </svg>
+                {/* Signature / Role Text */}
+                <div className="my-auto">
+                  <h3 className="text-3xl font-extrabold text-white italic font-serif leading-tight">
+                    {data?.name}
+                  </h3>
+                  <p className="text-xs text-white/90 font-mono mt-1 font-semibold">
+                    {data?.targetRole}
+                  </p>
                 </div>
 
-                {/* Main Image */}
-                <div className="absolute inset-0 flex items-end justify-end p-6">
+                {/* Candidate Avatar Image */}
+                <div className="flex items-end justify-between pt-4 border-t border-white/20">
                   <img
                     src={data?.avatarUrl || "https://github.com/octocat.png"}
                     alt={data?.name}
-                    className="h-72 w-72 rounded-3xl object-cover border-4 border-white/40 shadow-2xl"
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-2 border-white/60 shadow-2xl bg-slate-900"
                   />
-                </div>
-
-                {/* Side Icons */}
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-4">
-                  <div className="w-14 h-14 rounded-full bg-[#FFB84D] flex items-center justify-center overflow-hidden border-2 border-white/20">
-                    <Code2 className="w-7 h-7 text-black" />
-                  </div>
-                  <div className="w-14 h-14 rounded-full bg-black flex items-center justify-center">
-                    <ChevronRight className="w-7 h-7 text-white rotate-45" />
+                  <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center shadow-md">
+                    <ChevronRight className="w-5 h-5 text-white rotate-45" />
                   </div>
                 </div>
               </div>
             </div>
+
           </div>
         </section>
 
-        {/* Header Navigation */}
-        <header className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 mb-4 md:mb-6 border border-border/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-orange-600 text-white flex items-center justify-center text-sm font-semibold" aria-label="Profile">
-                {data?.name?.charAt(0) || "P"}
-              </div>
-              <span className="font-bold text-sm text-foreground">{data?.name}</span>
-              <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              </button>
+        {/* SEARCH & NAVIGATION HEADER */}
+        <header className="bg-slate-900/90 backdrop-blur-xl rounded-2xl p-4 border border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-orange-600 text-white font-bold flex items-center justify-center text-xs">
+              {data?.name?.charAt(0) || "P"}
             </div>
-            <nav className="hidden md:flex items-center gap-8">
-              <a href={`mailto:${data?.email}`} className="text-sm font-medium hover:text-primary transition-colors">
-                Contact
-              </a>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="search"
-                  placeholder="Search projects & skills..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 rounded-md border border-border/50 bg-input/50 px-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring w-64"
-                />
-              </div>
-            </nav>
+            <span className="font-bold text-sm text-slate-100">{data?.name}</span>
+          </div>
+
+          <div className="relative w-64 sm:w-80">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              type="search"
+              placeholder="Search projects &amp; skills..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-9 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 pl-9 text-xs text-slate-200 outline-none placeholder:text-slate-500 focus:border-orange-500"
+            />
           </div>
         </header>
 
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-card/80 backdrop-blur-sm rounded-2xl p-4 mb-4 border border-border/50">
-            <nav className="flex flex-col gap-4">
-              <a href={`mailto:${data?.email}`} className="text-sm font-medium hover:text-primary transition-colors text-left">
-                Contact
-              </a>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="search"
-                  placeholder="Search projects & skills..."
-                  value={searchQuery}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                  className="h-9 w-full rounded-md border border-border/50 bg-input/50 px-3 pl-9 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
-            </nav>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] xl:grid-cols-[300px_1fr_400px] gap-4 md:gap-6">
-          {/* Left Sidebar - Intro & Folders */}
-          <div className="space-y-4 md:space-y-6">
-            <div className="bg-card/60 backdrop-blur-sm rounded-2xl p-6 md:p-8 border border-border/50">
-              <h1 className="text-2xl md:text-3xl font-semibold leading-tight mb-2">
-                {data?.name} is a {data?.targetRole || "Software Engineer"} based in {data?.location || "Worldwide"}
-              </h1>
+        {/* MAIN 3-COLUMN EXPLORER LAYOUT */}
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] xl:grid-cols-[280px_1fr_360px] gap-6">
+          
+          {/* Left Sidebar - Candidate Overview & Folders */}
+          <div className="space-y-4">
+            <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-5 border border-slate-800 space-y-2">
+              <h2 className="text-base font-bold text-slate-100">
+                {data?.name} is a {data?.targetRole || "Developer"} based in {data?.location || "Worldwide"}
+              </h2>
+              <p className="text-xs text-slate-400">{data?.email}</p>
             </div>
 
-            <div className="bg-card/60 backdrop-blur-sm rounded-2xl p-4 border border-border/50 space-y-1">
+            <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-3 border border-slate-800 space-y-1">
               <button
                 onClick={() => {
                   setSelectedFolder(null)
                   setSelectedFile(null)
                 }}
-                className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors group ${
-                  selectedFolder === null ? "bg-muted/70" : "hover:bg-muted/50"
+                className={`w-full flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer ${
+                  selectedFolder === null ? "bg-orange-600 text-white font-bold" : "text-slate-300 hover:bg-slate-800"
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-xl opacity-60">📂</span>
-                  <span className="text-sm font-medium">All Files ({displayFiles.length})</span>
+                <div className="flex items-center gap-2.5 text-xs font-semibold">
+                  <span>📂</span>
+                  <span>All Items ({displayFiles.length})</span>
                 </div>
-                <ChevronRight
-                  className={`h-4 w-4 transition-opacity ${
-                    selectedFolder === null ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                  }`}
-                />
+                <ChevronRight className="h-4 w-4 opacity-70" />
               </button>
+
               {folders.map((folder) => (
                 <button
                   key={folder}
@@ -286,119 +248,112 @@ export default function SecondPortfolioTemplate({ data }: TemplateProps) {
                     setSelectedFolder(folder)
                     setSelectedFile(null)
                   }}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors group ${
-                    selectedFolder === folder ? "bg-muted/70" : "hover:bg-muted/50"
+                  className={`w-full flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer ${
+                    selectedFolder === folder ? "bg-orange-600 text-white font-bold" : "text-slate-300 hover:bg-slate-800"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl opacity-60">📁</span>
-                    <span className="text-sm font-medium">{folder}</span>
+                  <div className="flex items-center gap-2.5 text-xs font-semibold">
+                    <span>📁</span>
+                    <span>{folder}</span>
                   </div>
-                  <ChevronRight
-                    className={`h-4 w-4 transition-opacity ${
-                      selectedFolder === folder ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    }`}
-                  />
+                  <ChevronRight className="h-4 w-4 opacity-70" />
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Center - File List */}
-          <div className="bg-card/60 backdrop-blur-sm rounded-2xl p-4 border border-border/50 max-h-[600px] overflow-y-auto">
-            <div className="space-y-1">
-              {selectedFolder && (
-                <div className="p-3 mb-2">
-                  <h2 className="text-lg font-semibold">{selectedFolder}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {filteredFiles.length} {searchQuery ? "results" : "items"}
-                  </p>
-                </div>
-              )}
-              {filteredFiles.length > 0 ? (
-                filteredFiles.map((file, index) => (
-                  <button
-                    key={`${file.name}-${index}`}
-                    onClick={() => setSelectedFile(file)}
-                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors group ${
-                      selectedFile?.name === file.name ? "bg-muted/70" : "hover:bg-muted/50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-md bg-muted/50 overflow-hidden flex-shrink-0">
-                        <img
-                          src={file.thumbnail || "/placeholder.svg"}
-                          alt={file.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-left">{file.name}</span>
-                    </div>
-                    <ChevronRight
-                      className={`h-4 w-4 transition-opacity ${
-                        selectedFile?.name === file.name ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                      }`}
-                    />
-                  </button>
-                ))
-              ) : (
-                <div className="p-8 text-center text-muted-foreground">
-                  <p>No items found matching "{searchQuery}"</p>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Center Column - Interactive Item List */}
+          <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-800 max-h-[550px] overflow-y-auto space-y-2">
+            {selectedFolder && (
+              <div className="p-3 border-b border-slate-800/80 mb-2">
+                <h3 className="text-sm font-bold text-white">{selectedFolder}</h3>
+                <p className="text-xs text-slate-400">
+                  {filteredFiles.length} {searchQuery ? "matching items" : "items"}
+                </p>
+              </div>
+            )}
 
-          {/* Right Sidebar - Preview */}
-          <div className={`space-y-4 ${selectedFile ? "block" : "hidden xl:block"}`}>
-            <div className="bg-card/60 backdrop-blur-sm rounded-2xl p-6 border border-border/50">
-              <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-gradient-to-br from-primary/20 to-primary/40">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="relative w-full h-full p-8 flex flex-col justify-between">
-                    <div className="text-[40px] md:text-[60px] font-bold text-primary leading-none truncate">
-                      {selectedFile?.name || data?.name}
-                    </div>
-                    <div className="w-full h-48 rounded-[2rem] overflow-hidden border-4 border-primary/30 my-auto">
+            {filteredFiles.length > 0 ? (
+              filteredFiles.map((file, index) => (
+                <button
+                  key={`${file.name}-${index}`}
+                  onClick={() => setSelectedFile(file)}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl transition-all text-left cursor-pointer border ${
+                    selectedFile?.name === file.name
+                      ? "bg-slate-800 border-orange-500/80 text-white shadow-md"
+                      : "bg-slate-950/60 border-slate-800/80 text-slate-300 hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
                       <img
-                        src={selectedFile?.thumbnail || data?.avatarUrl}
-                        alt={selectedFile?.name || "Preview"}
+                        src={file.thumbnail}
+                        alt={file.name}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="text-xs text-primary-foreground/80 font-mono">
-                      {selectedFile?.tags || "Project"}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-100">{file.name}</h4>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">{file.client || file.tags}</p>
                     </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-500 shrink-0" />
+                </button>
+              ))
+            ) : (
+              <div className="p-8 text-center text-xs text-slate-500">
+                No matching items found.
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Selected Item Detail View */}
+          <div className="space-y-4">
+            {selectedFile ? (
+              <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-800 space-y-4">
+                <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 border border-slate-800 p-4 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono bg-orange-950 border border-orange-800 text-orange-400 px-2.5 py-0.5 rounded-full font-bold">
+                      {selectedFile.size || "Detail View"}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">{selectedFile.created}</span>
+                  </div>
+
+                  <div className="space-y-1 my-auto">
+                    <h3 className="text-base font-bold text-white">{selectedFile.name}</h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">{selectedFile.description || "Project details & stack specs."}</p>
+                  </div>
+
+                  {selectedFile.url && selectedFile.url !== "#" && (
+                    <a
+                      href={selectedFile.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-400 hover:underline pt-2"
+                    >
+                      View Live Repository &rarr;
+                    </a>
+                  )}
+                </div>
+
+                <div className="space-y-2 text-xs text-slate-300 pt-2 border-t border-slate-800">
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">Category</span>
+                    <span className="font-semibold text-slate-200">{selectedFile.client}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-400">Tags / Tech</span>
+                    <span className="font-semibold text-orange-400">{selectedFile.tags}</span>
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <h2 className="text-lg font-semibold">{selectedFile?.name || data?.name}</h2>
-                <p className="text-sm text-muted-foreground">{selectedFile?.description || selectedFile?.size || "Details"}</p>
+            ) : (
+              <div className="bg-slate-900/80 backdrop-blur-xl rounded-2xl p-8 border border-slate-800 text-center text-xs text-slate-500">
+                Select any item from the center list to view details.
               </div>
-            </div>
-
-            <div className="bg-card/60 backdrop-blur-sm rounded-2xl p-6 border border-border/50 space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Type</span>
-                <span className="font-medium">{selectedFile?.size || "Project"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Category</span>
-                <span className="font-medium">{selectedFile?.client || "Engineering"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Tags</span>
-                <span className="font-medium">{selectedFile?.tags || "Tech Stack"}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setSelectedFile(null)}
-              className="xl:hidden w-full bg-card/60 backdrop-blur-sm rounded-2xl p-4 border border-border/50 text-sm font-medium hover:bg-muted/50 transition-colors"
-            >
-              Back to Files
-            </button>
+            )}
           </div>
+
         </div>
       </div>
     </div>
