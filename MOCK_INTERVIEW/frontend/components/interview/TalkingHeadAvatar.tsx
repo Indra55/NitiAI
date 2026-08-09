@@ -1,32 +1,29 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Bot, Loader2 } from 'lucide-react';
+import { Loader2, Bot } from 'lucide-react';
 
 interface TalkingHeadAvatarProps {
-  isAiSpeaking: boolean;
-  isListening: boolean;
   speechText?: string;
-  selectedLanguage?: string;
+  isAiSpeaking?: boolean;
+  isListening?: boolean;
   className?: string;
 }
 
-// Local 3D Ready Player Me Recruiter Model GLB (4.6MB)
 const LOCAL_RECRUITER_GLB = "/avatars/male_recruiter.glb";
 
 export default function TalkingHeadAvatar({
-  isAiSpeaking,
-  isListening,
-  speechText,
-  selectedLanguage = "en",
+  speechText = "",
+  isAiSpeaking = false,
+  isListening = false,
   className = ""
 }: TalkingHeadAvatarProps) {
   const avatarDivRef = useRef<HTMLDivElement>(null);
   const headInstanceRef = useRef<any>(null);
-  const animFrameRef = useRef<number | null>(null);
-  const [isLoadingModel, setIsLoadingModel] = useState(true);
+  const [isLoadingModel, setIsLoadingModel] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const lastSpokenTextRef = useRef<string>("");
+  const animFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!avatarDivRef.current) return;
@@ -37,10 +34,24 @@ export default function TalkingHeadAvatar({
         setIsLoadingModel(true);
         setLoadError(null);
 
-        // Dynamically import TalkingHead on client side
-        const { TalkingHead } = await import('@met4citizen/talkinghead');
+        // Dynamically import TalkingHead on client side with fallback
+        let TalkingHeadModule: any = null;
+        try {
+          // @ts-ignore
+          TalkingHeadModule = await import('@met4citizen/talkinghead');
+        } catch (importErr) {
+          console.warn("3D TalkingHead module not installed on host — rendering AI Recruiter mode.");
+        }
 
         if (!isMounted || !avatarDivRef.current) return;
+
+        if (!TalkingHeadModule || !TalkingHeadModule.TalkingHead) {
+          setLoadError("Executive AI Recruiter");
+          setIsLoadingModel(false);
+          return;
+        }
+
+        const { TalkingHead } = TalkingHeadModule;
 
         // Instantiate 3D TalkingHead with executive camera view
         const head = new TalkingHead(avatarDivRef.current, {
@@ -76,9 +87,9 @@ export default function TalkingHeadAvatar({
           if (head.makeEyeContact) head.makeEyeContact(10000);
         }
       } catch (err: any) {
-        console.error("Failed to load 3D TalkingHead realistic avatar:", err);
+        console.warn("3D TalkingHead notice:", err.message || err);
         if (isMounted) {
-          setLoadError("3D WebGL Avatar active");
+          setLoadError("Executive AI Recruiter");
           setIsLoadingModel(false);
         }
       }
@@ -110,70 +121,16 @@ export default function TalkingHeadAvatar({
 
     try {
       lastSpokenTextRef.current = speechText;
+
       if (headInstanceRef.current.speakText) {
-        headInstanceRef.current.speakText(speechText, {
-          lipsyncLang: selectedLanguage.startsWith('hi') ? 'hi' : 'en',
-          avatarMood: 'neutral'
-        });
+        headInstanceRef.current.speakText(speechText);
       }
-      if (headInstanceRef.current.makeEyeContact) {
-        headInstanceRef.current.makeEyeContact(5000);
-      }
-    } catch (e) {
-      console.warn("TalkingHead speakText notice:", e);
+    } catch (err) {
+      console.warn("Avatar speech synthesis warning:", err);
     }
-  }, [speechText, selectedLanguage]);
+  }, [speechText]);
 
-  // Dynamic Viseme & Facial Morph Target Animation Loop during AI Speech
-  useEffect(() => {
-    let t = 0;
-
-    const animateFacialMovements = () => {
-      animFrameRef.current = requestAnimationFrame(animateFacialMovements);
-      t += 0.05;
-
-      const head = headInstanceRef.current;
-      if (!head) return;
-
-      // When AI speech is active, dynamically articulate facial morph targets
-      if (isAiSpeaking && head.avatar && head.avatar.meshes) {
-        const mouthOpenValue = Math.max(0, Math.sin(t * 12) * 0.35 + Math.cos(t * 7) * 0.25);
-        const jawValue = Math.max(0, Math.sin(t * 10) * 0.2 + 0.1);
-
-        head.avatar.meshes.forEach((mesh: any) => {
-          if (mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
-            // ARKit / Oculus visemes
-            ['vrc.v_aa', 'jawOpen', 'mouthOpen', 'viseme_aa', 'mouthFunnel'].forEach((shape) => {
-              if (shape in mesh.morphTargetDictionary) {
-                const idx = mesh.morphTargetDictionary[shape];
-                mesh.morphTargetInfluences[idx] = shape === 'jawOpen' ? jawValue : mouthOpenValue;
-              }
-            });
-          }
-        });
-      } else if (!isAiSpeaking && head.avatar && head.avatar.meshes) {
-        // Reset mouth morph targets to closed when idle
-        head.avatar.meshes.forEach((mesh: any) => {
-          if (mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
-            ['vrc.v_aa', 'jawOpen', 'mouthOpen', 'viseme_aa', 'mouthFunnel'].forEach((shape) => {
-              if (shape in mesh.morphTargetDictionary) {
-                const idx = mesh.morphTargetDictionary[shape];
-                mesh.morphTargetInfluences[idx] = 0;
-              }
-            });
-          }
-        });
-      }
-    };
-
-    animateFacialMovements();
-
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, [isAiSpeaking]);
-
-  // Adjust avatar mood & gaze state
+  // Adjust avatar mood when listening vs speaking
   useEffect(() => {
     if (!headInstanceRef.current) return;
     try {
@@ -193,25 +150,37 @@ export default function TalkingHeadAvatar({
   return (
     <div className={`relative flex flex-col items-center justify-center bg-white border border-slate-200 rounded-2xl p-4 shadow-sm ${className}`}>
       
-      {/* 3D WebGL Canvas Container */}
-      <div className="w-72 h-72 relative flex items-center justify-center overflow-hidden rounded-xl bg-slate-100 border border-slate-200">
+      {/* 3D Canvas / Avatar Container */}
+      <div className="w-72 h-72 relative flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 border border-slate-800 shadow-inner">
         
         {/* Unmanaged Canvas DOM Host Node for Three.js */}
         <div ref={avatarDivRef} className="w-full h-full absolute inset-0" />
 
         {isLoadingModel && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm text-slate-600 space-y-2">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm text-slate-300 space-y-2">
             <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-            <span className="text-xs font-semibold text-slate-800">Loading 3D Recruiter Avatar...</span>
-            <span className="text-[10px] text-slate-400 font-normal">Ready Player Me 3D GLB Viseme Model</span>
+            <span className="text-xs font-semibold text-slate-200">Loading AI Recruiter Avatar...</span>
+            <span className="text-[10px] text-slate-400 font-mono">3D Viseme Model</span>
           </div>
         )}
 
         {loadError && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white text-slate-500 space-y-2 p-4 text-center">
-            <Bot className="w-12 h-12 text-orange-500" />
-            <span className="text-xs font-semibold text-slate-800">3D Recruiter Avatar</span>
-            <span className="text-[10px] text-slate-400">{loadError}</span>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950 text-slate-300 space-y-3 p-4 text-center">
+            <div className="relative">
+              <div className="w-20 h-20 bg-gradient-to-tr from-orange-600 to-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/20">
+                <Bot className="w-10 h-10 text-white" />
+              </div>
+              {isAiSpeaking && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-orange-500"></span>
+                </span>
+              )}
+            </div>
+            <div>
+              <span className="text-sm font-bold text-slate-100 block">Executive AI Recruiter</span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">Socratic Technical Interviewer</span>
+            </div>
           </div>
         )}
       </div>
@@ -219,10 +188,10 @@ export default function TalkingHeadAvatar({
       {/* Recruiter Status Label */}
       <div className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-700">
         <span className={`w-2 h-2 rounded-full ${
-          isAiSpeaking ? 'bg-orange-500' : isListening ? 'bg-emerald-500' : 'bg-slate-300'
+          isAiSpeaking ? 'bg-orange-500 animate-pulse' : isListening ? 'bg-emerald-500' : 'bg-slate-400'
         }`} />
         <span>
-          {isAiSpeaking ? '3D Recruiter Speaking...' : isListening ? 'Listening to Candidate' : '3D Recruiter Ready'}
+          {isAiSpeaking ? 'AI Recruiter Speaking...' : isListening ? 'Listening to Candidate' : 'AI Recruiter Ready'}
         </span>
       </div>
     </div>
