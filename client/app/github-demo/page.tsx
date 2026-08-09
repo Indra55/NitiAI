@@ -10,7 +10,7 @@ import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
 export default function GitHubDemoPage() {
   const [mounted, setMounted] = useState<boolean>(false);
-  const [githubInput, setGithubInput] = useState<string>('https://github.com/jayyy255');
+  const [githubInput, setGithubInput] = useState<string>('');
   const [activeUsername, setActiveUsername] = useState<string>('');
   const [targetRole, setTargetRole] = useState<string>('Senior Backend & Systems Engineer');
   
@@ -51,7 +51,6 @@ export default function GitHubDemoPage() {
         const parts = url.pathname.split('/').filter(Boolean);
         if (parts.length > 0) return parts[0];
       } catch (e) {
-        // Fallback simple regex parsing
         const match = trimmed.match(/github\.com\/([^\/]+)/i);
         if (match) return match[1];
       }
@@ -59,17 +58,18 @@ export default function GitHubDemoPage() {
     return trimmed.replace(/^@/, '');
   };
 
-  // On Mount: Check URL Query Params or default username
+  // On Mount: Check URL Query Params
   useEffect(() => {
     setMounted(true);
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const userParam = urlParams.get('username');
-      const initialUser = userParam ? parseUsername(userParam) : 'jayyy255';
-      
-      if (userParam) setGithubInput(`https://github.com/${initialUser}`);
-      setActiveUsername(initialUser);
-      checkAuthStatus(initialUser);
+      if (userParam) {
+        const parsed = parseUsername(userParam);
+        setGithubInput(`https://github.com/${parsed}`);
+        setActiveUsername(parsed);
+        checkAuthStatus(parsed);
+      }
     }
   }, []);
 
@@ -84,7 +84,6 @@ export default function GitHubDemoPage() {
         setIsAuthorized(data.isAuthorized);
         if (data.profile) setProfile(data.profile);
         
-        // If stored scan exists and user is authorized, fetch scan results
         if (data.hasStoredScan) {
           await fetchStoredScan(userToCheck);
         } else {
@@ -129,12 +128,20 @@ export default function GitHubDemoPage() {
   };
 
   const handleAuthorize = () => {
-    const userToAuth = activeUsername || parseUsername(githubInput) || 'jayyy255';
+    const userToAuth = activeUsername || parseUsername(githubInput);
+    if (!userToAuth) {
+      setErrorMsg('Please enter a GitHub profile link or username first.');
+      return;
+    }
     window.location.href = `http://localhost:5000/api/github/auth/login?username=${encodeURIComponent(userToAuth)}`;
   };
 
   const handleReauthorize = async () => {
-    const userToAuth = activeUsername || parseUsername(githubInput) || 'jayyy255';
+    const userToAuth = activeUsername || parseUsername(githubInput);
+    if (!userToAuth) {
+      setErrorMsg('Please enter a GitHub profile link or username first.');
+      return;
+    }
     try {
       setLoading(true);
       const res = await fetch('/api/github/reauthorize', {
@@ -158,7 +165,10 @@ export default function GitHubDemoPage() {
 
   const runScanAndAnalyze = async () => {
     const targetUser = activeUsername || parseUsername(githubInput);
-    if (!targetUser) return;
+    if (!targetUser) {
+      setErrorMsg('Please enter a GitHub profile link or username first.');
+      return;
+    }
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -285,13 +295,13 @@ export default function GitHubDemoPage() {
                 type="text"
                 value={githubInput}
                 onChange={(e) => setGithubInput(e.target.value)}
-                placeholder="e.g. https://github.com/jayyy255 or SujalChoudhari"
+                placeholder="e.g. https://github.com/SujalChoudhari or torvalds"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
               />
             </div>
             <button
               type="submit"
-              disabled={checkingAuth}
+              disabled={checkingAuth || !githubInput.trim()}
               className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {checkingAuth ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Check Token Status
@@ -318,6 +328,17 @@ export default function GitHubDemoPage() {
             >
               Dismiss
             </button>
+          </div>
+        )}
+
+        {/* INITIAL STATE: NO USERNAME ENTERED YET */}
+        {!activeUsername && (
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-3 max-w-2xl mx-auto">
+            <Github className="w-12 h-12 text-slate-600 mx-auto" />
+            <h3 className="text-lg font-bold text-slate-300">Enter a Candidate GitHub Link Above</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              Paste any candidate's GitHub profile link (e.g. <code>https://github.com/username</code>) or type their username in Step 1 to check token authorization in PostgreSQL.
+            </p>
           </div>
         )}
 
