@@ -10,6 +10,7 @@ import {
 import { getResumeInfo, getCurrentUser } from '@/lib/api';
 import { DynamicNavbar } from '@/components/dynamic-navbar';
 import { Button } from '@/components/ui/button';
+import '@/app/dashboard/dashboard.css';
 
 import CustomPortfolioTemplate from '@/portfolios/CustomPortfolioTemplate';
 import SecondPortfolioTemplate from '@/portfolios/page';
@@ -190,8 +191,8 @@ export default function PortfolioTemplatesPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center font-sans">
-        <RefreshCw className="w-6 h-6 animate-spin text-orange-600" />
+      <div className="min-h-screen bg-[#fcf9f5] text-[#171716] flex items-center justify-center dashboard-theme">
+        <RefreshCw className="w-6 h-6 animate-spin text-[#ef4a18]" />
       </div>
     );
   }
@@ -199,49 +200,13 @@ export default function PortfolioTemplatesPage() {
   const activeFullscreenTemplate = templatesList.find(t => t.id === fullscreenPreviewId);
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
+    <main className="min-h-screen bg-[#fcf9f5] text-[#171716] dashboard-theme pb-16">
       {/* SINGLE NAVBAR: Client App DynamicNavbar */}
       <DynamicNavbar />
 
-      {/* Main Container matching client layout */}
-      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Main Container matching dashboard layout & font with top gap */}
+      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 pb-8 space-y-8">
         
-        {/* Banner Section */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold font-mono">
-                <Sparkles className="w-3.5 h-3.5 text-orange-600" /> Portfolio Studio ({templatesList.length} Templates)
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Developer Portfolio Templates
-              </h1>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {candidateData.name && (
-                <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-full text-xs font-mono">
-                  <UserCheck className="w-3.5 h-3.5 text-orange-600" />
-                  <span className="text-slate-900 font-bold">{candidateData.name}</span>
-                  {candidateData.username && <span className="text-orange-600 font-semibold">(@{candidateData.username})</span>}
-                </div>
-              )}
-
-              <Button
-                onClick={handleExportCode}
-                className="bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-              >
-                {copiedCode ? <Check className="w-3.5 h-3.5 text-white" /> : <Download className="w-3.5 h-3.5" />}
-                {copiedCode ? 'TSX Code Exported!' : 'Export React TSX'}
-              </Button>
-            </div>
-          </div>
-
-          <p className="text-xs sm:text-sm text-slate-600 max-w-3xl leading-relaxed">
-            Choose a portfolio template design below. Each template is automatically seeded with your real candidate profile, resume skills, projects, and work experience.
-          </p>
-        </div>
-
         {/* LIST FORMAT TEMPLATE ROWS */}
         <div className="space-y-8">
           {templatesList.map((tmpl, idx) => {
@@ -253,30 +218,30 @@ export default function PortfolioTemplatesPage() {
                 key={tmpl.id}
                 className={`rounded-3xl border transition-all overflow-hidden bg-white shadow-sm ${
                   isSelected
-                    ? 'border-orange-500 ring-2 ring-orange-500/20 shadow-md'
-                    : 'border-slate-200 hover:border-slate-300'
+                    ? 'border-[#ef4a18] ring-2 ring-[#ef4a18]/20 shadow-md'
+                    : 'border-[#e8e1da] hover:border-slate-300'
                 }`}
               >
                 {/* Row Template Information Bar */}
-                <div className="p-6 sm:p-8 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-50/50">
+                <div className="p-6 sm:p-8 border-b border-[#e8e1da] flex flex-col md:flex-row md:items-center justify-between gap-6 bg-[#fcf9f5]">
                   <div className="space-y-3 flex-1">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs font-mono font-bold text-white bg-slate-900 px-2.5 py-0.5 rounded-md">
+                      <span className="text-xs font-mono font-bold text-white bg-[#171716] px-2.5 py-0.5 rounded-md">
                         0{idx + 1}
                       </span>
-                      <h3 className="text-xl font-bold text-slate-900">{tmpl.title}</h3>
-                      <span className="text-xs font-bold text-orange-700 bg-orange-100 border border-orange-200 px-3 py-0.5 rounded-full">
+                      <h3 className="text-xl font-bold text-[#171716]">{tmpl.title}</h3>
+                      <span className="text-xs font-bold text-[#ef4a18] bg-[#fff0eb] border border-[#ef4a18]/30 px-3 py-0.5 rounded-full">
                         {tmpl.badge}
                       </span>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-3xl">
+                    <p className="text-xs sm:text-sm text-[#77716b] leading-relaxed max-w-3xl">
                       {tmpl.description}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       {tmpl.tags.map((t, i) => (
-                        <span key={i} className="text-[10px] bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-0.5 rounded-md font-mono font-semibold">
+                        <span key={i} className="text-[10px] bg-[#f3f0ec] border border-[#e8e1da] text-[#171716] px-2.5 py-0.5 rounded-md font-mono font-semibold">
                           #{t}
                         </span>
                       ))}
@@ -288,36 +253,44 @@ export default function PortfolioTemplatesPage() {
                     <Button
                       variant="outline"
                       onClick={() => setFullscreenPreviewId(tmpl.id)}
-                      className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      className="bg-white hover:bg-[#f3f0ec] text-[#171716] border border-[#e8e1da] font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                     >
-                      <Eye className="w-4 h-4 text-orange-600" /> Fullscreen Live Preview
+                      <Eye className="w-4 h-4 text-[#ef4a18]" /> Fullscreen Live Preview
                     </Button>
 
                     <Button
                       onClick={() => setSelectedTemplateId(tmpl.id)}
                       className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
                         isSelected
-                          ? 'bg-orange-600 text-white shadow-orange-600/20 font-extrabold'
-                          : 'bg-slate-900 hover:bg-slate-800 text-white'
+                          ? 'bg-[#ef4a18] text-white shadow-[#ef4a18]/20 font-extrabold'
+                          : 'bg-[#171716] hover:bg-slate-800 text-white'
                       }`}
                     >
-                      {isSelected ? <Check className="w-4 h-4 text-white" /> : <Sparkles className="w-4 h-4 text-orange-400" />}
+                      {isSelected ? <Check className="w-4 h-4 text-white" /> : <Sparkles className="w-4 h-4 text-amber-300" />}
                       {isSelected ? 'Active Template' : 'Select Template'}
+                    </Button>
+
+                    <Button
+                      onClick={handleExportCode}
+                      className="bg-[#f3f0ec] hover:bg-[#e8e1da] text-[#171716] border border-[#e8e1da] font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm whitespace-nowrap"
+                    >
+                      {copiedCode ? <Check className="w-3.5 h-3.5 text-[#ef4a18]" /> : <Download className="w-3.5 h-3.5" />}
+                      {copiedCode ? 'TSX Exported!' : 'Export React TSX'}
                     </Button>
                   </div>
                 </div>
 
                 {/* INLINE LIVE SEEDED PREVIEW CONTAINER */}
-                <div className="relative p-4 sm:p-6 bg-slate-100/60">
-                  <div className="mb-3 flex items-center justify-between text-xs text-slate-500 font-mono px-2">
-                    <span className="flex items-center gap-1.5 text-orange-600 font-bold">
+                <div className="relative p-4 sm:p-6 bg-[#f3f0ec]/60">
+                  <div className="mb-3 flex items-center justify-between text-xs text-[#77716b] font-mono px-2">
+                    <span className="flex items-center gap-1.5 text-[#ef4a18] font-bold">
                       <UserCheck className="w-3.5 h-3.5" /> Inline Live Seeded Preview (Using Your Profile &amp; Resume)
                     </span>
                     <span>Template Ref: {tmpl.author}/{tmpl.repo}</span>
                   </div>
 
                   {/* Scaled Preview Frame Container */}
-                  <div className="rounded-2xl border border-slate-300 overflow-hidden shadow-lg max-h-[560px] overflow-y-auto relative">
+                  <div className="rounded-2xl border border-[#e8e1da] overflow-hidden shadow-lg max-h-[560px] overflow-y-auto relative">
                     <TemplateComponent data={candidateData} />
                   </div>
                 </div>
@@ -329,22 +302,22 @@ export default function PortfolioTemplatesPage() {
 
       {/* FULLSCREEN MODAL LIVE PREVIEW OVERLAY */}
       {fullscreenPreviewId && activeFullscreenTemplate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md overflow-y-auto flex flex-col font-sans">
+        <div className="fixed inset-0 z-50 bg-[#171716]/80 backdrop-blur-md overflow-y-auto flex flex-col dashboard-theme">
           {/* Modal Header */}
-          <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-md">
+          <div className="sticky top-0 z-50 bg-white border-b border-[#e8e1da] px-6 py-4 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-orange-700 bg-orange-100 border border-orange-200 px-3 py-1 rounded-full font-mono">
+              <span className="text-xs font-bold text-[#ef4a18] bg-[#fff0eb] border border-[#ef4a18]/30 px-3 py-1 rounded-full font-mono">
                 Fullscreen Live Seeded Preview
               </span>
-              <span className="text-sm font-bold text-slate-900">{activeFullscreenTemplate.title}</span>
+              <span className="text-sm font-bold text-[#171716]">{activeFullscreenTemplate.title}</span>
             </div>
 
             <Button
               variant="outline"
               onClick={() => setFullscreenPreviewId(null)}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-800 p-2 rounded-xl border border-slate-300 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+              className="bg-[#f3f0ec] hover:bg-[#e8e1da] text-[#171716] p-2 rounded-xl border border-[#e8e1da] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
             >
-              <X className="w-4 h-4 text-slate-800" /> Close Preview
+              <X className="w-4 h-4 text-[#171716]" /> Close Preview
             </Button>
           </div>
 
