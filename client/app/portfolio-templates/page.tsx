@@ -9,6 +9,9 @@ import {
 } from 'lucide-react';
 import { getResumeInfo, getCurrentUser } from '@/lib/api';
 
+import { DynamicNavbar } from '@/components/dynamic-navbar';
+import { Button } from '@/components/ui/button';
+
 import CustomPortfolioTemplate from '@/portfolios/CustomPortfolioTemplate';
 import SecondPortfolioTemplate from '@/portfolios/page';
 import ThirdPortfolioTemplate from '@/portfolios/ThirdPortfolioTemplate';
@@ -149,24 +152,26 @@ export default function PortfolioTemplatesPage() {
 
       // 3. Fetch active session user's GitHub repository scan data
       try {
-        const ghRes = await fetch(`/api/github/user-roadmap?username=${activeUsername}`);
-        if (ghRes.ok) {
-          const ghData = await ghRes.json();
-          if (ghData.success && ghData.probingQuestions && ghData.probingQuestions.length > 0) {
-            setCandidateData(prev => ({
-              ...prev,
-              username: activeUsername,
-              avatarUrl: `https://github.com/${activeUsername}.png`,
-              repos: ghData.probingQuestions.map((q: any, idx: number) => ({
-                name: q.repoName || `Repo_${idx + 1}`,
-                description: q.question || 'Scanned GitHub repository.',
-                language: 'TypeScript',
-                stars: 25 + idx * 6,
-                forks: 8 + idx * 2,
-                url: `https://github.com/${activeUsername}/${q.repoName || ''}`,
-                detectedTools: q.expectedConcepts ? q.expectedConcepts.slice(0, 3) : ['TypeScript', 'GitHub']
-              }))
-            }));
+        if (activeUsername) {
+          const ghRes = await fetch(`/api/github/user-roadmap?username=${activeUsername}`);
+          if (ghRes.ok) {
+            const ghData = await ghRes.json();
+            if (ghData.success && ghData.probingQuestions && ghData.probingQuestions.length > 0) {
+              setCandidateData(prev => ({
+                ...prev,
+                username: activeUsername,
+                avatarUrl: `https://github.com/${activeUsername}.png`,
+                repos: ghData.probingQuestions.map((q: any, idx: number) => ({
+                  name: q.repoName || `Repo_${idx + 1}`,
+                  description: q.question || 'Scanned GitHub repository.',
+                  language: 'TypeScript',
+                  stars: 25 + idx * 6,
+                  forks: 8 + idx * 2,
+                  url: `https://github.com/${activeUsername}/${q.repoName || ''}`,
+                  detectedTools: q.expectedConcepts ? q.expectedConcepts.slice(0, 3) : ['TypeScript', 'GitHub']
+                }))
+              }));
+            }
           }
         }
       } catch (ghErr) {
@@ -196,31 +201,31 @@ export default function PortfolioTemplatesPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
-      {/* Top Header Bar - White & Black with Orange Highlights */}
-      <div className="border-b border-slate-200 bg-white/90 sticky top-0 z-40 backdrop-blur-md px-4 sm:px-8 py-4 shadow-sm">
+      {/* Global Client App Dynamic Navbar Component */}
+      <DynamicNavbar />
+
+      {/* Candidate Active Session Sub-Header */}
+      <div className="border-b border-slate-200 bg-white/90 sticky top-16 z-30 backdrop-blur-md px-4 sm:px-8 py-3 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <Image src="/nitiai.png" alt="Niti AI" width={36} height={36} className="rounded-xl shadow-md" />
-            </Link>
-            <div>
-              <h1 className="text-lg font-black text-slate-900 tracking-tight">
-                Portfolio Templates <span className="text-orange-600">Gallery</span>
-              </h1>
-              <p className="text-[11px] text-slate-500">Auto-seeded with your authenticated profile &amp; resume details</p>
-            </div>
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-600">
+            <Layout className="w-4 h-4 text-orange-600" />
+            <span className="font-bold text-slate-900">Portfolio Studio</span>
+            <span className="text-slate-400">|</span>
+            <span>Pre-seeded with active logged-in session</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-full text-xs font-mono">
-              <UserCheck className="w-3.5 h-3.5 text-orange-600" />
-              <span className="text-slate-900 font-bold">{candidateData.name}</span>
-              <span className="text-orange-600 font-semibold">(@{candidateData.username})</span>
-            </div>
+            {candidateData.name && (
+              <div className="hidden sm:flex items-center gap-2 bg-slate-100 border border-slate-200 px-3.5 py-1 rounded-full text-xs font-mono">
+                <UserCheck className="w-3.5 h-3.5 text-orange-600" />
+                <span className="text-slate-900 font-bold">{candidateData.name}</span>
+                {candidateData.username && <span className="text-orange-600 font-semibold">(@{candidateData.username})</span>}
+              </div>
+            )}
 
             <button
               onClick={handleExportCode}
-              className="bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs px-4.5 py-2 rounded-xl transition-all shadow-md shadow-orange-600/20 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              className="bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               {copiedCode ? <Check className="w-3.5 h-3.5 text-white" /> : <Download className="w-3.5 h-3.5" />}
               {copiedCode ? 'TSX Code Exported!' : 'Export React TSX'}
