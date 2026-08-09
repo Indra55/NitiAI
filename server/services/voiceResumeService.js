@@ -1,7 +1,6 @@
 const axios = require("axios");
 const FormData = require("form-data");
 const { spawn } = require("child_process");
-const sarvamService = require("./sarvamService");
 const pool = require("../config/dbConfig");
 
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY;
@@ -82,6 +81,35 @@ class VoiceResumeService {
       "api-subscription-key": this.apiKey,
       "Content-Type": contentType,
     };
+  }
+
+  /**
+   * Internal Chat Completion helper using Sarvam-105b
+   */
+  async chatCompletion(messages, options = {}) {
+    if (!this.apiKey) {
+      return { text: "{}" };
+    }
+    try {
+      const response = await axios.post(
+        `${SARVAM_BASE_URL}/v1/chat/completions`,
+        {
+          model: "sarvam-105b",
+          messages: messages,
+          temperature: options.temperature || 0.2,
+          max_tokens: 500,
+        },
+        {
+          headers: this.getHeaders(),
+          timeout: 25000,
+        }
+      );
+      const content = response.data.choices[0]?.message?.content || "{}";
+      return { text: content };
+    } catch (error) {
+      console.warn("⚠️ Sarvam Chat Completion Notice:", error.message);
+      return { text: "{}" };
+    }
   }
 
   /**
@@ -206,7 +234,7 @@ Existing Details: ${JSON.stringify(existingDetails)}
 Return ONLY a JSON object with extracted fields for the current section. Do not include markdown code blocks.`;
 
       const messages = [{ role: "system", content: systemPrompt }];
-      const result = await sarvamService.chatCompletion(messages, { temperature: 0.2 });
+      const result = await this.chatCompletion(messages, { temperature: 0.2 });
 
       let parsed = {};
       try {
