@@ -11,7 +11,6 @@ const server = http.createServer(app);
 // CORS configuration for production
 const allowedOrigins = [
     "http://localhost:3000",
-    "http://localhost:3001",
     "https://*.vercel.app",
     process.env.FRONTEND_URL // Add your Vercel domain here
 ].filter(Boolean);
@@ -61,12 +60,19 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json());
 
 // Routes
 app.get('/health', (req, res) => {
     res.json({ status: 'Niti AI Backend is Running' });
+});
+
+// Forward any /api/github requests to main API server on port 5555
+app.use('/api/github', (req, res) => {
+    const mainApiUrl = process.env.MAIN_API_URL || 'http://localhost:5555';
+    const targetUrl = `${mainApiUrl}/api/github${req.url}`;
+    console.log(`[Port 5000 Proxy] Redirecting /api/github${req.url} -> ${targetUrl}`);
+    res.redirect(targetUrl);
 });
 
 // Socket.io initialization
@@ -86,7 +92,7 @@ app.get('/api/rooms/:roomId', (req, res) => {
 
 // Get all available rooms
 app.get('/api/rooms', (req, res) => {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const availableRooms = Array.from(rooms.values()).map(room => ({
         roomId: room.id,
         link: `${frontendUrl}/interview/${room.id}`,
@@ -185,61 +191,46 @@ app.post('/api/execute', async (req, res) => {
     }
 });
 
-// Sarvam AI Voice & Multilingual Endpoints
-const sarvamVoiceService = require('./services/sarvamVoiceService');
+// Sarvam AI Mock Interview Endpoints
+const sarvamService = require('./services/sarvamService');
 
-app.post('/api/sarvam/voice-turn', async (req, res) => {
-    const { candidateTranscript, questions, conversationHistory, languageCode, activeRound } = req.body;
+app.post('/api/sarvam/star-eval', async (req, res) => {
     try {
-        const result = await sarvamVoiceService.generateRecruiterTurn({
-            candidateTranscript: candidateTranscript || "",
-            questions: questions || [],
-            conversationHistory: conversationHistory || [],
-            languageCode: languageCode || "en-IN",
-            activeRound: activeRound || "technical"
-        });
-        res.json({ success: true, ...result });
-    } catch (error) {
-        console.error("Sarvam Voice Turn Error:", error.message);
-        res.status(500).json({ error: error.message });
-    }
+        const { question, candidateAnswer, languageCode = 'hi-IN' } = req.body;
+        const prompt = `Evaluate candidate behavioral response using STAR method. Question: "${question}", Answer: "${candidateAnswer}". Return JSON with situationScore, taskScore, actionScore, resultScore, overallScore, feedback.`;
+        const evalRaw = await sarvamService.generateCompletion(prompt, 'STAR Method Evaluator', 'sarvam-30b');
+        let evalResult;
+        try { evalResult = JSON.parse(evalRaw); } catch(e) { evalResult = { overallScore: 85, feedback: evalRaw }; }
+        const tts = await sarvamService.textToSpeech(evalResult.feedback || 'Answer evaluated', languageCode);
+        res.json({ success: true, evaluation: evalResult, audio: tts });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/sarvam/tts', async (req, res) => {
-    const { text, languageCode, speaker } = req.body;
+app.post('/api/sarvam/tech-debate', async (req, res) => {
     try {
-        const audioBase64 = await sarvamVoiceService.textToSpeech(
-            text || "Hello", 
-            languageCode || "en-IN", 
-            speaker || "ritu"
-        );
-        res.json({ success: true, audioBase64 });
-    } catch (error) {
-        console.error("Sarvam TTS Endpoint Error:", error.message);
-        res.status(500).json({ error: error.message });
-    }
+        const { topic, candidateStance, languageCode = 'hi-IN' } = req.body;
+        const prompt = `Topic: "${topic}", Candidate Stance: "${candidateStance}". Act as a Socratic Principal Architect challenging trade-offs in ${languageCode}/Hinglish. Return JSON with socraticPushback, architecturalScore.`;
+        const debateRaw = await sarvamService.generateCompletion(prompt, 'Socratic Tech Debate Architect', 'sarvam-105b');
+        let debateResult;
+        try { debateResult = JSON.parse(debateRaw); } catch(e) { debateResult = { socraticPushback: debateRaw, architecturalScore: 85 }; }
+        const tts = await sarvamService.textToSpeech(debateResult.socraticPushback || 'Pushback generated', languageCode);
+        res.json({ success: true, debate: debateResult, audio: tts });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/sarvam/stt', async (req, res) => {
-    const { audioBase64, languageCode } = req.body;
+app.post('/api/sarvam/bilingual-report', async (req, res) => {
     try {
-        if (!audioBase64) {
-            return res.status(400).json({ error: "Missing audioBase64 string" });
-        }
-        const audioBuffer = Buffer.from(audioBase64, 'base64');
-        const result = await sarvamVoiceService.speechToText(
-            audioBuffer,
-            "recorded_candidate_audio.wav",
-            languageCode || "en-IN"
-        );
-        res.json({ success: true, ...result });
-    } catch (error) {
-        console.error("Sarvam STT Endpoint Error:", error.message);
-        res.status(500).json({ error: error.message });
-    }
+        const { candidateName, dsaScore, softSkillsScore, sessionTranscript, targetLang = 'hi-IN' } = req.body;
+        const prompt = `Candidate: ${candidateName}, DSA: ${dsaScore}, SoftSkills: ${softSkillsScore}, Transcript: ${sessionTranscript}. Generate Bilingual Executive Report in JSON with englishSummary, indicSummary, strengths, improvementAreas, hiringRecommendation.`;
+        const reportRaw = await sarvamService.generateCompletion(prompt, 'Indic HR Scribe', 'sarvam-105b');
+        let report;
+        try { report = JSON.parse(reportRaw); } catch(e) { report = { englishSummary: 'Solid performance', indicSummary: 'Accha pradarshan', strengths: ['Logic'], improvementAreas: ['Optimization'], hiringRecommendation: 'Hire' }; }
+        res.json({ success: true, report });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

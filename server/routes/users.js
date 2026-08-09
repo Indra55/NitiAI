@@ -95,24 +95,7 @@ router.post("/login", async (req, res) => {
       token
     });
   } catch (err) {
-    console.error("Login error:", err.message || err);
-    const userEmail = (req.body && req.body.email) ? req.body.email : "user@example.com";
-    if (err.code === 'ETIMEDOUT' || err.code === 'ENETUNREACH' || err.code === 'ECONNREFUSED' || (err.message && (err.message.includes('timeout') || err.message.includes('connect') || err.message.includes('terminated')))) {
-      console.warn("Database connection timed out during login. Granting fallback session...");
-      const secret = process.env.JWT_SECRET || "your_jwt_secret";
-      const fallbackUser = { id: "30e9dc00-c435-45ce-a7bb-e4a439f69fe2", username: userEmail.split("@")[0], email: userEmail, onboarding_completed: true };
-      const token = jwt.sign({ userId: fallbackUser.id, email: fallbackUser.email }, secret, { expiresIn: "7d" });
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
-      return res.json({
-        message: "Login successful (Session Active)",
-        user: fallbackUser,
-        token
-      });
-    }
+    console.error("Login error:", err);
     res.status(500).json({ error: "An error occurred during login" });
   }
 });
@@ -300,21 +283,8 @@ router.get("/me", authenticateToken, async (req, res) => {
     res.json(response);
 
   } catch (err) {
-    console.warn("Get profile DB query timed out/failed:", err.message);
-    res.json({
-      user: {
-        id: req.user?.id || "30e9dc00-c435-45ce-a7bb-e4a439f69fe2",
-        name: req.user?.name || "User",
-        email: req.user?.email || "user@niti.ai",
-        location: req.user?.location || "Mumbai, MH, India",
-        career_goal_short: req.user?.career_goal_short || "Senior Frontend Engineer",
-        onboarding_completed: true
-      },
-      skills: [],
-      education: [],
-      experience: [],
-      profile_completeness: { overall: 85 }
-    });
+    console.error("Get profile error:", err);
+    res.status(500).json({ error: "An error occurred while fetching profile" });
   }
 });
 
