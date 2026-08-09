@@ -1,24 +1,12 @@
-"use client"
+const fs = require('fs');
+const path = './client/components/resume-templates.tsx';
+let content = fs.readFileSync(path, 'utf8');
 
-import { ResumeInfo } from "@/lib/api"
-import { forwardRef } from "react"
+// --- MODERN TEMPLATE REFACTOR ---
+const modernReplaceTarget = `export const ModernTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
+    return (`;
 
-interface TemplateProps {
-    data: ResumeInfo
-}
-
-function formatExternalUrl(url?: string | null): string {
-    if (!url) return "#"
-    const trimmed = url.trim()
-    if (!trimmed) return "#"
-    if (/^(https?:\/\/|mailto:|tel:|\/\/)/i.test(trimmed)) {
-        return trimmed
-    }
-    return `https://${trimmed}`
-}
-
-export const ModernTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
-
+const modernRenderSection = `
     const renderSection = (key: string) => {
         switch(key) {
             case "summary":
@@ -126,20 +114,23 @@ export const ModernTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data 
 
     const leftColumnOrder = data.template_layouts?.modern?.left_column || ["summary", "experience", "projects"];
     const rightColumnOrder = data.template_layouts?.modern?.right_column || ["education", "skills", "soft_skills", "certifications"];
+`;
 
-    return (
-        <div ref={ref} className="bg-white text-black p-8 min-h-[1123px] w-[794px] mx-auto shadow-sm print:shadow-none text-sm font-sans">
-            <header className="border-b-2 border-gray-800 pb-4 mb-6">
-                <h1 className="text-4xl font-bold uppercase tracking-wide mb-2">{data.extracted_name}</h1>
-                <div className="flex flex-wrap gap-4 text-gray-600 text-xs">
-                    {data.extracted_email && <span>{data.extracted_email}</span>}
-                    {data.extracted_phone && <span>• {data.extracted_phone}</span>}
-                    {data.extracted_location && <span>• {data.extracted_location}</span>}
-                    {data.linkedin_url && <span>• {data.linkedin_url}</span>}
-                </div>
-            </header>
+if (content.includes(modernReplaceTarget)) {
+    content = content.replace(modernReplaceTarget, `export const ModernTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
+${modernRenderSection}
+    return (`);
 
-            <div className="grid grid-cols-3 gap-8">
+    const modernReplaceTarget2 = `<div className="grid grid-cols-3 gap-8">`;
+    const modernReplaceEnd = `</div>
+            </div>
+        </div>
+    )
+})`;
+    const mStartIndex = content.indexOf(modernReplaceTarget2);
+    const mEndIndex = content.indexOf(modernReplaceEnd, mStartIndex) + modernReplaceEnd.length;
+    if (mStartIndex !== -1) {
+        const modernNewContent = `<div className="grid grid-cols-3 gap-8">
                 <div className="col-span-2 space-y-6">
                     {leftColumnOrder.map(renderSection)}
                 </div>
@@ -149,11 +140,17 @@ export const ModernTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data 
             </div>
         </div>
     )
-})
-ModernTemplate.displayName = "ModernTemplate"
+})`;
+        content = content.substring(0, mStartIndex) + modernNewContent + content.substring(mEndIndex);
+    }
+}
 
-export const ClassicTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
 
+// --- CLASSIC TEMPLATE REFACTOR ---
+const classicReplaceTarget = `export const ClassicTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
+    return (`;
+
+const classicRenderSection = `
     const renderSection = (key: string) => {
         switch(key) {
             case "summary":
@@ -246,27 +243,37 @@ export const ClassicTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data
     };
 
     const sectionOrder = data.template_layouts?.classic?.section_order || ["summary", "experience", "projects", "education", "skills", "soft_skills", "certifications"];
+`;
 
-    return (
-        <div ref={ref} className="bg-white text-black p-10 min-h-[1123px] w-[794px] mx-auto shadow-sm print:shadow-none font-serif">
-            <div className="text-center border-b-2 border-black pb-4 mb-6">
-                <h1 className="text-3xl font-bold uppercase mb-2">{data.extracted_name}</h1>
-                <p className="text-sm">
-                    {data.extracted_location} | {data.extracted_phone} | {data.extracted_email}
-                </p>
-                {data.linkedin_url && <p className="text-sm text-blue-800">{data.linkedin_url}</p>}
-            </div>
+if (content.includes(classicReplaceTarget)) {
+    content = content.replace(classicReplaceTarget, `export const ClassicTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
+${classicRenderSection}
+    return (`);
 
-            <div className="space-y-5">
+    const classicReplaceTarget2 = `<div className="space-y-5">`;
+    const classicReplaceEnd = `</div>
+        </div>
+    )
+})`;
+    const cStartIndex = content.indexOf(classicReplaceTarget2);
+    const cEndIndex = content.indexOf(classicReplaceEnd, cStartIndex) + classicReplaceEnd.length;
+    if (cStartIndex !== -1) {
+        const classicNewContent = `<div className="space-y-5">
                 {sectionOrder.map(renderSection)}
             </div>
         </div>
     )
-})
-ClassicTemplate.displayName = "ClassicTemplate"
+})`;
+        content = content.substring(0, cStartIndex) + classicNewContent + content.substring(cEndIndex);
+    }
+}
 
-export const MinimalTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
 
+// --- MINIMAL TEMPLATE REFACTOR ---
+const minimalReplaceTarget = `export const MinimalTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
+    return (`;
+
+const minimalRenderSection = `
     const renderSection = (key: string) => {
         switch(key) {
             case "summary":
@@ -371,19 +378,23 @@ export const MinimalTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data
 
     const topSectionOrder = data.template_layouts?.minimal?.top_section || ["summary", "experience", "projects"];
     const bottomGridOrder = data.template_layouts?.minimal?.bottom_grid || ["education", "skills", "soft_skills", "certifications"];
+`;
 
-    return (
-        <div ref={ref} className="bg-white text-gray-800 p-12 min-h-[1123px] w-[794px] mx-auto shadow-sm print:shadow-none font-sans">
-            <header className="mb-10">
-                <h1 className="text-5xl font-light tracking-tight text-gray-900 mb-4">{data.extracted_name}</h1>
-                <div className="text-sm text-gray-500 space-y-1">
-                    <p>{data.professional_title}</p>
-                    <p>{data.extracted_email} • {data.extracted_phone}</p>
-                    <p>{data.extracted_location}</p>
-                </div>
-            </header>
+if (content.includes(minimalReplaceTarget)) {
+    content = content.replace(minimalReplaceTarget, `export const MinimalTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data }, ref) => {
+${minimalRenderSection}
+    return (`);
 
-            <div className="grid grid-cols-1 gap-10">
+    const minimalReplaceTarget2 = `<div className="grid grid-cols-1 gap-10">`;
+    const minimalReplaceEnd = `</div>
+            </div>
+        </div>
+    )
+})`;
+    const minStartIndex = content.indexOf(minimalReplaceTarget2);
+    const minEndIndex = content.indexOf(minimalReplaceEnd, minStartIndex) + minimalReplaceEnd.length;
+    if (minStartIndex !== -1) {
+        const minimalNewContent = `<div className="grid grid-cols-1 gap-10">
                 {topSectionOrder.map(renderSection)}
                 <div className="grid grid-cols-2 gap-8">
                     {bottomGridOrder.map(renderSection)}
@@ -391,5 +402,10 @@ export const MinimalTemplate = forwardRef<HTMLDivElement, TemplateProps>(({ data
             </div>
         </div>
     )
-})
-MinimalTemplate.displayName = "MinimalTemplate"
+})`;
+        content = content.substring(0, minStartIndex) + minimalNewContent + content.substring(minEndIndex);
+    }
+}
+
+fs.writeFileSync(path, content, 'utf8');
+console.log('All templates refactored correctly!');

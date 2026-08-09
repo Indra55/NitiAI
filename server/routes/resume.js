@@ -248,7 +248,7 @@ router.get("/info", authenticateToken, async (req, res) => {
                 extracted_name, extracted_email, extracted_phone, extracted_location,
                 linkedin_url, portfolio_url, professional_title, years_of_experience,
                 professional_summary, technical_skills, soft_skills,
-                education, experience, projects, certifications,
+                education, experience, projects, certifications, template_layouts,
                 completeness_score, ats_score, strengths, improvement_areas,
                 career_insights,
                 uploaded_at, updated_at
@@ -528,6 +528,49 @@ router.post("/tailor", authenticateToken, async (req, res) => {
         console.log("Tailoring resume...");
         const tailoredResult = await resumeService.tailorResume(resumeText, jobDescription);
 
+        // Save to DB so tailored changes persist
+        if (tailoredResult && tailoredResult.tailored_resume_data) {
+            const updatedData = tailoredResult.tailored_resume_data;
+            await pool.query(
+                `UPDATE resume_info SET 
+                 extracted_name = COALESCE($2, extracted_name),
+                 extracted_email = COALESCE($3, extracted_email),
+                 extracted_phone = COALESCE($4, extracted_phone),
+                 extracted_location = COALESCE($5, extracted_location),
+                 linkedin_url = COALESCE($6, linkedin_url),
+                 portfolio_url = COALESCE($7, portfolio_url),
+                 professional_title = COALESCE($8, professional_title),
+                 years_of_experience = COALESCE($9, years_of_experience),
+                 professional_summary = COALESCE($10, professional_summary),
+                 technical_skills = COALESCE($11::text[], technical_skills),
+                 soft_skills = COALESCE($12::text[], soft_skills),
+                 experience = COALESCE($13::jsonb, experience),
+                 education = COALESCE($14::jsonb, education),
+                 projects = COALESCE($15::jsonb, projects),
+                 certifications = COALESCE($16::text[], certifications),
+                 updated_at = now()
+                 WHERE user_id = $1`,
+                [
+                    req.user.id,
+                    updatedData.extracted_name || updatedData.name,
+                    updatedData.extracted_email || updatedData.email,
+                    updatedData.extracted_phone || updatedData.phone,
+                    updatedData.extracted_location || updatedData.location,
+                    updatedData.linkedin_url,
+                    updatedData.portfolio_url,
+                    updatedData.professional_title || updatedData.title,
+                    updatedData.years_of_experience,
+                    updatedData.professional_summary || updatedData.summary,
+                    updatedData.technical_skills,
+                    updatedData.soft_skills,
+                    updatedData.experience ? JSON.stringify(updatedData.experience) : null,
+                    updatedData.education ? JSON.stringify(updatedData.education) : null,
+                    updatedData.projects ? JSON.stringify(updatedData.projects) : null,
+                    updatedData.certifications
+                ]
+            );
+        }
+
         res.json(tailoredResult);
 
     } catch (error) {
@@ -542,15 +585,60 @@ router.post("/tailor", authenticateToken, async (req, res) => {
  * @access Private
  */
 router.post("/update", authenticateToken, async (req, res) => {
-    const { currentData, instruction } = req.body;
+    const { currentData, instruction, template } = req.body;
 
     if (!instruction) {
         return res.status(400).json({ error: "Instruction is required" });
     }
 
     try {
-        console.log("Updating resume based on instruction...");
-        const updatedData = await resumeService.updateResume(currentData, instruction);
+        console.log(`Updating resume based on instruction for template: ${template || 'unknown'}...`);
+        const updatedData = await resumeService.updateResume(currentData, instruction, template);
+        
+        // Save to DB so changes persist
+        if (updatedData) {
+            await pool.query(
+                `UPDATE resume_info SET 
+                 extracted_name = COALESCE($2, extracted_name),
+                 extracted_email = COALESCE($3, extracted_email),
+                 extracted_phone = COALESCE($4, extracted_phone),
+                 extracted_location = COALESCE($5, extracted_location),
+                 linkedin_url = COALESCE($6, linkedin_url),
+                 portfolio_url = COALESCE($7, portfolio_url),
+                 professional_title = COALESCE($8, professional_title),
+                 years_of_experience = COALESCE($9, years_of_experience),
+                 professional_summary = COALESCE($10, professional_summary),
+                 technical_skills = COALESCE($11::text[], technical_skills),
+                 soft_skills = COALESCE($12::text[], soft_skills),
+                 experience = COALESCE($13::jsonb, experience),
+                 education = COALESCE($14::jsonb, education),
+                 projects = COALESCE($15::jsonb, projects),
+                 certifications = COALESCE($16::text[], certifications),
+                 template_layouts = COALESCE($17::jsonb, template_layouts),
+                 updated_at = now()
+                 WHERE user_id = $1`,
+                [
+                    req.user.id,
+                    updatedData.extracted_name,
+                    updatedData.extracted_email,
+                    updatedData.extracted_phone,
+                    updatedData.extracted_location,
+                    updatedData.linkedin_url,
+                    updatedData.portfolio_url,
+                    updatedData.professional_title,
+                    updatedData.years_of_experience,
+                    updatedData.professional_summary,
+                    updatedData.technical_skills,
+                    updatedData.soft_skills,
+                    updatedData.experience ? JSON.stringify(updatedData.experience) : null,
+                    updatedData.education ? JSON.stringify(updatedData.education) : null,
+                    updatedData.projects ? JSON.stringify(updatedData.projects) : null,
+                    updatedData.certifications,
+                    updatedData.template_layouts ? JSON.stringify(updatedData.template_layouts) : null
+                ]
+            );
+        }
+
         res.json(updatedData);
     } catch (error) {
         console.error("Error updating resume:", error);

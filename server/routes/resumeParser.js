@@ -434,7 +434,16 @@ Provide exactly 5 recommended career paths, 4 trending roles, 3 fast-growing ind
   /**
    * Update resume data based on user instruction
    */
-  async updateResume(currentData, instruction) {
+  async updateResume(currentData, instruction, template = 'modern') {
+    // Ensure template_layouts exists in the data so the AI knows its structure
+    if (!currentData.template_layouts) {
+      currentData.template_layouts = {
+        modern: { left_column: ["summary", "experience", "projects"], right_column: ["education", "skills", "soft_skills", "certifications"] },
+        classic: { section_order: ["summary", "experience", "projects", "education", "skills", "soft_skills", "certifications"] },
+        minimal: { top_section: ["summary", "experience", "projects"], bottom_grid: ["education", "skills", "soft_skills", "certifications"] }
+      };
+    }
+
     const prompt = `You are an expert resume editor. Update the following resume JSON based on the user's instruction.
     
     Current Resume JSON:
@@ -447,12 +456,21 @@ Provide exactly 5 recommended career paths, 4 trending roles, 3 fast-growing ind
     1. ONLY modify the parts requested by the user.
     2. Keep the rest of the data exactly the same.
     3. If the user asks to "improve" or "fix" something, apply best practices.
-    4. Return the FULL updated JSON.
+    4. If the user asks to reorder items (e.g., "put X after Y" or "move Z to top"), you MUST strictly modify the array order to reflect this.
+    5. Return the FULL updated JSON.
+    
+    Layout Editing Rules:
+    - If the user asks to change the order of sections (e.g., "move education above experience", "put skills on the left"), you MUST update the "template_layouts" object inside the JSON for the CURRENT template: "${template}".
+    - The available sections are: "summary", "experience", "projects", "education", "skills", "soft_skills", "certifications".
+    - For "modern" template, update: template_layouts.modern.left_column (array) and template_layouts.modern.right_column (array).
+    - For "classic" template, update: template_layouts.classic.section_order (array).
+    - For "minimal" template, update: template_layouts.minimal.top_section (array) and template_layouts.minimal.bottom_grid (array).
     
     Return JSON only.`;
 
     try {
       const text = await this.callWithRetry(prompt);
+      console.log("AI TEXT:", text);
       return this.safeJsonParse(text, currentData);
     } catch (error) {
       console.error('Error updating resume:', error.message);
