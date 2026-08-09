@@ -463,6 +463,49 @@ class GitHubService {
   }
 
   /**
+   * Deep Audit all Public and Private Repositories for a candidate
+   * Extracts detailed descriptions, README snippets, and tool breakdowns for every public & private repo
+   */
+  async deepAuditRepositories(username, token = null) {
+    const key = (username || '').toLowerCase().trim();
+    const accessToken = token || await this.getAccessToken(key);
+    const repos = await this.fetchUserRepositories(username, accessToken);
+
+    const publicRepos = repos.filter(r => !r.private);
+    const privateRepos = repos.filter(r => r.private);
+
+    const techFrequencyMap = {};
+    repos.forEach(r => {
+      (r.detected_tools || []).forEach(tool => {
+        techFrequencyMap[tool] = (techFrequencyMap[tool] || 0) + 1;
+      });
+    });
+
+    const repoAudits = repos.map(r => ({
+      name: r.name,
+      fullName: r.fullName,
+      visibility: r.private ? 'Private 🔒' : 'Public 🌐',
+      isPrivate: r.private,
+      description: r.description || 'No description provided on GitHub.',
+      language: r.language || 'TypeScript',
+      stars: r.stars || 0,
+      forks: r.forks || 0,
+      pushedAt: r.pushed_at,
+      detectedTools: r.detected_tools || []
+    }));
+
+    return {
+      username,
+      totalRepositories: repos.length,
+      publicCount: publicRepos.length,
+      privateCount: privateRepos.length,
+      hasAuthenticatedToken: Boolean(accessToken),
+      techFrequency: techFrequencyMap,
+      repositories: repoAudits
+    };
+  }
+
+  /**
    * 2-Tier Hybrid Graph Indexer
    * Tier 1: In-Memory SHA Caching & Inverted Hash Mapping ($O(1)$)
    * Tier 2: PostgreSQL Relational Property Graph Persistence

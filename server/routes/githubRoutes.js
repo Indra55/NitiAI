@@ -470,4 +470,23 @@ router.post('/deep-repo-analysis', async (req, res) => {
   }
 });
 
+/**
+ * 12. GET /api/github/deep-audit
+ * Audits all public & private repositories for a candidate and extracts descriptions & tool usage
+ */
+router.get('/deep-audit', async (req, res) => {
+  try {
+    const username = (req.query.username || 'Indra55').trim();
+    const auditData = await githubService.deepAuditRepositories(username);
+
+    res.json({
+      success: true,
+      audit: auditData
+    });
+  } catch (error) {
+    console.error('GitHub deep-audit error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
