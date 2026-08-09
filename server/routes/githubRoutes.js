@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const axios = require('axios');
+const pool = require('../config/dbConfig');
 const githubService = require('../services/githubService');
 const sarvamService = require('../services/sarvamService');
 
@@ -167,7 +168,7 @@ router.post('/reauthorize', async (req, res) => {
 
 /**
  * 6. GET /api/github/auth/callback
- * Handles OAuth callback code, exchanges code for access_token, saves token securely in DB for requested candidate username
+ * Handles OAuth callback code, exchanges code for access_token, pre-seeds user profile in DB
  */
 router.get('/auth/callback', async (req, res) => {
   const { code, state } = req.query;
@@ -206,7 +207,8 @@ router.get('/auth/callback', async (req, res) => {
       headers: { Authorization: `token ${accessToken}`, 'User-Agent': 'NitiAI-Career-Studio' }
     });
 
-    const authenticatedUsername = userResponse.data.login;
+    const ghUser = userResponse.data;
+    const authenticatedUsername = ghUser.login;
     const targetUsername = (state || authenticatedUsername).trim();
 
     // Save token persistently in PostgreSQL database & memory cache under both handles
@@ -215,10 +217,31 @@ router.get('/auth/callback', async (req, res) => {
       await githubService.setAccessToken(authenticatedUsername, accessToken);
     }
 
+    // PRE-SEED DATABASE: Insert or update pre-filled candidate profile in PostgreSQL DB
+    try {
+      if (pool) {
+        await pool.query(
+          `INSERT INTO users (username, name, email, location, onboarding_completed, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, true, NOW(), NOW())
+           ON CONFLICT (email) 
+           DO UPDATE SET username = EXCLUDED.username, name = COALESCE(users.name, EXCLUDED.name), location = COALESCE(users.location, EXCLUDED.location), updated_at = NOW()`,
+          [
+            targetUsername,
+            ghUser.name || targetUsername,
+            ghUser.email || `${targetUsername.toLowerCase()}@users.noreply.github.com`,
+            ghUser.location || 'Remote'
+          ]
+        );
+        console.log(`[GitHubOAuth] Pre-seeded candidate user profile in PostgreSQL database for "${targetUsername}".`);
+      }
+    } catch (dbErr) {
+      console.warn(`[GitHubOAuth] DB pre-seeding notice:`, dbErr.message);
+    }
+
     console.log(`[GitHubOAuth] Successfully stored token in DB for candidate: "@${targetUsername}" (Authenticated GitHub user: "@${authenticatedUsername}")`);
 
-    // Redirect back to demo page for requested candidate username
-    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUsername)}`);
+    // Redirect back to production studio with pre-seeded candidate profile details
+    res.redirect(`${clientUrl}/github-demo?githubConnected=true&username=${encodeURIComponent(targetUsername)}&name=${encodeURIComponent(ghUser.name || targetUsername)}&email=${encodeURIComponent(ghUser.email || '')}&avatar=${encodeURIComponent(ghUser.avatar_url || '')}`);
   } catch (error) {
     console.error('GitHub OAuth Callback Error:', error.message);
     res.redirect(`${clientUrl}/github-demo?githubError=${encodeURIComponent(error.message)}`);

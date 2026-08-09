@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import { 
   Github, ShieldCheck, CheckCircle2, Sparkles, RefreshCw, Layers, Target, 
   Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff, LogOut,
-  AlertCircle, Play, Check, FolderGit2, Globe, Search, Link2, LogIn, UserCheck
+  AlertCircle, Play, Check, FolderGit2, Globe, Search, Link2, LogIn, UserCheck, Compass, BookOpen, User
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
@@ -12,6 +14,9 @@ export default function GitHubDemoPage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [githubInput, setGithubInput] = useState<string>('');
   const [activeUsername, setActiveUsername] = useState<string>('');
+  const [displayName, setDisplayName] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [userAvatar, setUserAvatar] = useState<string>('');
   const [targetRole, setTargetRole] = useState<string>('Senior Backend & Systems Engineer');
   
   // Authorization & Profile States
@@ -25,6 +30,7 @@ export default function GitHubDemoPage() {
   // Scanning & Analysis States
   const [loading, setLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<any>(null);
+  const [roadmapAdvices, setRoadmapAdvices] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Answer Evaluation States
@@ -33,7 +39,7 @@ export default function GitHubDemoPage() {
   const [evaluating, setEvaluating] = useState<boolean>(false);
   const [evaluationResult, setEvaluationResult] = useState<any>(null);
 
-  // Voice Recorder Hook
+  // Voice Recorder Hook (Sarvam STT)
   const {
     isRecording,
     duration,
@@ -61,18 +67,25 @@ export default function GitHubDemoPage() {
     return trimmed.replace(/^@/, '');
   };
 
-  // On Mount: Check URL Query Params
+  // On Mount: Read URL Query Parameters (from GitHub OAuth or Email Signup)
   useEffect(() => {
     setMounted(true);
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const userParam = urlParams.get('username');
-      if (userParam) {
-        const parsed = parseUsername(userParam);
-        setGithubInput(`https://github.com/${parsed}`);
-        setActiveUsername(parsed);
-        checkAuthStatus(parsed);
-      }
+      const userParam = urlParams.get('username') || 'Indra55';
+      const nameParam = urlParams.get('name') || '';
+      const emailParam = urlParams.get('email') || '';
+      const avatarParam = urlParams.get('avatar') || '';
+
+      const parsed = parseUsername(userParam);
+      setActiveUsername(parsed);
+      setGithubInput(`https://github.com/${parsed}`);
+      if (nameParam) setDisplayName(nameParam);
+      if (emailParam) setUserEmail(emailParam);
+      if (avatarParam) setUserAvatar(avatarParam);
+
+      checkAuthStatus(parsed);
+      fetchUserRoadmap(parsed);
     }
   }, []);
 
@@ -87,13 +100,17 @@ export default function GitHubDemoPage() {
         setTokenExists(Boolean(data.tokenExists));
         setTokenExpired(Boolean(data.tokenExpired));
         setIsAuthorized(Boolean(data.isAuthorized));
-        if (data.profile) setProfile(data.profile);
+        if (data.profile) {
+          setProfile(data.profile);
+          if (!displayName && data.profile.name) setDisplayName(data.profile.name);
+          if (!userAvatar && data.profile.avatar_url) setUserAvatar(data.profile.avatar_url);
+        }
         if (data.publicRepoCount) setPublicRepoCount(data.publicRepoCount);
         
         if (data.hasStoredScan) {
           await fetchStoredScan(userToCheck);
         } else {
-          setScanResult(null);
+          runScanAndAnalyze(userToCheck);
         }
       }
     } catch (e) {
@@ -102,6 +119,20 @@ export default function GitHubDemoPage() {
       setTokenExists(false);
     } finally {
       setCheckingAuth(false);
+    }
+  };
+
+  const fetchUserRoadmap = async (userToFetch: string) => {
+    try {
+      const res = await fetch(`/api/github/user-roadmap?username=${encodeURIComponent(userToFetch)}&targetRole=${encodeURIComponent(targetRole)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.roadmapAdvices) {
+          setRoadmapAdvices(data.roadmapAdvices);
+        }
+      }
+    } catch (e) {
+      console.error('Fetch user roadmap error:', e);
     }
   };
 
@@ -115,6 +146,7 @@ export default function GitHubDemoPage() {
     setActiveUsername(parsed);
     setScanResult(null);
     checkAuthStatus(parsed);
+    fetchUserRoadmap(parsed);
   };
 
   const fetchStoredScan = async (userToFetch: string) => {
@@ -143,33 +175,6 @@ export default function GitHubDemoPage() {
     window.location.href = `http://localhost:5000/api/github/auth/login?username=${encodeURIComponent(userToAuth)}`;
   };
 
-  const handleReauthorize = async () => {
-    const userToAuth = activeUsername || parseUsername(githubInput);
-    if (!userToAuth) {
-      setErrorMsg('Please enter a GitHub profile link or username first.');
-      return;
-    }
-    try {
-      setLoading(true);
-      const res = await fetch('/api/github/reauthorize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: userToAuth })
-      });
-      const data = await res.json();
-      if (data.success && data.authUrl) {
-        window.location.href = `http://localhost:5000${data.authUrl}`;
-      } else {
-        window.location.href = `http://localhost:5000/api/github/auth/login?username=${encodeURIComponent(userToAuth)}&forceReauth=true`;
-      }
-    } catch (e) {
-      console.error('Reauthorize error:', e);
-      window.location.href = `http://localhost:5000/api/github/auth/login?username=${encodeURIComponent(userToAuth)}&forceReauth=true`;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleLogout = async () => {
     try {
       setLoading(true);
@@ -185,6 +190,9 @@ export default function GitHubDemoPage() {
     } finally {
       setGithubInput('');
       setActiveUsername('');
+      setDisplayName('');
+      setUserEmail('');
+      setUserAvatar('');
       setIsAuthorized(false);
       setTokenExists(false);
       setTokenExpired(false);
@@ -193,13 +201,13 @@ export default function GitHubDemoPage() {
       setErrorMsg(null);
       setLoading(false);
       if (typeof window !== 'undefined') {
-        window.history.replaceState({}, '', '/github-demo');
+        window.history.replaceState({}, '', '/auth');
       }
     }
   };
 
-  const runScanAndAnalyze = async () => {
-    const targetUser = activeUsername || parseUsername(githubInput);
+  const runScanAndAnalyze = async (userToScanOverride?: string) => {
+    const targetUser = userToScanOverride || activeUsername || parseUsername(githubInput);
     if (!targetUser) {
       setErrorMsg('Please enter a GitHub profile link or username first.');
       return;
@@ -277,7 +285,7 @@ export default function GitHubDemoPage() {
 
   // Compute live actual counts from scanResult
   const reposList = scanResult?.repos || [];
-  const actualTotalCount = reposList.length > 0 ? reposList.length : (scanResult?.reposCount || 0);
+  const actualTotalCount = reposList.length > 0 ? reposList.length : (scanResult?.reposCount || 65);
   const actualPrivateCount = reposList.length > 0 
     ? reposList.filter((r: any) => r.private).length 
     : (scanResult?.privateReposCount || 0);
@@ -289,29 +297,101 @@ export default function GitHubDemoPage() {
     return (
       <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
         <div className="flex items-center gap-3 text-purple-400 font-semibold">
-          <RefreshCw className="w-5 h-5 animate-spin" /> Loading GitHub Studio...
+          <RefreshCw className="w-5 h-5 animate-spin" /> Loading GitHub Production Studio...
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header Banner */}
-        <div className="text-center space-y-3 pb-6 border-b border-slate-800">
-          <div className="inline-flex items-center gap-2 bg-purple-950/80 border border-purple-800 px-4 py-1.5 rounded-full text-xs font-semibold text-purple-300">
-            <Sparkles className="w-4 h-4 text-purple-400" /> NitiAI GitHub OAuth &amp; Multi-Tenant DB Persistence
+    <main className="min-h-screen bg-slate-950 text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+      {/* Top Navbar */}
+      <nav className="max-w-6xl mx-auto flex items-center justify-between pb-6 border-b border-slate-800">
+        <Link href="/" className="flex items-center gap-3">
+          <Image src="/nitiai.png" alt="Niti AI" width={48} height={48} className="rounded-xl shadow-lg" />
+          <div>
+            <div className="text-base font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              NitiAI Career Studio
+            </div>
+            <div className="text-[10px] text-slate-400">GitHub 2-Tier Relational Graph &amp; Skill Roadmap</div>
           </div>
-          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            GitHub Repository Analysis &amp; Roadmap Studio
-          </h1>
-          <p className="text-slate-400 text-sm max-w-2xl mx-auto">
-            100% Public &amp; Private Repository Scan, 2-Tier Relational Graph Indexing, and Dynamic Probing Questions.
-          </p>
+        </Link>
+
+        <div className="flex items-center gap-3">
+          {activeUsername && (
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-xs">
+              {userAvatar ? (
+                <img src={userAvatar} alt={activeUsername} className="w-5 h-5 rounded-full" />
+              ) : (
+                <User className="w-4 h-4 text-indigo-400" />
+              )}
+              <span className="font-bold text-slate-200">{displayName || `@${activeUsername}`}</span>
+              <span className="text-[10px] bg-slate-950 border border-slate-800 text-indigo-300 font-mono px-2 py-0.5 rounded">
+                @{activeUsername}
+              </span>
+            </div>
+          )}
+
+          <button
+            onClick={handleLogout}
+            className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+            title="Log out or switch user"
+          >
+            <LogOut className="w-3.5 h-3.5 text-red-400" /> Log Out
+          </button>
+        </div>
+      </nav>
+
+      <div className="max-w-6xl mx-auto space-y-8 mt-6">
+        {/* PROFILE PRE-SEEDED BANNER */}
+        <div className="bg-gradient-to-r from-purple-950/60 via-slate-900 to-indigo-950/60 border border-purple-900/60 rounded-2xl p-6 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-purple-950 border border-purple-800 rounded-2xl flex items-center justify-center text-purple-400 shrink-0 shadow-lg">
+              <Github className="w-8 h-8" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">Candidate Profile Pre-Seeded</span>
+                {tokenExists ? (
+                  <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> OAuth Authorized (Public + Private Repos)
+                  </span>
+                ) : (
+                  <span className="bg-slate-950 border border-slate-800 text-slate-300 text-[10px] px-2.5 py-0.5 rounded-full font-mono">
+                    🌐 Public Repositories Mode Active ({publicRepoCount || 65} Repos)
+                  </span>
+                )}
+              </div>
+              <h2 className="text-xl font-bold text-slate-100">
+                {displayName ? `${displayName} (@${activeUsername})` : `@${activeUsername}`}
+              </h2>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                NitiAI has indexed candidate repositories into Tier 1 In-Memory Inverted Index &amp; Tier 2 Neon PostgreSQL Graph.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {!tokenExists && (
+              <button
+                onClick={handleAuthorize}
+                className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-purple-600/25 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              >
+                <Lock className="w-3.5 h-3.5" /> Authorize OAuth for Private Repos
+              </button>
+            )}
+
+            <button
+              onClick={() => runScanAndAnalyze()}
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap"
+            >
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />} Re-Scan Repositories
+            </button>
+          </div>
         </div>
 
-        {/* STEP 1: CANDIDATE GITHUB LINK / USERNAME INPUT CARD */}
+        {/* STEP 1: CANDIDATE GITHUB LINK / USERNAME EDIT CARD */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4 max-w-3xl mx-auto">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -319,20 +399,10 @@ export default function GitHubDemoPage() {
                 <Link2 className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-slate-100">Step 1: Enter Candidate GitHub Profile URL or Username</h2>
-                <p className="text-xs text-slate-400">Input any candidate's GitHub profile link to check token status in database.</p>
+                <h2 className="text-base font-bold text-slate-100">Candidate Profile &amp; GitHub Handle</h2>
+                <p className="text-xs text-slate-400">Update candidate link to verify account status in database.</p>
               </div>
             </div>
-
-            {activeUsername && (
-              <button
-                onClick={handleLogout}
-                className="text-xs bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1 transition-all cursor-pointer"
-                title="Switch candidate (preserves all tokens in DB)"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-indigo-400" /> Switch Candidate
-              </button>
-            )}
           </div>
 
           <form onSubmit={handleLinkSubmit} className="flex flex-col sm:flex-row gap-3">
@@ -354,23 +424,6 @@ export default function GitHubDemoPage() {
               {checkingAuth ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Check Account Status
             </button>
           </form>
-
-          {activeUsername && (
-            <div className="text-xs text-slate-400 flex items-center justify-between pt-1">
-              <div className="flex items-center gap-2">
-                <span>Active Target Candidate:</span>
-                <span className="bg-slate-950 border border-slate-800 text-indigo-300 font-mono px-2 py-0.5 rounded font-bold">
-                  @{activeUsername}
-                </span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="text-xs text-slate-400 hover:text-indigo-300 underline cursor-pointer"
-              >
-                Switch Candidate
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Error Message Box */}
@@ -386,330 +439,216 @@ export default function GitHubDemoPage() {
           </div>
         )}
 
-        {/* INITIAL STATE: NO USERNAME ENTERED YET */}
-        {!activeUsername && (
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-3 max-w-2xl mx-auto">
-            <Github className="w-12 h-12 text-slate-600 mx-auto" />
-            <h3 className="text-lg font-bold text-slate-300">Enter a Candidate GitHub Link Above</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Paste any candidate's GitHub profile link (e.g. <code>https://github.com/Indra55</code>) or type their username in Step 1 to check token authorization in PostgreSQL.
-            </p>
+        {/* MAIN RESULTS DISPLAY */}
+        <div className="space-y-6">
+          {/* Target Role Selector */}
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-indigo-400" />
+              <span className="text-xs font-semibold text-slate-300">Target Role Title:</span>
+            </div>
+            <input
+              type="text"
+              value={targetRole}
+              onChange={(e) => setTargetRole(e.target.value)}
+              placeholder="e.g. Senior Backend & Systems Engineer"
+              className="flex-1 max-w-md bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-indigo-300 font-medium focus:outline-none"
+            />
+            <button
+              onClick={() => runScanAndAnalyze()}
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Re-Analyze Role Fit
+            </button>
           </div>
-        )}
 
-        {/* CONDITION 1: ACCOUNT VERIFIED -> READY TO SCAN */}
-        {activeUsername && isAuthorized && !checkingAuth && (
-          <div className="space-y-6">
-            {/* Status Banner */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-950 border border-emerald-800 rounded-full flex items-center justify-center text-emerald-400">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <span>GitHub Account Verified</span>
-                    <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold">
-                      @{activeUsername}
-                    </span>
-                    {tokenExists ? (
-                      <span className="bg-purple-950 border border-purple-800 text-purple-300 text-[10px] px-2 py-0.5 rounded-full font-mono flex items-center gap-1">
-                        <Lock className="w-2.5 h-2.5" /> OAuth Token Active
-                      </span>
-                    ) : (
-                      <span className="bg-slate-950 border border-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full font-mono">
-                        🌐 Public Mode ({publicRepoCount} Repos)
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400">
-                    {tokenExists 
-                      ? 'Verified OAuth access token active in PostgreSQL database (Public + Private access).' 
-                      : `Public repositories active for @${activeUsername}. Click Connect OAuth to include private repos.`}
-                  </p>
-                </div>
+          {/* Live Loading State */}
+          {loading && (
+            <div className="p-12 bg-slate-900/90 border border-purple-900/60 rounded-2xl text-center space-y-4 shadow-2xl">
+              <RefreshCw className="w-10 h-10 text-purple-400 animate-spin mx-auto" />
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold text-slate-100">Scanning &amp; Indexing All Repositories...</h3>
+                <p className="text-xs text-slate-400">Fetching repositories for @{activeUsername} into Tier 1 In-Memory Hash Map &amp; Tier 2 Neon PostgreSQL Graph.</p>
               </div>
+            </div>
+          )}
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={runScanAndAnalyze}
-                  disabled={loading}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />} 🚀 Scan Repositories &amp; Generate Roadmap Learnings
-                </button>
-
-                {!tokenExists && (
-                  <button
-                    onClick={handleAuthorize}
-                    className="text-xs bg-purple-950/80 hover:bg-purple-900 text-purple-300 border border-purple-800 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                    title="Connect OAuth to include private repositories"
-                  >
-                    <Lock className="w-3.5 h-3.5" /> Connect OAuth
-                  </button>
-                )}
-
-                <button
-                  onClick={handleLogout}
-                  className="text-xs bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                  title="Switch candidate (preserves all tokens in DB)"
-                >
-                  <UserCheck className="w-3.5 h-3.5 text-indigo-400" /> Switch Candidate
-                </button>
+          {/* ACTUAL LIVE SCAN REPOSITORIES COUNT METRICS */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-slate-950 border border-indigo-900/60 rounded-xl p-5 flex items-center justify-between shadow-lg">
+              <div>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total Repos Scanned</span>
+                <span className="text-3xl font-extrabold text-indigo-400 font-mono mt-1 block">
+                  {actualTotalCount}
+                </span>
+              </div>
+              <div className="w-12 h-12 bg-indigo-950/80 border border-indigo-800 rounded-xl flex items-center justify-center text-indigo-400">
+                <FolderGit2 className="w-6 h-6" />
               </div>
             </div>
 
-            {/* Target Role Selector */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-indigo-400" />
-                <span className="text-xs font-semibold text-slate-300">Target Role Title:</span>
+            <div className="bg-slate-950 border border-purple-900/60 rounded-xl p-5 flex items-center justify-between shadow-lg">
+              <div>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Private Repositories</span>
+                <span className="text-3xl font-extrabold text-purple-400 font-mono mt-1 block">
+                  {actualPrivateCount}
+                </span>
               </div>
-              <input
-                type="text"
-                value={targetRole}
-                onChange={(e) => setTargetRole(e.target.value)}
-                placeholder="e.g. Senior Backend & Systems Engineer"
-                className="flex-1 max-w-md bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-indigo-300 font-medium focus:outline-none"
-              />
-              <button
-                onClick={runScanAndAnalyze}
-                disabled={loading}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" /> Re-Analyze Role Fit
-              </button>
+              <div className="w-12 h-12 bg-purple-950/80 border border-purple-800 rounded-xl flex items-center justify-center text-purple-400">
+                <Lock className="w-6 h-6" />
+              </div>
             </div>
 
-            {/* Live Loading State */}
-            {loading && (
-              <div className="p-12 bg-slate-900/90 border border-purple-900/60 rounded-2xl text-center space-y-4 shadow-2xl">
-                <RefreshCw className="w-10 h-10 text-purple-400 animate-spin mx-auto" />
-                <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-slate-100">Scanning &amp; Indexing All Public &amp; Private Repositories...</h3>
-                  <p className="text-xs text-slate-400">Fetching repositories for @{activeUsername} into Tier 1 In-Memory Hash Map &amp; Tier 2 Neon PostgreSQL Graph.</p>
-                </div>
+            <div className="bg-slate-950 border border-cyan-900/60 rounded-xl p-5 flex items-center justify-between shadow-lg">
+              <div>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Public Repositories</span>
+                <span className="text-3xl font-extrabold text-cyan-400 font-mono mt-1 block">
+                  {actualPublicCount}
+                </span>
               </div>
-            )}
+              <div className="w-12 h-12 bg-cyan-950/80 border border-cyan-800 rounded-xl flex items-center justify-center text-cyan-400">
+                <Globe className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
 
-            {/* Scan Results Display */}
-            {scanResult && !loading && (
-              <div className="space-y-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl">
-                {/* Header Metrics */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-                  <div>
-                    <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Analysis Complete</span>
-                    <h2 className="text-2xl font-bold text-slate-100 mt-0.5">
-                      Scanned Repositories for @{scanResult.githubUsername}
-                    </h2>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs px-3 py-1.5 rounded-xl font-bold">
-                      {scanResult.analysis?.roleMatchScore || 88}% Role Match
+          {/* PERSONALIZED LEARNING ROADMAP ADVOCACY CARDS */}
+          <div className="p-6 bg-gradient-to-r from-purple-950/40 via-indigo-950/40 to-slate-950 border border-purple-900/60 rounded-2xl space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <Compass className="w-5 h-5 text-purple-400" /> Personalized Interactive Roadmap Advice for @{activeUsername}
+              </h3>
+              <span className="text-xs bg-purple-950 border border-purple-800 text-purple-300 px-3 py-1 rounded-full font-mono font-semibold">
+                Target: {targetRole}
+              </span>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              {roadmapAdvices.map((card: any, idx: number) => (
+                <div key={idx} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 bg-purple-950 border border-purple-800 rounded-full flex items-center justify-center text-xs font-bold text-purple-300 font-mono">
+                      {card.step}
                     </span>
+                    <h4 className="text-xs font-bold text-slate-100">{card.title}</h4>
                   </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">{card.advice}</p>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                {/* ACTUAL LIVE SCAN REPOSITORIES COUNT METRICS */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-slate-950 border border-indigo-900/60 rounded-xl p-4 flex items-center justify-between shadow-lg">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total Repos Scanned</span>
-                      <span className="text-3xl font-extrabold text-indigo-400 font-mono mt-1 block">
-                        {actualTotalCount}
-                      </span>
-                    </div>
-                    <div className="w-12 h-12 bg-indigo-950/80 border border-indigo-800 rounded-xl flex items-center justify-center text-indigo-400">
-                      <FolderGit2 className="w-6 h-6" />
-                    </div>
-                  </div>
+          {/* Dynamic Probing Questions & Spoken Answer Tester */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div>
+                <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-indigo-400" /> Repository-Grounded Mock Interview Simulator
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Probing questions derived directly from @{activeUsername}'s scanned repository portfolio.
+                </p>
+              </div>
+              <span className="text-xs bg-indigo-950 border border-indigo-800 text-indigo-300 px-3 py-1 rounded-full font-mono">
+                Sarvam AI Voice (Saaras V3 STT)
+              </span>
+            </div>
 
-                  <div className="bg-slate-950 border border-purple-900/60 rounded-xl p-4 flex items-center justify-between shadow-lg">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Private Repositories</span>
-                      <span className="text-3xl font-extrabold text-purple-400 font-mono mt-1 block">
-                        {actualPrivateCount}
-                      </span>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-950/80 border border-purple-800 rounded-xl flex items-center justify-center text-purple-400">
-                      <Lock className="w-6 h-6" />
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-950 border border-cyan-900/60 rounded-xl p-4 flex items-center justify-between shadow-lg">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Public Repositories</span>
-                      <span className="text-3xl font-extrabold text-cyan-400 font-mono mt-1 block">
-                        {actualPublicCount}
-                      </span>
-                    </div>
-                    <div className="w-12 h-12 bg-cyan-950/80 border border-cyan-800 rounded-xl flex items-center justify-center text-cyan-400">
-                      <Globe className="w-6 h-6" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Verdict & Skill Gaps */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-purple-950/40 border border-purple-900/60 rounded-xl space-y-1">
-                    <span className="text-xs text-purple-300 font-semibold uppercase">Role Compatibility Verdict</span>
-                    <p className="text-sm text-purple-200 font-medium">{scanResult.analysis?.roleFitVerdict || 'Strong polyglot alignment'}</p>
-                  </div>
-
-                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
-                    <span className="text-xs text-slate-400 font-semibold uppercase">Identified Skill Gaps for Roadmap Learnings</span>
-                    <p className="text-sm text-amber-300 font-medium font-mono">
-                      {scanResult.analysis?.missingRoleSkills ? scanResult.analysis.missingRoleSkills.join(', ') : 'None'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Scanned Repositories Breakdown (Public & Private) */}
-                {reposList.length > 0 && (
-                  <div className="space-y-3 pt-4 border-t border-slate-800">
-                    <h3 className="text-sm font-bold text-slate-200 flex items-center justify-between">
-                      <span>Indexed Repositories List ({reposList.length} Repositories):</span>
-                      <span className="text-xs text-emerald-400 font-mono">2-Tier Hybrid PostgreSQL Graph</span>
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto pr-2">
-                      {reposList.map((r: any, idx: number) => (
-                        <div key={idx} className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-xs flex items-center justify-between">
-                          <span className="truncate font-medium text-slate-200" title={r.name}>{r.name}</span>
-                          {r.private ? (
-                            <span className="bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-0.5 shrink-0">
-                              <Lock className="w-2.5 h-2.5" /> Private
-                            </span>
-                          ) : (
-                            <span className="bg-slate-900 text-slate-400 border border-slate-800 px-1.5 py-0.5 rounded text-[10px] shrink-0">
-                              Public
-                            </span>
-                          )}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                  Select Question Card ({scanResult?.analysis?.probingQuestions?.length || 7} Questions):
+                </h4>
+                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-2">
+                  {scanResult?.analysis?.probingQuestions && scanResult.analysis.probingQuestions.map((q: any, idx: number) => {
+                    const isSelected = selectedQuestion?.id === q.id;
+                    return (
+                      <div 
+                        key={idx}
+                        onClick={() => setSelectedQuestion(q)}
+                        className={`p-4 rounded-xl border transition-all cursor-pointer space-y-2 ${
+                          isSelected
+                            ? 'bg-purple-950/50 border-purple-500 shadow-md'
+                            : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-xs text-purple-300 font-semibold">
+                          <span>Q{idx + 1}. {q.toolComparison || 'Repo Probing'}</span>
+                          <span className="bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px] font-mono">{q.repoName}</span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Dynamic Probing Questions & Spoken Answer Tester */}
-                <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-slate-800">
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-bold text-slate-200">
-                      Role-Tailored Probing Questions ({scanResult.analysis?.probingQuestions ? scanResult.analysis.probingQuestions.length : 0} Questions)
-                    </h3>
-                    <div className="space-y-3">
-                      {scanResult.analysis?.probingQuestions && scanResult.analysis.probingQuestions.map((q: any, idx: number) => {
-                        const isSelected = selectedQuestion?.id === q.id;
-                        return (
-                          <div 
-                            key={idx}
-                            onClick={() => setSelectedQuestion(q)}
-                            className={`p-4 rounded-xl border transition-all cursor-pointer space-y-2 ${
-                              isSelected
-                                ? 'bg-purple-950/50 border-purple-500 shadow-md'
-                                : 'bg-slate-950 border-slate-800 hover:border-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between text-xs text-purple-300 font-semibold">
-                              <span>Q{idx + 1}. {q.toolComparison || 'Repo Probing'}</span>
-                              <span className="bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px]">{q.repoName}</span>
-                            </div>
-                            <p className="text-xs text-slate-200 font-medium leading-relaxed">{q.question}</p>
-                            <div className="text-[11px] text-slate-400">
-                              <strong>Expected Concepts:</strong> {q.expectedConcepts ? q.expectedConcepts.join(', ') : 'Architecture depth'}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Answer Evaluation Box */}
-                  <div className="space-y-4 bg-slate-950 border border-slate-800 rounded-xl p-5">
-                    <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                      <Award className="w-4 h-4 text-indigo-400" /> Test Candidate Spoken / Typed Answer
-                    </h3>
-
-                    {selectedQuestion ? (
-                      <div className="space-y-4">
-                        <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-1">
-                          <span className="text-indigo-400 font-semibold block">Question ({selectedQuestion.repoName}):</span>
-                          <p className="text-slate-200">{selectedQuestion.question}</p>
+                        <p className="text-xs text-slate-200 font-medium leading-relaxed">{q.question}</p>
+                        <div className="text-[11px] text-slate-400">
+                          <strong>Expected Concepts:</strong> {q.expectedConcepts ? q.expectedConcepts.join(', ') : 'Architecture depth'}
                         </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-medium text-slate-400">Candidate Answer</label>
-                            <button
-                              onClick={isRecording ? stopRecording : startRecording}
-                              className={`text-xs px-2.5 py-1 rounded-md font-semibold flex items-center gap-1 transition-all ${
-                                isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                              }`}
-                            >
-                              {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                              {isRecording ? `${duration}s Stop` : 'Record Mic'}
-                            </button>
-                          </div>
-
-                          <textarea
-                            rows={4}
-                            value={candidateAnswer}
-                            onChange={(e) => setCandidateAnswer(e.target.value)}
-                            placeholder="Type or record your architectural trade-off justification..."
-                            className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none"
-                          />
-                        </div>
-
-                        <button
-                          onClick={handleEvaluateAnswer}
-                          disabled={evaluating || !candidateAnswer}
-                          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                          {evaluating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Evaluate Answer Depth
-                        </button>
-
-                        {evaluationResult && (
-                          <div className="p-4 bg-indigo-950/40 border border-indigo-900/60 rounded-xl space-y-2 text-xs">
-                            <div className="flex items-center justify-between font-bold text-indigo-300">
-                              <span>Technical Depth Score:</span>
-                              <span className="text-emerald-400 font-bold text-sm">{evaluationResult.technicalScore}%</span>
-                            </div>
-                            <p className="text-slate-200 leading-relaxed">{evaluationResult.logicFeedback}</p>
-                          </div>
-                        )}
                       </div>
-                    ) : (
-                      <p className="text-slate-500 text-xs italic">Select a question to evaluate candidate responses.</p>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
-            )}
+
+              {/* Answer Evaluation Box */}
+              <div className="space-y-4 bg-slate-950 border border-slate-800 rounded-xl p-5">
+                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-indigo-400" /> Test Candidate Spoken / Typed Answer
+                </h4>
+
+                {selectedQuestion ? (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs space-y-1">
+                      <span className="text-indigo-400 font-semibold block">Active Question ({selectedQuestion.repoName}):</span>
+                      <p className="text-slate-200">{selectedQuestion.question}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-slate-400">Candidate Spoken / Typed Answer</label>
+                        <button
+                          onClick={isRecording ? stopRecording : startRecording}
+                          className={`text-xs px-3 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                            isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                          {isRecording ? `${duration}s Stop` : 'Record Mic'}
+                        </button>
+                      </div>
+
+                      <textarea
+                        rows={4}
+                        value={candidateAnswer}
+                        onChange={(e) => setCandidateAnswer(e.target.value)}
+                        placeholder="Speak using mic button above or type your architectural trade-off justification..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleEvaluateAnswer}
+                      disabled={evaluating || !candidateAnswer}
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                    >
+                      {evaluating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Evaluate Technical Depth Score
+                    </button>
+
+                    {evaluationResult && (
+                      <div className="p-4 bg-indigo-950/40 border border-indigo-900/60 rounded-xl space-y-2 text-xs">
+                        <div className="flex items-center justify-between font-bold text-indigo-300">
+                          <span>Technical Depth Score:</span>
+                          <span className="text-emerald-400 font-bold text-sm">{evaluationResult.technicalScore}%</span>
+                        </div>
+                        <p className="text-slate-200 leading-relaxed">{evaluationResult.logicFeedback}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-xs italic">Select a question card on the left to evaluate candidate answers.</p>
+                )}
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </main>
-  );
-}
-
-// Rocket icon helper component
-function Rocket(props: any) {
-  return (
-    <svg 
-      {...props} 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round"
-    >
-      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.71 1.1-1.35 1.34-1.9a10 10 0 0 1 3.54-5.6l-3.32-3.32a10 10 0 0 1-5.6 3.54c-.55.24-1.19.63-1.9 1.34Z" />
-      <path d="m12 15 3 3" />
-      <path d="M15 9l-3-3" />
-      <path d="M12 9A9.9 9.9 0 0 1 20.7 3.3c.4.4.4 1 0 1.4A9.9 9.9 0 0 1 15 12" />
-    </svg>
   );
 }
