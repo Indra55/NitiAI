@@ -40,10 +40,8 @@ export interface GenerateConfig {
 }
 
 export async function generateInterviewContent(config: GenerateConfig): Promise<InterviewContent> {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
     const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
-    if (!apiKey || apiKey === 'your_key_here') {
-        throw new Error("OpenRouter API key is missing. Please add it to .env.local.");
-    }
 
     const roundsToInclude = config.rounds && config.rounds.length > 0 
         ? config.rounds 
@@ -52,94 +50,117 @@ export async function generateInterviewContent(config: GenerateConfig): Promise<
     const hasResume = config.resumeContext && config.resumeContext.trim().length > 10;
 
     const prompt = `
-    Generate a tailored multi-round interview for a ${config.difficulty} level candidate.
-    
-    SELECTED INTERVIEW ROUNDS: ${roundsToInclude.join(', ').toUpperCase()}
-    ${hasResume ? `CANDIDATE RESUME SUMMARY:\n${config.resumeContext}\nTailor questions specifically to the candidate's skills, projects, and work experience!` : ''}
-    
-    REQUIRED CONTENT:
-    ${config.dsaCount > 0 && roundsToInclude.includes('technical') ? `1. ${config.dsaCount} DSA Coding Questions. Each must have:
-       - title
-       - description (with technical constraints)
-       - difficulty (${config.difficulty})
-       - example (input and output strings)
-       - testCases (at least 3 sample test cases as an array of {input, output} objects)
-       - boilerplates: An object containing starter code for "javascript", "python", and "cpp".` : '1. SKIP DSA Questions.'}
-    
-    2. Voice/Viva Questions (${config.vivaCount} questions per selected round):
-       Generate questions across the selected rounds: ${roundsToInclude.join(', ')}.
-       For each question, specify:
-       - question: The interview question (tailored to resume if available)
-       - answer: Concise, high-scoring expected answer or key points
-       - round: Must be one of ["technical", "behavioral", "cultural"]
+    Generate a tailored multi-round technical interview.
 
-    RESPONSE FORMAT:
-    You MUST respond with a valid JSON object only. Do not include markdown or extra text.
-    Format:
+    CANDIDATE INITIALIZATION PARAMETERS:
+    - Target Difficulty: ${config.difficulty.toUpperCase()} (Easy / Medium / Hard)
+    - Session Format: ${config.type?.toUpperCase() || 'HYBRID'}
+    - Selected Rounds: ${roundsToInclude.join(', ').toUpperCase()}
+    
+    CANDIDATE BACKGROUND, PROFICIENCY & CAREER ROADMAP:
+    ${hasResume ? config.resumeContext : 'Standard Engineering Candidate (Intermediate)'}
+
+    CRITICAL INSTRUCTIONS FOR DSA CODING QUESTIONS:
+    ${config.dsaCount > 0 ? `Generate exactly ${config.dsaCount} LeetCode-style algorithmic coding problems.
+    - Each problem MUST align with the candidate's proficiency level, tech stack, and career roadmap goals.
+    - Difficulty MUST match: "${config.difficulty}".
+    - Provide realistic, deterministic testCases array (at least 3 test cases as {input: "...", output: "..."}).
+    - Provide complete starter code boilerplates for "javascript", "python", and "cpp".` : 'Do NOT generate any DSA coding questions. Return "dsa": [].'}
+
+    CRITICAL INSTRUCTIONS FOR VIVA QUESTIONS:
+    - Generate ${config.vivaCount} questions per selected round (${roundsToInclude.join(', ')}).
+    - Tailor questions to the candidate's career goals, active roadmap targets, and resume experience.
+
+    RESPONSE FORMAT (VALID JSON ONLY - NO MARKDOWN):
     {
       "dsa": [
-        ${config.dsaCount > 0 && roundsToInclude.includes('technical') ? '{ "title": "...", "description": "...", "difficulty": "...", "example": { "input": "...", "output": "..." }, "testCases": [{ "input": "...", "output": "..." }], "boilerplates": { "javascript": "...", "python": "...", "cpp": "..." } }' : ''}
+        ${config.dsaCount > 0 ? '{ "title": "LeetCode Title", "description": "Problem description with constraints", "difficulty": "' + config.difficulty + '", "example": { "input": "...", "output": "..." }, "testCases": [{ "input": "...", "output": "..." }], "boilerplates": { "javascript": "function...", "python": "def...", "cpp": "int..." } }' : ''}
       ],
       "voice": [
-        { "question": "...", "answer": "...", "round": "technical" },
-        { "question": "...", "answer": "...", "round": "behavioral" },
-        { "question": "...", "answer": "...", "round": "cultural" }
+        { "question": "...", "answer": "...", "round": "technical" }
       ]
     }
-  `;
-
-    const FALLBACK_MODELS = [
-        "openai/gpt-oss-20b:free",
-        "google/gemma-4-26b-a4b-it:free",
-        "nvidia/nemotron-3-nano-30b-a3b:free"
-    ];
+    `;
 
     let rawContent = "";
     let lastError: any = null;
 
-    for (const model of FALLBACK_MODELS) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000);
-
-        try {
-            console.log(`Generating interview content using OpenRouter model: ${model}...`);
-            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3001",
-                    "X-Title": "Niti AI Content Generator",
-                },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{ role: "user", content: prompt }]
-                }),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                const errText = await response.text();
-                console.warn(`Model ${model} returned error ${response.status}: ${errText}`);
-                continue;
-            }
-
+    // ── Primary Generator: Sarvam AI Model (sarvam-105b via backend) ──────────
+    try {
+        console.log("Generating interview content using Sarvam AI model...");
+        const response = await fetch(`${backendUrl}/api/sarvam/generate-interview`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                prompt,
+                systemInstruction: "You are Sarvam AI, an elite technical interviewer and problem creator. Respond strictly with JSON."
+            })
+        });
+        if (response.ok) {
             const data = await response.json();
-            if (data.choices?.[0]?.message?.content) {
-                rawContent = data.choices[0].message.content;
-                break;
+            if (data.success && data.text) {
+                rawContent = data.text;
             }
-        } catch (err: any) {
-            clearTimeout(timeoutId);
-            console.warn(`Generation failed with model ${model}:`, err.message || err);
-            lastError = err;
+        }
+    } catch (err: any) {
+        console.warn("Sarvam AI primary generation failed, falling back to OpenRouter:", err.message);
+        lastError = err;
+    }
+
+    // ── Secondary Fallback: OpenRouter Models ─────────────────────────────────
+    if (!rawContent && apiKey && apiKey !== 'your_key_here') {
+        const FALLBACK_MODELS = [
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "qwen/qwen-2.5-coder-32b-instruct:free",
+            "deepseek/deepseek-r1:free",
+            "mistralai/mistral-7b-instruct:free",
+            "google/gemma-2-9b-it:free"
+        ];
+
+        for (const model of FALLBACK_MODELS) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+            try {
+                console.log(`Generating interview content using OpenRouter model: ${model}...`);
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3001",
+                        "X-Title": "Niti AI Content Generator",
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [{ role: "user", content: prompt }]
+                    }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.warn(`Model ${model} returned error ${response.status}: ${errText}`);
+                    continue;
+                }
+
+                const data = await response.json();
+                if (data.choices?.[0]?.message?.content) {
+                    rawContent = data.choices[0].message.content;
+                    break;
+                }
+            } catch (err: any) {
+                clearTimeout(timeoutId);
+                console.warn(`Generation failed with model ${model}:`, err.message || err);
+                lastError = err;
+            }
         }
     }
 
     if (!rawContent) {
-        throw lastError || new Error("Failed to generate content across all free AI models. Please try again.");
+        throw lastError || new Error("Failed to generate content using Sarvam AI. Please ensure backend server is running.");
     }
 
     let cleanJson = rawContent;
@@ -153,12 +174,36 @@ export async function generateInterviewContent(config: GenerateConfig): Promise<
     try {
         const content = JSON.parse(cleanJson);
         return {
-            dsa: content.dsa || [],
-            voice: content.voice || []
+            dsa: config.dsaCount > 0 ? (Array.isArray(content.dsa) ? content.dsa : []) : [],
+            voice: Array.isArray(content.voice) ? content.voice : []
         };
     } catch (parseError) {
         console.error("JSON Parse Error in AI content generator:", parseError);
-        return { dsa: [], voice: [] };
+        return {
+            dsa: config.dsaCount > 0 ? [
+                {
+                    title: "Longest Substring Without Repeating Characters",
+                    description: "Given a string s, find the length of the longest substring without repeating characters.",
+                    difficulty: config.difficulty || "Medium",
+                    example: { input: 's = "abcabcbb"', output: "3" },
+                    testCases: [
+                        { input: "abcabcbb", output: "3" },
+                        { input: "bbbbb", output: "1" },
+                        { input: "pwwkew", output: "3" }
+                    ],
+                    boilerplates: {
+                        javascript: "function lengthOfLongestSubstring(s) {\n  // Write your code here\n};",
+                        python: "def lengthOfLongestSubstring(s: str) -> int:\n    pass",
+                        cpp: "int lengthOfLongestSubstring(string s) {\n    return 0;\n}"
+                    }
+                }
+            ] : [],
+            voice: [
+                { question: "Walk me through how you design low-latency REST APIs for high scale.", answer: "Use connection pooling, Redis caching, indexing, and asynchronous job queues.", round: "technical" },
+                { question: "Tell me about a time you resolved a major bug in production under high pressure.", answer: "Discuss structured debugging, isolation, rollback strategy, and root-cause analysis.", round: "behavioral" },
+                { question: "How do you align with team coding standards and conduct peer code reviews?", answer: "Highlight constructive feedback, automated linting, and clear communication.", round: "cultural" }
+            ]
+        };
     }
 }
 
@@ -182,7 +227,8 @@ export async function evaluateCode({
             body: JSON.stringify({
                 language,
                 code,
-                testCases
+                testCases,
+                problemTitle
             })
         });
 

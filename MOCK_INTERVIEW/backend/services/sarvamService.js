@@ -16,7 +16,7 @@ class MockInterviewSarvamService {
     }
     try {
       const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
+        `${this.baseUrl}/v1/chat/completions`,
         {
           model: model,
           messages: [
@@ -44,8 +44,8 @@ class MockInterviewSarvamService {
         {
           inputs: [text],
           target_language_code: targetLanguage,
-          speaker: 'meera',
-          model: 'bulbul-v3'
+          speaker: 'anushka',
+          model: 'bulbul:v2'
         },
         { headers: { 'api-subscription-key': this.apiKey } }
       );
@@ -56,6 +56,55 @@ class MockInterviewSarvamService {
   }
 
   getMockCompletion(prompt) {
+    if (prompt.includes('Language Bridge') || prompt.includes('CANDIDATE NATIVE EXPLANATION')) {
+      return JSON.stringify({
+        englishExplanation: "To optimize database queries under high throughput, I implement indexed B-tree lookups combined with a Redis caching layer to achieve sub-millisecond retrieval latencies.",
+        keyPhrases: ["indexed B-tree lookups", "Redis caching layer", "sub-millisecond retrieval latencies"],
+        explanationTip: "Use active verbs like 'implement', 'combine', and 'achieve' to articulate technical depth."
+      });
+    }
+
+    if (prompt.includes('clarityScore') || prompt.includes('grammarScore')) {
+      return JSON.stringify({
+        clarityScore: 3,
+        relevanceScore: 4,
+        grammarScore: 3,
+        logicalCoherenceScore: 3,
+        explanation: "Grammar mistakes and incomplete phrasing obscured the technical explanation.",
+        grammarIssues: ["Missing verb structure", "Incomplete sentence"],
+        suggestions: ["Use complete active sentences", "State the core technical mechanism explicitly"]
+      });
+    }
+
+    if (prompt.includes('dsa') || prompt.includes('voice') || prompt.includes('multi-round interview')) {
+      const wantsDSA = !prompt.includes('SKIP DSA Questions');
+      return JSON.stringify({
+        dsa: wantsDSA ? [
+          {
+            title: "Longest Substring Without Repeating Characters",
+            description: "Given a string s, find the length of the longest substring without repeating characters.",
+            difficulty: "Medium",
+            example: { input: "s = \"abcabcbb\"", output: "3" },
+            testCases: [
+              { input: "abcabcbb", output: "3" },
+              { input: "bbbbb", output: "1" },
+              { input: "pwwkew", output: "3" }
+            ],
+            boilerplates: {
+              javascript: "function lengthOfLongestSubstring(s) {\n  // Write your code here\n};",
+              python: "def lengthOfLongestSubstring(s: str) -> int:\n    pass",
+              cpp: "int lengthOfLongestSubstring(string s) {\n    return 0;\n}"
+            }
+          }
+        ] : [],
+        voice: [
+          { question: "Walk me through how you design low-latency REST APIs for high scale.", answer: "Use connection pooling, Redis caching, indexing, and asynchronous job queues.", round: "technical" },
+          { question: "Tell me about a time you resolved a major bug in production under high pressure.", answer: "Discuss structured debugging, isolation, rollback strategy, and root-cause analysis.", round: "behavioral" },
+          { question: "How do you align with team coding standards and conduct peer code reviews?", answer: "Highlight constructive feedback, automated linting, and clear communication.", round: "cultural" }
+        ]
+      });
+    }
+
     if (prompt.includes('STAR')) {
       return JSON.stringify({
         situationScore: 88, taskScore: 85, actionScore: 90, resultScore: 80, overallScore: 86,

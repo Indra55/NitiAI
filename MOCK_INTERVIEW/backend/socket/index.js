@@ -83,9 +83,10 @@ module.exports = {
                 // Check if all participants are ready
                 const allReady = room.participants.every(p => p.isReady);
                 if (allReady && room.participants.length > 0) {
-                    const includeDSA = room.config?.includeDSA !== false;
-                    room.status = includeDSA ? 'coding' : 'voice';
-                    console.log(`Phase transition: Room ${roomId} moving to ${room.status} (DSA: ${includeDSA})`);
+                    const sessionType = room.config?.type || (room.config?.includeDSA === false ? 'viva' : 'hybrid');
+                    const hasDSA = sessionType !== 'viva' && room.config?.includeDSA !== false && (room.config?.dsaCount !== 0);
+                    room.status = (sessionType === 'viva' || !hasDSA) ? 'voice' : 'coding';
+                    console.log(`Phase transition: Room ${roomId} moving to ${room.status} (Format: ${sessionType}, Has DSA: ${hasDSA})`);
                     io.to(roomId).emit('start-interview', room);
                 } else {
                     io.to(roomId).emit('room-update', room);

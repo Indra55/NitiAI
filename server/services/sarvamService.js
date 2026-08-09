@@ -76,13 +76,18 @@ class SarvamService {
     if (!this.isConfigured()) {
       return this.getMockCompletion(prompt);
     }
+
+    let finalInstruction = typeof systemInstruction === 'string' && systemInstruction.trim().length > 0
+      ? systemInstruction
+      : 'You are Sarvam AI, an Indic career and coding mentor.';
+
     try {
       const response = await axios.post(
         `${this.baseUrl}/v1/chat/completions`,
         {
           model: model === 'sarvam-30b' ? 'sarvam-105b' : model,
           messages: [
-            { role: 'system', content: systemInstruction || 'You are Sarvam AI, an Indic career and coding mentor.' },
+            { role: 'system', content: finalInstruction },
             { role: 'user', content: prompt }
           ],
           temperature: 0.2
@@ -139,6 +144,45 @@ class SarvamService {
             expectedConcepts: ['Reverse proxy', 'Keep-alive', 'Event connections']
           }
         ]
+      });
+    }
+
+    if (prompt.includes('translate-batch') || prompt.includes('TRANSLITERATE THEM into the native script')) {
+      return JSON.stringify([
+        "પાછા સ્વાગત છે, Mihir.",
+        "તમારા પ્રોફાઇલને રોલ-રેડી સ્ટોરીમાં ફેરવો.",
+        "3D રિક્રુટર મોક ઇન્ટરવ્યુની ప్రాક્ટિસ કરો",
+        "Low-Latency API ડિઝાઈન",
+        "સ્કિલ મોમેન્ટમ",
+        "કેરિયર રેડીનેસ"
+      ]);
+    }
+
+    if (prompt.includes('Language Bridge') || prompt.includes('CANDIDATE NATIVE EXPLANATION') || prompt.includes('nativeThought') || prompt.includes('assist-bridge')) {
+      // Extract candidate input thought dynamically if present
+      let userSnippet = "the technical concept";
+      const match = prompt.match(/CANDIDATE NATIVE EXPLANATION:\s*"([^"]+)"/i) || prompt.match(/nativeThought:\s*"([^"]+)"/i);
+      if (match && match[1]) userSnippet = match[1];
+
+      return JSON.stringify({
+        nativeExplanationWhy: `Aapki thought process core technical logic ko highlight karti hai. Pehle foundational mechanism aur core trade-offs explain karna zaroori hai isliye key metrics define karein.`,
+        nativeExplanationHow: `Pehle apne native words me core intuition explain karein, phir technical terms (tulna, efficiency, time complexity) use karke structured sentence frame karein.`,
+        englishExplanation: `I recommend leveraging an optimized data structure with O(1) average time complexity for lookups, ensuring minimal latency under high concurrent workloads.`,
+        keyPhrases: ["optimized data structure", "O(1) average time complexity", "minimal retrieval latency"],
+        explanationTip: "Use active verbs like 'implement', 'leverage', and 'optimize' to articulate technical depth.",
+        audioHintText: "Aapka intuition sahi hai. Ab ise technical English terms me confidently explain karein."
+      });
+    }
+
+    if (prompt.includes('clarityScore') || prompt.includes('grammarScore')) {
+      return JSON.stringify({
+        clarityScore: 8,
+        relevanceScore: 8,
+        grammarScore: 7,
+        logicalCoherenceScore: 8,
+        explanation: "Good technical explanation with room for more formal phrasing.",
+        grammarIssues: ["Consider expanding shorthand technical phrases into complete sentences."],
+        suggestions: ["Use complete active sentences", "State the core technical mechanism explicitly"]
       });
     }
 

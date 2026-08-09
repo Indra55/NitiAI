@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import ToasterComponent from "@/components/ui/toaster";
+import { LanguageProvider } from "@/lib/language-context";
 
 export default function RootLayout({
   children,
@@ -30,8 +31,10 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <ToasterComponent />
+        <LanguageProvider>
+          {children}
+          <ToasterComponent />
+        </LanguageProvider>
       </body>
     </html>
   );

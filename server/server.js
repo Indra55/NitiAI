@@ -50,6 +50,10 @@ app.use("/api/planner", require("./routes/planner"))
 app.use("/api/execute", require("./routes/execute"))
 app.use("/api/sarvam", require("./routes/sarvamRoutes"))
 app.use("/api/github", require("./routes/githubRoutes"))
+app.use("/api/system-design", require("./routes/systemDesign"))
+app.use("/api/coding", require("./routes/coding"))
+app.use("/api/language-eval", require("./routes/languageEval"))
+
 
 // Health check endpoint
 app.get("/", (req, res) => {
@@ -118,4 +122,33 @@ io.on("connection", (socket) => {
 })
 
 const PORT = process.env.PORT || 5555
-server.listen(PORT, () => console.log(`🚀 API Server running on port ${PORT}`))
+server.listen(PORT, async () => {
+  console.log(`🚀 API Server running on port ${PORT}`)
+
+  // Pre-warm the DB pool. pg needs ~200-500ms after process start
+  // to establish the first TCP connection. We retry with backoff so that
+  // the auth middleware never hits a cold-pool race on the first request.
+  const pool = require("./config/dbConfig")
+  const delays = [500, 1500, 3000]           // ms between retries
+  let connected = false
+
+  for (let i = 0; i < delays.length; i++) {
+    await new Promise((r) => setTimeout(r, delays[i]))
+    try {
+      await pool.healthCheck()
+      console.log("✅ Database connected")
+      connected = true
+      break
+    } catch (err) {
+      // AggregateError (ETIMEDOUT) has empty .message — extract detail from .errors
+      const detail = err?.errors?.map((e) => e.message).join("; ") || err?.message || String(err)
+      if (i < delays.length - 1) {
+        console.warn(`⚠️  DB warm-up attempt ${i + 1} failed, retrying… (${detail})`)
+      } else {
+        console.warn(`⚠️  DB warm-up failed after ${delays.length} tries (${detail}) — will retry on first request`)
+      }
+    }
+  }
+})
+
+

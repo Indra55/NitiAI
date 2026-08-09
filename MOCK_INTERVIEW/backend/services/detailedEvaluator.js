@@ -269,6 +269,31 @@ Be extremely thorough, specific, and actionable. This report should serve as a c
                 description: "Needs to improve technical explanation abilities",
                 impact: "May not effectively convey knowledge in interviews"
             });
+        if (topicsToLearn.length === 0) {
+            topicsToLearn.push(
+                {
+                    topic: "Data Structures & Algorithmic Problem Solving",
+                    priority: "High",
+                    reason: "Essential for technical interview rounds",
+                    resources: ["LeetCode Problem Solving", "NeetCode Roadmap"],
+                    estimatedTime: "15 hours",
+                    recommendedVideos: youtubeService.getFallbackVideos("dsa algorithms")
+                },
+                {
+                    topic: "System Design & Scalable Architecture",
+                    priority: "Medium",
+                    reason: "Crucial for backend and fullstack engineering roles",
+                    resources: ["System Design Primer", "ByteByteGo Courses"],
+                    estimatedTime: "20 hours",
+                    recommendedVideos: youtubeService.getFallbackVideos("system design")
+                }
+            );
+        } else {
+            topicsToLearn.forEach(t => {
+                if (!t.recommendedVideos || t.recommendedVideos.length === 0) {
+                    t.recommendedVideos = youtubeService.getFallbackVideos(t.topic);
+                }
+            });
         }
 
         return {

@@ -8,6 +8,7 @@ import { generateCodingQuestions, FALLBACK_QUESTIONS, DSAQuestion } from "@/lib/
 import { Spinner } from "@/components/ui/spinner"
 import "@/app/dashboard/dashboard.css"
 import { Code2, ArrowRight, Sparkles, Cpu, Layers, ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface PracticeTrack {
   id: string
@@ -30,13 +31,13 @@ const PRACTICE_TRACKS: PracticeTrack[] = [
     topics: ["Rate Limiters", "LRU Cache", "Token Buckets", "Message Queues"]
   },
   {
-    id: "ai-pipelines",
-    title: "AI & Machine Learning Pipelines",
-    domain: "AI Pipelines",
-    description: "Implement vector similarity search, RAG retrieval pipelines, and tokenizer algorithms powered by Sarvam AI.",
+    id: "lingua-coach",
+    title: "Sarvam LinguaCoach Agent",
+    domain: "Language Articulation",
+    description: "Master technical English articulation across DSA, System Design, and Behavioral interviews with Sarvam AI native mentorship.",
     tag: "Powered by Sarvam AI",
     icon: Sparkles,
-    topics: ["Cosine Similarity", "RAG Vector Search", "Tokenizers", "Embedding Cache"]
+    topics: ["Indic Mentorship", "English Evaluation", "No Time Limits", "Voice & Text"]
   },
   {
     id: "dsa-core",
@@ -59,12 +60,21 @@ const PRACTICE_TRACKS: PracticeTrack[] = [
 ]
 
 export default function CodingPracticePage() {
+  const router = useRouter()
   const [questions, setQuestions] = useState<DSAQuestion[]>([]);
   const [loadingTrackId, setLoadingTrackId] = useState<string | null>(null);
   const [selectedTrack, setSelectedTrack] = useState<PracticeTrack | null>(null);
   const [sessionStarted, setSessionStarted] = useState(false);
 
   const startSession = async (track: PracticeTrack) => {
+    if (track.id === "system-arch") {
+      router.push("/system-design");
+      return;
+    }
+    if (track.id === "lingua-coach") {
+      router.push("/lingua-coach");
+      return;
+    }
     setLoadingTrackId(track.id);
     setSelectedTrack(track);
     try {

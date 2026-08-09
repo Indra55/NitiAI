@@ -113,7 +113,7 @@ router.get("/me", authenticateToken, async (req, res) => {
 
     // 1. Fetch core user data
     const userResult = await pool.query(
-      `SELECT id, username, name, email, phone, location, age,
+      `SELECT id, username, name, email, phone, location, age, native_language,
               proficiency_level, preferred_work_mode, availability_timeline,
               career_goal_short, career_goal_long,
               onboarding_completed, onboarding_step,

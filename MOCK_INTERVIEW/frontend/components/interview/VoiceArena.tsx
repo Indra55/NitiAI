@@ -27,6 +27,8 @@ import { Button } from '@/components/ui/button';
 import { toaster } from '@/components/ui/toaster';
 import { Stepper, StepItem } from '@/components/ui/Stepper';
 import TalkingHeadAvatar from './TalkingHeadAvatar';
+import LanguageBridgeModal from './LanguageBridgeModal';
+import { useLanguageEval } from '../../hooks/use-language-eval';
 
 interface VoiceArenaProps {
   questions?: any[];
@@ -61,11 +63,19 @@ const roundIcons: Record<string, any> = {
 const VoiceArena = ({ questions = [], onFinish }: VoiceArenaProps) => {
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [transcript, setTranscript] = useState<{ role: 'ai' | 'user', text: string }[]>([]);
+  const [transcript, setTranscript] = useState<{ role: 'ai' | 'user', text: string, evalScores?: any }[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("en-IN");
   const [userInputText, setUserInputText] = useState("");
   const [isProcessingTurn, setIsProcessingTurn] = useState(false);
+
+  const {
+    evalResult,
+    isBridgeModalOpen,
+    evaluateAnswer,
+    closeBridgeModal,
+    setIsBridgeModalOpen
+  } = useLanguageEval();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -126,6 +136,17 @@ const VoiceArena = ({ questions = [], onFinish }: VoiceArenaProps) => {
 
     setIsProcessingTurn(true);
     setUserInputText("");
+
+    // Async lightweight evaluation for clarity, relevance, grammar, and coherence
+    evaluateAnswer(candidateText, latestAiSpeechText, selectedLanguage).then(resData => {
+      if (resData) {
+        setTranscript(prev => prev.map(msg => 
+          msg.text === candidateText && msg.role === 'user'
+            ? { ...msg, evalScores: resData }
+            : msg
+        ));
+      }
+    });
 
     // Add candidate message to transcript
     const userMsg = { role: 'user' as const, text: candidateText };
@@ -314,8 +335,10 @@ const VoiceArena = ({ questions = [], onFinish }: VoiceArenaProps) => {
                 languageCode: selectedLanguage,
               })
             });
-            const data = await res.json();
-            if (data.success && data.transcript) {
+            const text = await res.text();
+            let data: any = {};
+            try { data = JSON.parse(text); } catch (e) {}
+            if (data && data.success && data.transcript) {
               sendCandidateTurn(data.transcript);
             }
           } catch (e) {
@@ -602,12 +625,29 @@ const VoiceArena = ({ questions = [], onFinish }: VoiceArenaProps) => {
                       ? 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/50'
                       : 'bg-slate-900 text-white rounded-tr-none'
                   }`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${
-                      line.role === 'ai' ? 'text-orange-600' : 'text-slate-300'
-                    }`}>
-                      {line.role === 'ai' ? 'Sarvam AI Recruiter' : 'Candidate'}
-                    </p>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className={`text-[10px] font-bold uppercase tracking-wider ${
+                        line.role === 'ai' ? 'text-orange-600' : 'text-slate-300'
+                      }`}>
+                        {line.role === 'ai' ? 'Sarvam AI Recruiter' : 'Candidate'}
+                      </p>
+                      {line.role === 'user' && line.evalScores && (
+                        <div className="flex items-center gap-1">
+                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                            line.evalScores.totalScore < 8 ? 'bg-amber-500/30 text-amber-300' : 'bg-emerald-500/30 text-emerald-300'
+                          }`}>
+                            Quality: {line.evalScores.totalScore}/20
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     {line.text}
+                    {line.role === 'user' && line.evalScores && (
+                      <div className="mt-2 pt-1.5 border-t border-slate-700/60 grid grid-cols-2 gap-1 text-[9px] text-slate-300">
+                        <span>Clarity: {line.evalScores.clarityScore}/10</span>
+                        <span>Grammar: {line.evalScores.grammarScore}/10</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -622,7 +662,18 @@ const VoiceArena = ({ questions = [], onFinish }: VoiceArenaProps) => {
           </section>
 
         </main>
-      </div>
+
+      <LanguageBridgeModal
+        isOpen={isBridgeModalOpen}
+        onClose={closeBridgeModal}
+        evaluationResult={evalResult}
+        questionContext={latestAiSpeechText}
+        userNativeLanguage={selectedLanguage}
+        onApplyEnglishAnswer={(perfectedEnglish) => {
+          sendCandidateTurn(perfectedEnglish);
+        }}
+      />
+    </div>
 
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {

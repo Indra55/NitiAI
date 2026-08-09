@@ -30,8 +30,8 @@ class SarvamVoiceService {
         {
           inputs: [text.substring(0, 2500)],
           target_language_code: languageCode,
-          model: "bulbul:v3",
-          speaker: speaker,
+          model: "bulbul:v2",
+          speaker: "anushka",
           pace: 1.0,
         },
         {

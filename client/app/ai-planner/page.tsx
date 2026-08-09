@@ -58,211 +58,85 @@ export default function AIPlannerPage() {
   const [activeTab, setActiveTab] = useState("kanban")
 
   useEffect(() => {
-    loadData()
+    loadPlannerData()
   }, [])
 
-  async function loadData() {
+  const loadPlannerData = async () => {
     setLoading(true)
     try {
-      const [roadmapRes, tasksRes, milestonesRes, progressRes] = await Promise.all([
-        getRoadmap(),
-        getTasks(),
-        getMilestones(),
-        getProgress()
-      ])
-
-      setRoadmap(roadmapRes.roadmap)
-      setTasks(tasksRes.tasks || [])
-      setMilestones(milestonesRes.milestones || [])
-      setProgress(progressRes.progress)
-    } catch (error) {
-      console.error("Error loading data:", error)
+      const roadmapRes = await getRoadmap()
+      if (roadmapRes.data?.roadmap) {
+        setRoadmap(roadmapRes.data.roadmap)
+        const [milestonesRes, tasksRes, progressRes] = await Promise.all([
+          getMilestones(),
+          getTasks(),
+          getProgress()
+        ])
+        if (milestonesRes.data?.milestones) setMilestones(milestonesRes.data.milestones)
+        if (tasksRes.data?.tasks) setTasks(tasksRes.data.tasks)
+        if (progressRes.data) setProgress(progressRes.data)
+      }
+    } catch (e) {
+      console.warn("Planner data load error:", e)
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleGenerateRoadmap() {
+  const handleGenerateRoadmap = async () => {
     setGenerating(true)
     try {
       await generateRoadmap()
-      await loadData()
-    } catch (error: any) {
-      alert(error.message || "Failed to generate roadmap")
+      await loadPlannerData()
+    } catch (e) {
+      console.error("Roadmap generation error:", e)
     } finally {
       setGenerating(false)
     }
   }
 
-  if (loading && !roadmap) {
-    return (
-      <ProtectedRoute>
-        <div className="dashboard-theme min-h-screen bg-background">
-          <DynamicNavbar />
-          <main className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-              <Spinner className="size-16 mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading your roadmap...</p>
-            </div>
-          </main>
-        </div>
-      </ProtectedRoute>
-    )
-  }
-
   return (
     <ProtectedRoute>
-      <div className="dashboard-theme min-h-screen bg-background">
+      <div className="dashboard-theme min-h-screen bg-[#fcf9f5] flex flex-col">
         <DynamicNavbar />
-        <main className="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
-            {/* Header Section */}
-            <section className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <Brain className="w-8 h-8 text-primary" />
-                    <h1 className="text-4xl font-bold">AI Career Roadmap</h1>
-                  </div>
-                  <p className="text-muted-foreground">
-                    {roadmap ? "Your personalized learning journey" : "Generate your AI-powered career roadmap"}
-                  </p>
-                </div>
-                {!roadmap && (
-                  <Button
-                    className="gap-2 bg-primary hover:bg-primary/90"
-                    onClick={handleGenerateRoadmap}
-                    disabled={generating}
-                  >
-                    {generating ? (
-                      <>
-                        <Spinner className="w-4 h-4" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        Generate Roadmap
-                      </>
-                    )}
-                  </Button>
-                )}
+        <main className="flex-1 pt-24 lg:pt-28 pb-8 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto w-full">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#ef4a18]/20 bg-[#fff0eb] px-3.5 py-1 text-xs font-semibold text-[#ef4a18]">
+                  <Brain className="size-3.5" /> AI Planned Learning
+                </span>
+                <h1 className="mt-3 text-3xl font-bold text-[#171716]">Learning Roadmap</h1>
+                <p className="mt-1 text-sm text-[#77716b]">Personalized milestone planning tailored to your career goal.</p>
               </div>
+              <Button onClick={handleGenerateRoadmap} disabled={generating} className="bg-[#ef4a18] hover:bg-[#d93d10] text-white font-bold rounded-xl text-xs px-5 py-2.5">
+                {generating ? <Spinner className="size-4 mr-2" /> : <Sparkles className="size-4 mr-2" />}
+                Generate AI Roadmap
+              </Button>
+            </div>
 
-              {/* Stats Cards */}
-              {roadmap && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <Card className="p-4 border-border/40 bg-card/50 backdrop-blur-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Total Tasks</p>
-                        <p className="text-2xl font-bold text-foreground">{roadmap.total_tasks}</p>
-                      </div>
-                      <Target className="w-6 h-6 text-primary opacity-70" />
-                    </div>
-                  </Card>
-                  <Card className="p-4 border-border/40 bg-card/50 backdrop-blur-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Completed</p>
-                        <p className="text-2xl font-bold text-foreground">{roadmap.completed_tasks}</p>
-                      </div>
-                      <CheckCircle2 className="w-6 h-6 text-emerald-500 opacity-70" />
-                    </div>
-                  </Card>
-                  <Card className="p-4 border-border/40 bg-card/50 backdrop-blur-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Progress</p>
-                        <p className="text-2xl font-bold text-foreground">{roadmap.progress_percentage}%</p>
-                      </div>
-                      <TrendingUp className="w-6 h-6 text-primary opacity-70" />
-                    </div>
-                  </Card>
-                  <Card className="p-4 border-border/40 bg-card/50 backdrop-blur-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Est. Hours</p>
-                        <p className="text-2xl font-bold text-foreground">{roadmap.estimated_hours}h</p>
-                      </div>
-                      <Clock className="w-6 h-6 text-amber-500 opacity-70" />
-                    </div>
-                  </Card>
-                </div>
-              )}
-            </section>
-
-            {/* Empty State */}
-            {!roadmap && !generating && (
-              <Card className="p-12 text-center border-border/40 bg-card/50 backdrop-blur-sm">
-                <Brain className="w-20 h-20 mx-auto mb-4 text-primary opacity-50" />
-                <h2 className="text-2xl font-bold mb-2">No Roadmap Yet</h2>
-                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                  Click "Generate Roadmap" to create a personalized learning path based on your career goals and skills
-                </p>
-                <Button
-                  size="lg"
-                  className="gap-2"
-                  onClick={handleGenerateRoadmap}
-                  disabled={generating}
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Generate My Roadmap
+            {loading ? (
+              <div className="flex justify-center p-12"><Spinner className="size-8 text-[#ef4a18]" /></div>
+            ) : roadmap ? (
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                <TabsList className="bg-white border border-[#e8e1da] rounded-xl p-1">
+                  <TabsTrigger value="kanban" className="rounded-lg text-xs font-bold">Kanban Tasks</TabsTrigger>
+                  <TabsTrigger value="timeline" className="rounded-lg text-xs font-bold">Timeline Milestones</TabsTrigger>
+                  <TabsTrigger value="progress" className="rounded-lg text-xs font-bold">Progress Analytics</TabsTrigger>
+                </TabsList>
+                <TabsContent value="kanban"><TaskKanban tasks={tasks} onTaskUpdated={loadPlannerData} /></TabsContent>
+                <TabsContent value="timeline"><RoadmapTimeline milestones={milestones} /></TabsContent>
+                <TabsContent value="progress"><ProgressDashboard progress={progress} /></TabsContent>
+              </Tabs>
+            ) : (
+              <Card className="p-12 text-center border-[#e8e1da] rounded-3xl space-y-4">
+                <Brain className="size-12 mx-auto text-[#ef4a18]" />
+                <h3 className="text-lg font-bold text-[#171716]">No active roadmap generated yet</h3>
+                <p className="text-xs text-[#77716b]">Click below to create your personalized learning roadmap powered by Sarvam AI.</p>
+                <Button onClick={handleGenerateRoadmap} disabled={generating} className="bg-[#ef4a18] hover:bg-[#d93d10] text-white font-bold rounded-xl text-xs px-6 py-2.5">
+                  Generate First AI Roadmap
                 </Button>
               </Card>
-            )}
-
-            {/* Main Content */}
-            {roadmap && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
-                {/* Roadmap Title */}
-                <Card className="p-6 border-border/40 bg-card/50 backdrop-blur-sm">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold mb-2">{roadmap.title}</h2>
-                      <p className="text-muted-foreground">{roadmap.description}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleGenerateRoadmap}
-                      disabled={generating}
-                    >
-                      {generating ? "Generating..." : "New Roadmap"}
-                    </Button>
-                  </div>
-                </Card>
-
-                {/* Tabs for Different Views */}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="kanban" className="gap-2">
-                      <Target className="w-4 h-4" />
-                      Kanban Board
-                    </TabsTrigger>
-                    <TabsTrigger value="timeline" className="gap-2">
-                      <Clock className="w-4 h-4" />
-                      Timeline
-                    </TabsTrigger>
-                    <TabsTrigger value="progress" className="gap-2">
-                      <BarChart3 className="w-4 h-4" />
-                      Progress
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="kanban" className="mt-6">
-                    <TaskKanban tasks={tasks} onUpdate={loadData} />
-                  </TabsContent>
-
-                  <TabsContent value="timeline" className="mt-6">
-                    <RoadmapTimeline milestones={milestones} tasks={tasks} />
-                  </TabsContent>
-
-                  <TabsContent value="progress" className="mt-6">
-                    <ProgressDashboard progress={progress} tasks={tasks} onUpdate={loadData} />
-                  </TabsContent>
-                </Tabs>
-              </div>
             )}
           </div>
         </main>

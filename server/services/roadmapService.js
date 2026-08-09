@@ -62,30 +62,40 @@ OUTPUT FORMAT (JSON):
 Generate the roadmap now:`;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-
-        // Extract JSON from response (handle markdown code blocks)
-        let jsonText = text;
-        const jsonMatch = text.match(/```json\n?([\s\S]*?)\n?```/);
-        if (jsonMatch) {
-            jsonText = jsonMatch[1];
-        } else {
-            // Try to find JSON object directly
-            const objectMatch = text.match(/\{[\s\S]*\}/);
-            if (objectMatch) {
-                jsonText = objectMatch[0];
+        if (process.env.SARVAM_API_KEY) {
+            const sarvamService = require("./sarvamService");
+            const rawOutput = await sarvamService.generateCompletion(
+                prompt + "\n\nReturn ONLY a valid JSON object matching the requested schema.",
+                "You are an AI career planner.",
+                "sarvam-105b"
+            );
+            let cleanJson = rawOutput.replace(/```json\n?|\n?```/g, '').trim();
+            const firstBrace = cleanJson.indexOf('{');
+            const lastBrace = cleanJson.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace !== -1) {
+                cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+                try {
+                    return JSON.parse(cleanJson);
+                } catch (e) {
+                    console.warn("Sarvam roadmap JSON parse error:", e.message);
+                }
             }
         }
 
-        const roadmapData = JSON.parse(jsonText);
-        return roadmapData;
-    } catch (error) {
-        console.error("AI Roadmap Generation Error:", error);
+        if (process.env.GEMINI_API_KEY) {
+            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const text = response.text();
+            let jsonText = text;
+            const jsonMatch = text.match(/```json\n?([\s\S]*?)\n?```/);
+            if (jsonMatch) jsonText = jsonMatch[1];
+            return JSON.parse(jsonText);
+        }
 
-        // Fallback: Generate a basic roadmap based on user level
+        return generateFallbackRoadmap(userProfile);
+    } catch (error) {
+        console.warn("AI Roadmap Generation Warning, using fallback:", error.message);
         return generateFallbackRoadmap(userProfile);
     }
 }

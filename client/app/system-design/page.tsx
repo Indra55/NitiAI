@@ -1,6 +1,7 @@
 "use client"
 
 import { DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Keyboard } from "lucide-react"
 import {
   Background,
   Connection,
@@ -115,6 +116,9 @@ export default function SystemDesignPage() {
   const audioQueue = useRef<Array<{ audioBase64: string; mimeType: string }>>([])
   const activeAudio = useRef<HTMLAudioElement | null>(null)
   const isPlayingAudio = useRef(false)
+  // Clipboard for copy/cut/paste
+  const clipboardRef = useRef<Node<InfrastructureData>[]>([])
+  const pasteOffsetRef = useRef(0)
 
   useEffect(() => { challengeRef.current = challenge }, [challenge])
 
@@ -259,17 +263,78 @@ export default function SystemDesignPage() {
   )
 
   const graphJson = useMemo(() => JSON.stringify({ nodes, edges }, null, 2), [nodes, edges])
-  const deleteSelected = () => {
+
+  const deleteSelected = useCallback(() => {
     setNodes((current) => current.filter((node) => !node.selected))
     setEdges((current) => current.filter((edge) => !edge.selected))
-  }
+  }, [setNodes, setEdges])
+
+  const copySelected = useCallback(() => {
+    const selected = nodes.filter((n) => n.selected)
+    if (selected.length === 0) return
+    clipboardRef.current = selected
+    pasteOffsetRef.current = 0
+  }, [nodes])
+
+  const cutSelected = useCallback(() => {
+    const selected = nodes.filter((n) => n.selected)
+    if (selected.length === 0) return
+    clipboardRef.current = selected
+    pasteOffsetRef.current = 0
+    setNodes((current) => current.filter((n) => !n.selected))
+    setEdges((current) => current.filter((e) => !e.selected))
+  }, [nodes, setNodes, setEdges])
+
+  const pasteClipboard = useCallback(() => {
+    if (clipboardRef.current.length === 0) return
+    pasteOffsetRef.current += 30
+    const offset = pasteOffsetRef.current
+    const newNodes = clipboardRef.current.map((n) => ({
+      ...n,
+      id: `${n.data.kind}-${crypto.randomUUID()}`,
+      position: { x: n.position.x + offset, y: n.position.y + offset },
+      selected: true,
+    }))
+    setNodes((current) =>
+      [...current.map((n) => ({ ...n, selected: false })), ...newNodes]
+    )
+  }, [setNodes])
+
+  const selectAll = useCallback(() => {
+    setNodes((current) => current.map((n) => ({ ...n, selected: true })))
+  }, [setNodes])
+
+  const deselectAll = useCallback(() => {
+    setNodes((current) => current.map((n) => ({ ...n, selected: false })))
+    setEdges((current) => current.map((e) => ({ ...e, selected: false })))
+  }, [setNodes, setEdges])
+
+  // ── Global keyboard handler ──────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      // Don't intercept when user is typing in an input / textarea / select
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
+
+      const ctrl = e.ctrlKey || e.metaKey
+
+      if (ctrl && e.key === "c") { e.preventDefault(); copySelected() }
+      else if (ctrl && e.key === "x") { e.preventDefault(); cutSelected() }
+      else if (ctrl && e.key === "v") { e.preventDefault(); pasteClipboard() }
+      else if (ctrl && e.key === "a") { e.preventDefault(); selectAll() }
+      else if (e.key === "Delete" || e.key === "Backspace") { deleteSelected() }
+      else if (e.key === "Escape") { deselectAll() }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [copySelected, cutSelected, pasteClipboard, selectAll, deleteSelected, deselectAll])
 
   if (!challenge) {
     return (
       <ProtectedRoute>
         <div className="dashboard-theme min-h-screen bg-[#fcf9f5] text-gray-900 flex flex-col font-sans">
           <DynamicNavbar />
-          <main className="relative z-10 flex-1 flex flex-col items-center pt-10">
+          <main className="relative z-10 flex-1 flex flex-col items-center pt-24 px-4 sm:px-6 lg:px-8 pb-12">
             <SystemDesignBriefing onStart={setChallenge} />
           </main>
         </div>
@@ -281,7 +346,7 @@ export default function SystemDesignPage() {
     <ProtectedRoute>
       <div className="dashboard-theme min-h-screen bg-[#fcf9f5] text-gray-900 flex flex-col font-sans">
         <DynamicNavbar />
-        <main className="flex-1 flex flex-col bg-[#fcf9f5]">
+        <main className="flex-1 flex flex-col bg-[#fcf9f5] pt-16">
           <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#e8e1da] bg-white px-5 py-4 sm:px-8">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff0eb] text-[#ef4a18]"><MonitorSmartphone size={21} /></span>
@@ -310,8 +375,36 @@ export default function SystemDesignPage() {
             </aside>
 
             <section className="relative min-h-[560px]" onDrop={onDrop} onDragOver={(event) => event.preventDefault()}>
-              <div className="pointer-events-none absolute left-5 top-5 z-10 rounded-lg border border-[#e8e1da]/80 bg-white/80 px-3 py-2 text-xs text-gray-500 backdrop-blur shadow-sm"><span className="font-medium text-gray-900">Architecture canvas</span><span className="mx-2 text-gray-300">•</span>{nodes.length} nodes · {edges.length} edges</div>
-              <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onInit={setReactFlow} fitView deleteKeyCode="Backspace" defaultEdgeOptions={{ type: "smoothstep" }}>
+              {/* Canvas status bar */}
+              <div className="pointer-events-none absolute left-5 top-5 z-10 rounded-lg border border-[#e8e1da]/80 bg-white/80 px-3 py-2 text-xs text-gray-500 backdrop-blur shadow-sm">
+                <span className="font-medium text-gray-900">Architecture canvas</span>
+                <span className="mx-2 text-gray-300">•</span>
+                {nodes.length} nodes · {edges.length} edges
+              </div>
+              {/* Keyboard shortcuts HUD */}
+              <div className="pointer-events-none absolute bottom-24 right-5 z-10 hidden lg:block">
+                <div className="rounded-xl border border-[#e8e1da]/80 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
+                  <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                    <Keyboard size={11} /> Shortcuts
+                  </p>
+                  <div className="space-y-1.5">
+                    {([
+                      ["Ctrl+C", "Copy"],
+                      ["Ctrl+X", "Cut"],
+                      ["Ctrl+V", "Paste"],
+                      ["Ctrl+A", "Select all"],
+                      ["Del / ⌫", "Delete"],
+                      ["Esc", "Deselect"],
+                    ] as [string, string][]).map(([key, label]) => (
+                      <div key={key} className="flex items-center justify-between gap-4">
+                        <span className="text-[10px] text-gray-500">{label}</span>
+                        <kbd className="rounded border border-[#e8e1da] bg-[#f4f1ed] px-1.5 py-0.5 text-[9px] font-mono text-gray-600">{key}</kbd>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onInit={setReactFlow} fitView deleteKeyCode={["Backspace", "Delete"]} defaultEdgeOptions={{ type: "smoothstep" }} multiSelectionKeyCode="Shift">
                 <Background color="#d4c9c1" gap={22} size={1} />
                 <Controls className="!border-[#e8e1da] !bg-white [&>button]:!border-b-[#e8e1da] [&>button]:!bg-white [&>button]:!fill-gray-600 shadow-sm" />
                 <MiniMap className="!border !border-[#e8e1da] !bg-white" nodeColor="#ef4a18" maskColor="rgba(252,249,245,.6)" />

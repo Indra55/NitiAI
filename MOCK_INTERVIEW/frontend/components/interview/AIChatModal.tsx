@@ -35,6 +35,88 @@ export default function AIChatModal({ isOpen, onClose, currentCode, problem }: A
 
   if (!isOpen) return null;
 
+  const OPENROUTER_MODELS = [
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "qwen/qwen-2.5-coder-32b-instruct:free",
+    "deepseek/deepseek-r1:free",
+    "mistralai/mistral-7b-instruct:free",
+  ];
+
+  const callOpenRouter = async (messagesPayload: any[]) => {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+    const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+
+    // ── Try Sarvam AI Model first via Backend ──────────────────────────────
+    try {
+      const userMessageObj = messagesPayload.find(m => m.role === 'user') || {};
+      const systemMessageObj = messagesPayload.find(m => m.role === 'system') || {};
+      const response = await fetch(`${backendUrl}/api/sarvam/generate-interview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: userMessageObj.content || "Provide assistance.",
+          systemInstruction: systemMessageObj.content || "You are an elite coding interview assistant."
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.text) {
+          return data.text;
+        }
+      }
+    } catch (e) {
+      console.warn("[AIChatModal] Sarvam AI call failed, falling back to OpenRouter:", e);
+    }
+
+    // ── OpenRouter Fallback Loop ───────────────────────────────────────────
+    if (!apiKey || apiKey === 'your_key_here') {
+      throw new Error("Sarvam AI & OpenRouter API key missing. Check backend server.");
+    }
+
+    let lastError: Error | null = null;
+    for (const model of OPENROUTER_MODELS) {
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3001",
+            "X-Title": "Niti AI Interview",
+          },
+          body: JSON.stringify({
+            model,
+            messages: messagesPayload,
+          }),
+        });
+
+        const rawText = await response.text();
+        let data: any = {};
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          console.warn(`[OpenRouter] Non-JSON response from model ${model}`);
+          lastError = new Error(`Model ${model} returned non-JSON response.`);
+          continue;
+        }
+
+        if (!response.ok || data.error) {
+          const errMsg = data.error?.message || `HTTP ${response.status}`;
+          console.warn(`[OpenRouter] Model ${model} failed: ${errMsg}`);
+          lastError = new Error(errMsg);
+          continue;
+        }
+
+        const content = data.choices?.[0]?.message?.content;
+        if (content) return content;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[OpenRouter] Model ${model} exception: ${err.message}`);
+      }
+    }
+    throw lastError || new Error("All OpenRouter AI models failed.");
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -44,50 +126,29 @@ export default function AIChatModal({ isOpen, onClose, currentCode, problem }: A
     setIsLoading(true);
 
     try {
-      if (!process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY === 'your_key_here') {
-        throw new Error("API Key is missing or set to placeholder in .env.local. Please restart your dev server after adding the key.");
-      }
-
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3001",
-          "X-Title": "Niti AI Interview",
+      const messagesPayload = [
+        {
+          role: "system",
+          content: `You are an elite coding interview assistant on the Niti AI platform. 
+          Objective: Help the user solve the problem through hints, conceptual explanations, and logic walkthroughs.
+          CRITICAL: NEVER provide a complete code solution in your response unless explicitly asked after multiple hints.
+          Current Problem: ${problem?.title}
+          Description: ${problem?.description}
+          User's Current Code:
+          \`\`\`
+          ${currentCode}
+          \`\`\`
+          Be encouraging, professional, and focus on algorithmic efficiency.`
         },
-        body: JSON.stringify({
-          model: "google/gemma-4-26b-a4b-it:free",
-          messages: [
-            {
-              role: "system",
-              content: `You are an elite coding interview assistant on the Niti AI platform. 
-              Objective: Help the user solve the problem through hints, conceptual explanations, and logic walkthroughs.
-              CRITICAL: NEVER provide a complete code solution in your response unless explicitly asked after multiple hints.
-              Current Problem: ${problem?.title}
-              Description: ${problem?.description}
-              User's Current Code:
-              \`\`\`
-              ${currentCode}
-              \`\`\`
-              Be encouraging, professional, and focus on algorithmic efficiency.`
-            },
-            ...messages.filter(m => !m.content.startsWith("**REVEALED SOLUTION:**")).map(m => ({ role: m.role, content: m.content })),
-            { role: "user", content: input }
-          ],
-        })
-      });
+        ...messages.filter(m => !m.content.startsWith("**REVEALED SOLUTION:**")).map(m => ({ role: m.role, content: m.content })),
+        { role: "user", content: input }
+      ];
 
-      const data = await response.json();
-      console.log("OpenRouter Response:", data);
-
-      if (data.error) {
-        throw new Error(`OpenRouter Error: ${data.error.message || JSON.stringify(data.error)}`);
-      }
+      const rawAiText = await callOpenRouter(messagesPayload);
 
       const aiMessage: Message = { 
         role: 'assistant', 
-        content: (data.choices?.[0]?.message?.content || "The AI returned an empty response. Please try again.")
+        content: rawAiText
           .replace(/(\*\*|__|'''|```|`)/g, '') // Strip markdown symbols
           .replace(/###/g, '') // Strip headers
           .trim()
@@ -104,34 +165,17 @@ export default function AIChatModal({ isOpen, onClose, currentCode, problem }: A
   const revealSolution = async () => {
      setIsLoading(true);
      try {
-       if (!process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY === 'your_key_here') {
-         throw new Error("API Key missing. Please restart dev server.");
-       }
-
-       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-         method: "POST",
-         headers: {
-           "Authorization": `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}`,
-           "Content-Type": "application/json",
-           "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "http://localhost:3001",
-           "X-Title": "Niti AI Interview",
+       const messagesPayload = [
+         {
+           role: "system",
+           content: `The user has requested to REVEAL the solution. Provide the optimal code for the problem: ${problem?.title}. Use minimal comments and focus on clean, efficient code.`
          },
-         body: JSON.stringify({
-           model: "google/gemma-4-26b-a4b-it:free",
-           messages: [
-             {
-               role: "system",
-               content: `The user has requested to REVEAL the solution. Provide the optimal code for the problem: ${problem?.title}. Use minimal comments and focus on clean, efficient code.`
-             },
-             { role: "user", content: "Please reveal the full solution for me now." }
-           ],
-         })
-       });
+         { role: "user", content: "Please reveal the full solution for me now." }
+       ];
 
-       const data = await response.json();
-       if (data.error) throw new Error(data.error.message || "OpenRouter Error");
+       const solutionText = await callOpenRouter(messagesPayload);
 
-       setMessages(prev => [...prev, { role: 'assistant', content: `**REVEALED SOLUTION:**\n\n${data.choices?.[0]?.message?.content || "No solution provided."}` }]);
+       setMessages(prev => [...prev, { role: 'assistant', content: `**REVEALED SOLUTION:**\n\n${solutionText}` }]);
      } catch (error: any) {
         console.error("Reveal Error:", error);
         setMessages(prev => [...prev, { role: 'assistant', content: `REVEAL ERROR: ${error.message}` }]);

@@ -66,22 +66,29 @@ export default function Dashboard() {
         
         let res: Response | null = null;
 
-        if (token) {
-          try {
-            res = await fetch(`${mainServerUrl}/api/resume/info`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-          } catch (e) {
-            console.warn("Auth token resume fetch failed, falling back to latest stored resume.");
-          }
+        try {
+          res = await fetch(`${mainServerUrl}/api/resume/info`, {
+            credentials: 'include',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+        } catch (e) {
+          console.warn("Auth token resume fetch failed, falling back to latest stored resume.");
         }
 
         if (!res || !res.ok) {
-          res = await fetch(`${mainServerUrl}/api/resume/latest`);
+          res = await fetch(`${mainServerUrl}/api/resume/latest`, {
+            credentials: 'include',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
         }
 
         if (res && res.ok) {
-          const data = await res.json();
+          let data: any = null;
+          try {
+            data = await res.json();
+          } catch {
+            console.warn("Stored resume response was not valid JSON.");
+          }
           if (data && (data.extracted_name || data.professional_summary || data.technical_skills)) {
             if (data.extracted_name) {
               setUsername(data.extracted_name);
@@ -90,6 +97,10 @@ export default function Dashboard() {
             const formattedSummary = [
               data.extracted_name ? `Candidate Name: ${data.extracted_name}` : '',
               data.professional_title ? `Title: ${data.professional_title}` : '',
+              data.proficiency_level ? `Candidate Level: ${data.proficiency_level}` : '',
+              data.career_goal_short ? `Short-term Goal: ${data.career_goal_short}` : '',
+              data.career_goal_long ? `Long-term Goal: ${data.career_goal_long}` : '',
+              data.active_roadmap_role ? `Target Roadmap Role: ${data.active_roadmap_role}` : '',
               data.years_of_experience ? `Experience: ${data.years_of_experience} years` : '',
               data.professional_summary ? `Summary: ${data.professional_summary}` : '',
               Array.isArray(data.technical_skills) && data.technical_skills.length > 0 
@@ -287,7 +298,18 @@ export default function Dashboard() {
                   <Label className="text-slate-900 font-medium text-xs uppercase tracking-wider block">
                     Session Format
                   </Label>
-                  <Select value={config.type} onValueChange={(v) => setConfig({ ...config, type: v })}>
+                  <Select
+                    value={config.type}
+                    onValueChange={(v) => {
+                      if (v === 'viva') {
+                        setConfig(prev => ({ ...prev, type: v, includeDSA: false, dsaCount: 0, vivaCount: prev.vivaCount || 2 }));
+                      } else if (v === 'coding') {
+                        setConfig(prev => ({ ...prev, type: v, includeDSA: true, dsaCount: 1, vivaCount: 0, rounds: [] }));
+                      } else {
+                        setConfig(prev => ({ ...prev, type: v, includeDSA: true, dsaCount: 1, vivaCount: 2, rounds: ['technical', 'behavioral', 'cultural'] }));
+                      }
+                    }}
+                  >
                     <SelectTrigger className="h-12 bg-white border-slate-200 rounded-xl text-xs font-normal text-slate-900">
                       <SelectValue placeholder="Select Format" />
                     </SelectTrigger>

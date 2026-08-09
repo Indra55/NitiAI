@@ -56,19 +56,23 @@ router.post("/generate-roadmap", authenticateToken, async (req, res) => {
             // Begin transaction
             await client.query("BEGIN");
 
-            // Check if user already has an active roadmap
-            const existingRoadmap = await client.query(
-                `SELECT id FROM career_roadmaps WHERE user_id = $1 AND status = 'active'`,
+            // Clean up existing roadmap records for this user in reverse dependency order
+            await client.query(
+                `DELETE FROM task_dependencies WHERE task_id IN (SELECT id FROM roadmap_tasks WHERE roadmap_id IN (SELECT id FROM career_roadmaps WHERE user_id = $1))`,
                 [req.user.id]
             );
-
-            // If exists, archive it
-            if (existingRoadmap.rows.length > 0) {
-                await client.query(
-                    `UPDATE career_roadmaps SET status = 'archived' WHERE id = $1`,
-                    [existingRoadmap.rows[0].id]
-                );
-            }
+            await client.query(
+                `DELETE FROM roadmap_tasks WHERE roadmap_id IN (SELECT id FROM career_roadmaps WHERE user_id = $1)`,
+                [req.user.id]
+            );
+            await client.query(
+                `DELETE FROM roadmap_milestones WHERE roadmap_id IN (SELECT id FROM career_roadmaps WHERE user_id = $1)`,
+                [req.user.id]
+            );
+            await client.query(
+                `DELETE FROM career_roadmaps WHERE user_id = $1`,
+                [req.user.id]
+            );
 
             // Create new roadmap
             const roadmapResult = await client.query(

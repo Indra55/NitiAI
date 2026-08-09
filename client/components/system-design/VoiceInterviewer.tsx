@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Languages, Mic, MicOff, Radio, Volume2 } from "lucide-react"
+import LanguageBridgeModal from "@/components/language-bridge/LanguageBridgeModal"
+import { useLanguageEval } from "@/hooks/use-language-eval"
 
 export type TranscriptEntry = {
   text: string
@@ -56,6 +58,13 @@ export function VoiceInterviewer({ onUserPaused, openingQuestion, introMessage, 
     if (recorder?.state === "recording") recorder.stop()
   }, [])
 
+  const {
+    evalResult,
+    isBridgeModalOpen,
+    evaluateAnswer,
+    closeBridgeModal
+  } = useLanguageEval()
+
   const sendUtterance = useCallback(async (blob: Blob) => {
     if (blob.size < 1_500) return
     setIsTranscribing(true)
@@ -76,13 +85,16 @@ export function VoiceInterviewer({ onUserPaused, openingQuestion, introMessage, 
         }
         setTranscripts((current) => [...current.slice(-19), entry])
         onUserPaused?.(entry)
+
+        // Async lightweight evaluation for System Design explanation
+        evaluateAnswer(entry.text, openingQuestion || "System Design Architecture", entry.languageCode)
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not transcribe this utterance.")
     } finally {
       setIsTranscribing(false)
     }
-  }, [onUserPaused])
+  }, [onUserPaused, openingQuestion, evaluateAnswer])
 
   const beginUtterance = useCallback(() => {
     const stream = streamRef.current
@@ -189,6 +201,24 @@ export function VoiceInterviewer({ onUserPaused, openingQuestion, introMessage, 
         {isListening ? <MicOff size={16} /> : <Mic size={16} />}{isTranscribing ? "Mentor is listening…" : isListening ? isSpeaking ? "Your turn — keep explaining" : "Listening for your answer…" : transcripts.length ? "Answer the mentor" : "Begin your answer"}
       </button>
       {error && <p className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-200">{error}</p>}
+
+      <LanguageBridgeModal
+        isOpen={isBridgeModalOpen}
+        onClose={closeBridgeModal}
+        evaluationResult={evalResult}
+        questionContext={openingQuestion || "System Design Architecture"}
+        userNativeLanguage={languageMode === "auto" ? "hi-IN" : languageMode}
+        onApplyEnglishAnswer={(perfectedEnglish) => {
+          const entry: TranscriptEntry = {
+            text: perfectedEnglish,
+            languageCode: "en-IN",
+            languageProbability: 1.0,
+            timestamp: new Date().toISOString(),
+          }
+          setTranscripts((current) => [...current.slice(-19), entry])
+          onUserPaused?.(entry)
+        }}
+      />
     </section>
   )
 }

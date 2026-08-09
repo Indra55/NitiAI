@@ -295,4 +295,55 @@ Return JSON with keys: roleMatchScore (0-100), roleFitVerdict, matchingRepos (ar
   }
 });
 
+/**
+ * POST /api/sarvam/translate-batch
+ * Batch translate UI text nodes preserving technical terms via Sarvam AI
+ */
+router.post('/translate-batch', async (req, res) => {
+  try {
+    const { texts = [], targetLanguage = 'mr-IN' } = req.body;
+    if (!texts || texts.length === 0) {
+      return res.json({ translations: [] });
+    }
+
+    const prompt = `You are Sarvam AI, an elite Indic technical translation and transliteration model.
+Translate/Transliterate ALL provided UI text strings into target language code "${targetLanguage}".
+
+CRITICAL INSTRUCTIONS FOR 100% ACCURACY & INDIC SCRIPT TRANSLITERATION:
+1. Translate all sentences, headers, buttons, cards, and UI controls accurately into ${targetLanguage}.
+2. For high-frequency modern English technical, workplace, and career terms (e.g., Profile, Story, Role, AI, Career, Matrix, Mock Interview, System Design, Low-Latency, API, Roadmap, Skills, Salary, Full Stack, Resume, Dashboard, Trajectory, Uplift, etc.), TRANSLITERATE THEM into the native script of ${targetLanguage}:
+   - For Gujarati (gu-IN): Write in Gujarati script, e.g. "પ્રોફાઇલ", "રોલ", "સ્ટોરી", "મોક ઇન્ટરવ્યુ", "સિસ્ટમ ડિઝાઈન", "AI કેરિયર", "ડેશબોર્ડ", "રેઝ્યૂમે", "સ્કિલ", "મેટ્રિક્સ".
+   - For Marathi (mr-IN): Write in Devanagari script, e.g. "प्रोफाईल", "रोल", "स्टोरी", "मॉक मुलाखत", "सिस्टम डिझाईन", "AI करिअर", "डॅशबोर्ड", "बायोडेटा", "कौशल्ये".
+   - For Hindi (hi-IN): Write in Devanagari script, e.g. "प्रोफाइल", "रोल", "कहानी", "मॉक इंटरव्यू", "सिस्टम डिजाइन", "AI करियर", "डैशबोर्ड", "रिज्यूमे".
+3. Keep short core acronyms (like API, AI, SQL, JSON, IP) in uppercase English.
+
+INPUT TEXTS:
+${JSON.stringify(texts)}
+
+Return ONLY a valid JSON array of translated strings corresponding 1-to-1 with input:
+["translated_1", "translated_2", ...]`;
+
+    const raw = await sarvamService.generateCompletion(
+      prompt,
+      'You are Sarvam AI, an Indic technical translator and transliterator into native script.',
+      'sarvam-105b'
+    );
+
+    let cleanJson = raw.replace(/```json\n?|\n?```/g, '').trim();
+    const firstArr = cleanJson.indexOf('[');
+    const lastArr = cleanJson.lastIndexOf(']');
+    let translations = texts;
+
+    if (firstArr !== -1 && lastArr !== -1) {
+      try {
+        translations = JSON.parse(cleanJson.substring(firstArr, lastArr + 1));
+      } catch (e) {}
+    }
+
+    res.json({ translations });
+  } catch (err) {
+    res.json({ translations: req.body.texts || [] });
+  }
+});
+
 module.exports = router;

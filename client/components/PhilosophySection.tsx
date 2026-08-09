@@ -1,11 +1,29 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import ReactDOM from "react-dom";
 import { motion } from "framer-motion";
 
+const bgImageUrl =
+  "https://images.unsplash.com/photo-1578301978018-3005759f48f7?q=80&w=1144&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+
+// Instant module-level preload
+if (typeof window !== "undefined") {
+  const img = new window.Image();
+  img.src = bgImageUrl;
+}
+
 export function PhilosophySection() {
-  const bgImageUrl =
-    "https://images.unsplash.com/photo-1578301978018-3005759f48f7?q=80&w=1144&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const img = new window.Image();
+      img.src = bgImageUrl;
+    }
+  }, []);
+
+  if (typeof (ReactDOM as any).preload === "function") {
+    (ReactDOM as any).preload(bgImageUrl, { as: "image" });
+  }
 
   return (
     <section className="relative w-full min-h-[75vh] md:min-h-[600px] flex flex-col justify-end font-sans overflow-hidden">

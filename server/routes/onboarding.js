@@ -14,7 +14,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * @access Private
  */
 router.post("/basic-info", authenticateToken, async (req, res) => {
-    const { name, phone, age, gender, location } = req.body;
+    const { name, phone, age, gender, location, native_language } = req.body;
 
     if (!name) {
         return res.status(400).json({ error: "Name is required" });
@@ -25,6 +25,9 @@ router.post("/basic-info", authenticateToken, async (req, res) => {
         try {
             await client.query("BEGIN");
 
+            // Ensure native_language column exists
+            await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS native_language VARCHAR(50) DEFAULT 'hi-IN'`);
+
             // Update users table
             await client.query(
                 `UPDATE users SET 
@@ -32,10 +35,11 @@ router.post("/basic-info", authenticateToken, async (req, res) => {
           phone = $2,
           location = $3,
           age = $4,
+          native_language = COALESCE($5, native_language, 'hi-IN'),
           onboarding_step = 1,
           updated_at = now()
-        WHERE id = $5`,
-                [name, phone, location, age, req.user.id]
+        WHERE id = $6`,
+                [name, phone, location, age, native_language, req.user.id]
             );
 
             // Update optional_profile table for gender

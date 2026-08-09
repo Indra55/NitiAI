@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../config/dbConfig");
-const { authenticateToken } = require("../middleware/auth");
+const { authenticateToken, optionalAuth } = require("../middleware/auth");
 const multer = require("multer");
 const pdf = require("pdf-parse");
 const resumeService = require("./resumeParser");
@@ -236,9 +236,42 @@ router.post("/upload", authenticateToken, upload.single("resume"), async (req, r
     }
 });
 
+async function enrichWithUserProfileAndRoadmap(userId, resumeData) {
+    if (!resumeData) return resumeData;
+    try {
+        let userExtra = {};
+        if (userId) {
+            const userRes = await pool.query(
+                `SELECT proficiency_level, career_goal_short, career_goal_long FROM users WHERE id = $1`,
+                [userId]
+            );
+            if (userRes.rows.length > 0) userExtra = userRes.rows[0];
+
+            const roadmapRes = await pool.query(
+                `SELECT * FROM career_roadmaps WHERE user_id = $1 LIMIT 1`,
+                [userId]
+            );
+            if (roadmapRes.rows.length > 0) {
+                const row = roadmapRes.rows[0];
+                userExtra.active_roadmap_role = row.target_role || row.title || row.career_path || row.role || '';
+            }
+        }
+        return {
+            ...resumeData,
+            proficiency_level: userExtra.proficiency_level || 'Intermediate',
+            career_goal_short: userExtra.career_goal_short || '',
+            career_goal_long: userExtra.career_goal_long || '',
+            active_roadmap_role: userExtra.active_roadmap_role || ''
+        };
+    } catch (e) {
+        console.warn("Could not enrich resume info with user profile:", e.message);
+        return resumeData;
+    }
+}
+
 /**
  * @route GET /api/resume/info
- * @desc Get stored resume info
+ * @desc Get stored resume info with user proficiency level & career goals
  * @access Private
  */
 router.get("/info", authenticateToken, async (req, res) => {
@@ -260,10 +293,61 @@ router.get("/info", authenticateToken, async (req, res) => {
             return res.status(404).json({ error: "No resume found. Please upload a resume first." });
         }
 
-        res.json(result.rows[0]);
+        const enriched = await enrichWithUserProfileAndRoadmap(req.user.id, result.rows[0]);
+        res.json(enriched);
     } catch (error) {
         console.error("Error fetching resume info:", error);
         res.status(500).json({ error: "Failed to fetch resume info" });
+    }
+});
+
+/**
+ * @route GET /api/resume/latest
+ * @desc Get the most recently uploaded resume enriched with user level & roadmap
+ * @access Public / OptionalAuth
+ */
+router.get("/latest", optionalAuth, async (req, res) => {
+    try {
+        let result;
+        let targetUserId = req.user?.id;
+
+        if (targetUserId) {
+            result = await pool.query(
+                `SELECT extracted_name, extracted_email, extracted_phone, extracted_location,
+                        linkedin_url, portfolio_url, professional_title, years_of_experience,
+                        professional_summary, technical_skills, soft_skills,
+                        education, experience, projects, certifications,
+                        completeness_score, ats_score, strengths, improvement_areas,
+                        career_insights, user_id, uploaded_at, updated_at
+                 FROM resume_info WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1`,
+                [targetUserId]
+            );
+        }
+
+        if (!result || result.rows.length === 0) {
+            result = await pool.query(
+                `SELECT extracted_name, extracted_email, extracted_phone, extracted_location,
+                        linkedin_url, portfolio_url, professional_title, years_of_experience,
+                        professional_summary, technical_skills, soft_skills,
+                        education, experience, projects, certifications,
+                        completeness_score, ats_score, strengths, improvement_areas,
+                        career_insights, user_id, uploaded_at, updated_at
+                 FROM resume_info ORDER BY updated_at DESC LIMIT 1`
+            );
+            if (result.rows.length > 0) {
+                targetUserId = result.rows[0].user_id;
+            }
+        }
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "No resume found." });
+        }
+
+        const enriched = await enrichWithUserProfileAndRoadmap(targetUserId, result.rows[0]);
+        res.json(enriched);
+    } catch (error) {
+        console.error("Error fetching latest resume:", error);
+        res.status(500).json({ error: "Failed to fetch latest resume" });
     }
 });
 

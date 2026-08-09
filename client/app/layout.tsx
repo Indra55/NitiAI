@@ -4,6 +4,7 @@ import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
+import { LanguageProvider } from "@/lib/language-context"
 import { ToasterProvider } from "@/components/ui/toaster-provider"
 
 const _geist = Geist({ subsets: ["latin"] })
@@ -31,14 +32,19 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning={true}>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
+        {/* Preconnect to external image hosts for DNS warm-up */}
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://images.higgs.ai" crossOrigin="anonymous" />
       </head>
       <body
         suppressHydrationWarning={true}
         className={`font-sans antialiased ${_geist.className} ${_instrumentSerif.variable}`}
       >
         <AuthProvider>
-          {children}
-          <ToasterProvider />
+          <LanguageProvider>
+            {children}
+            <ToasterProvider />
+          </LanguageProvider>
         </AuthProvider>
         <Analytics />
       </body>

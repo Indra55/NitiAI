@@ -203,10 +203,19 @@ export default function InterviewPage({ params: paramsPromise }: { params: Promi
             setIsDarkMode={setIsDarkMode} 
             onFinishCoding={(finalCode) => {
               console.log("Solution submitted:", finalCode);
-              if (socket) {
-                socket.emit('update-room-status', { roomId, status: 'voice' });
+              const configStr = searchParams.get('config');
+              let cfg: any = null;
+              try { cfg = configStr ? JSON.parse(decodeURIComponent(configStr)) : null; } catch {}
+              const isCodingOnly = cfg?.type === 'coding' || (!cfg?.rounds || cfg.rounds.length === 0);
+
+              if (isCodingOnly) {
+                if (socket) socket.emit('update-room-status', { roomId, status: 'results' });
+                setPhase('results');
+                router.push(`/interview/${roomId}/results`);
+              } else {
+                if (socket) socket.emit('update-room-status', { roomId, status: 'voice' });
+                setPhase('voice');
               }
-              setPhase('voice');
             }}
           />
         )}

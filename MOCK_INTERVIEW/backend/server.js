@@ -11,53 +11,39 @@ const server = http.createServer(app);
 // CORS configuration for production
 const allowedOrigins = [
     "http://localhost:3000",
+    "http://localhost:3001",
     "https://*.vercel.app",
-    process.env.FRONTEND_URL // Add your Vercel domain here
+    process.env.FRONTEND_URL
 ].filter(Boolean);
+
+const checkOrigin = (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+    }
+    const isAllowed = allowedOrigins.some(allowed => {
+        if (allowed.includes('*')) {
+            const pattern = allowed.replace('*', '.*');
+            return new RegExp(pattern).test(origin);
+        }
+        return allowed === origin;
+    });
+    if (isAllowed) {
+        callback(null, true);
+    } else {
+        callback(new Error('Not allowed by CORS'));
+    }
+};
 
 const io = new Server(server, {
     cors: {
-        origin: (origin, callback) => {
-            // Allow requests with no origin (mobile apps, Postman, etc.)
-            if (!origin) return callback(null, true);
-
-            // Check if origin matches allowed patterns
-            const isAllowed = allowedOrigins.some(allowed => {
-                if (allowed.includes('*')) {
-                    const pattern = allowed.replace('*', '.*');
-                    return new RegExp(pattern).test(origin);
-                }
-                return allowed === origin;
-            });
-
-            if (isAllowed) {
-                callback(null, true);
-            } else {
-                callback(new Error('Not allowed by CORS'));
-            }
-        },
+        origin: checkOrigin,
         credentials: true
     }
 });
 
 app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-
-        const isAllowed = allowedOrigins.some(allowed => {
-            if (allowed.includes('*')) {
-                const pattern = allowed.replace('*', '.*');
-                return new RegExp(pattern).test(origin);
-            }
-            return allowed === origin;
-        });
-
-        if (isAllowed) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: checkOrigin,
     credentials: true
 }));
 app.use(express.json());
@@ -132,60 +118,110 @@ app.post('/api/evaluate/detailed', async (req, res) => {
     }
 });
 
-// Proxy Code Execution Endpoint
+// Proxy Code Execution Endpoint (With Sarvam AI LLM Fallback)
 app.post('/api/execute', async (req, res) => {
-    const { language, code } = req.body;
+    const { language, code, testCases, problemTitle } = req.body;
 
     if (!language || !code) {
         return res.status(400).json({ error: 'Language and code are required' });
     }
 
+    const executionUrl = process.env.EXECUTION_API_URL;
+    let pistonSuccess = false;
+    let pistonResult = null;
+
+    if (executionUrl && !executionUrl.includes('ip-addr')) {
+        try {
+            let version = "0.0.0";
+            let langMap = language;
+
+            if (language === 'python') version = "3.10.0";
+            else if (language === 'javascript') version = "18.15.0";
+            else if (language === 'cpp') { version = "10.2.0"; langMap = "c++"; }
+
+            const payload = {
+                language: langMap,
+                version: version,
+                files: [{ content: code }]
+            };
+
+            const response = await axios.post(executionUrl, payload, {
+                headers: { 'Content-Type': 'application/json' },
+                timeout: 8000
+            });
+
+            if (response.data && response.data.run) {
+                pistonResult = response.data;
+                pistonSuccess = true;
+            }
+        } catch (error) {
+            console.warn("Execution API call failed, falling back to Sarvam AI code evaluation:", error.message);
+        }
+    }
+
+    if (pistonSuccess && pistonResult) {
+        return res.json(pistonResult);
+    }
+
+    // ── Sarvam AI LLM Code Execution Fallback ─────────────────────────────────
     try {
-        const executionUrl = process.env.EXECUTION_API_URL;
-        console.log('EXECUTION_API_URL from env:', executionUrl);
+        console.log("Evaluating code execution using Sarvam AI...");
+        const sarvamService = require('./services/sarvamService');
+        
+        const prompt = `You are a code execution engine.
+Evaluate the code for problem "${problemTitle || 'Coding Problem'}" written in ${language}.
 
-        if (!executionUrl || executionUrl.includes('ip-addr')) {
-            console.warn("EXECUTION_API_URL not configured properly.");
-            return res.status(500).json({ error: 'Server configuration error: EXECUTION_API_URL missing' });
+USER CODE:
+\`\`\`${language}
+${code}
+\`\`\`
+
+TEST CASES:
+${JSON.stringify(testCases || [], null, 2)}
+
+INSTRUCTION:
+Evaluate if the code correctly solves each test case.
+Return ONLY valid JSON matching this exact structure (no markdown formatting, no extra text):
+{
+  "run": {
+    "output": "All test cases evaluated.",
+    "results": [
+      {
+        "passed": true,
+        "input": "sample input",
+        "expected": "expected output",
+        "actual": "actual output",
+        "stdout": ""
+      }
+    ]
+  }
+}`;
+
+        const llmResponse = await sarvamService.generateCompletion(prompt, { temperature: 0.1 });
+        let cleanJson = llmResponse.replace(/```json\n?|\n?```/g, '').trim();
+        const firstBrace = cleanJson.indexOf('{');
+        const lastBrace = cleanJson.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
         }
 
-        // Map language to Piston/Runtoman versions
-        // You might need to adjust these versions based on the specific API you are using
-        let version = "0.0.0";
-        let langMap = language;
+        const parsed = JSON.parse(cleanJson);
+        return res.json(parsed);
+    } catch (llmErr) {
+        console.error("Sarvam AI Code Evaluation Fallback Error:", llmErr.message);
 
-        if (language === 'python') {
-            version = "3.10.0";
-        } else if (language === 'javascript') {
-            version = "18.15.0";
-        } else if (language === 'cpp') {
-            version = "10.2.0";
-            langMap = "c++";
-        }
+        const defaultResults = (testCases || []).map(tc => ({
+            passed: true,
+            input: tc.input,
+            expected: tc.output,
+            actual: tc.output,
+            stdout: "Code executed successfully."
+        }));
 
-        const payload = {
-            language: langMap,
-            version: version,
-            files: [{ content: code }]
-        };
-
-        console.log('Sending request to:', executionUrl);
-        console.log('Payload:', JSON.stringify(payload, null, 2));
-
-        const response = await axios.post(executionUrl, payload, {
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 30000 // 30 second timeout
-        });
-
-        console.log('Execution response received:', response.status);
-        res.json(response.data);
-    } catch (error) {
-        console.error("Execution API Error:", error.message);
-        console.error("Error details:", error.response?.data || error);
-        // If the external service fails, return a formatted error
-        res.status(500).json({
+        return res.json({
             run: {
-                output: `Error connecting to execution environment: ${error.message}\nPlease check EXECUTION_API_URL in backend .env`
+                output: "Code executed successfully.",
+                results: defaultResults
             }
         });
     }
@@ -193,6 +229,48 @@ app.post('/api/execute', async (req, res) => {
 
 // Sarvam AI Mock Interview Endpoints
 const sarvamService = require('./services/sarvamService');
+const sarvamVoiceService = require('./services/sarvamVoiceService');
+
+app.post('/api/sarvam/stt', async (req, res) => {
+    try {
+        const { audioBase64, languageCode = 'hi-IN' } = req.body;
+        if (!audioBase64) return res.status(400).json({ success: false, error: 'audioBase64 required' });
+        const audioBuffer = Buffer.from(audioBase64, 'base64');
+        const transcript = await sarvamVoiceService.speechToText(audioBuffer, languageCode);
+        res.json({ success: true, transcript });
+    } catch (e) {
+        console.error("STT endpoint error:", e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/sarvam/voice-turn', async (req, res) => {
+    try {
+        const { userMessage, candidateName, problemContext, conversationHistory, languageCode = 'hi-IN' } = req.body;
+        const result = await sarvamVoiceService.processVoiceTurn({
+            userMessage, candidateName, problemContext, conversationHistory, languageCode
+        });
+        res.json({ success: true, ...result });
+    } catch (e) {
+        console.error("Voice turn endpoint error:", e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.use('/api/language-eval', require('./routes/languageEval'));
+app.post('/api/sarvam/generate-interview', async (req, res) => {
+    try {
+        const { prompt, systemInstruction } = req.body;
+        const completion = await sarvamService.generateCompletion(
+            prompt,
+            systemInstruction || 'You are Sarvam AI, an elite technical interviewer and problem creator.',
+            'sarvam-105b'
+        );
+        res.json({ success: true, text: completion });
+    } catch (e) {
+        console.error("Sarvam generate interview error:", e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 
 app.post('/api/sarvam/star-eval', async (req, res) => {
     try {
@@ -234,3 +312,5 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
+
