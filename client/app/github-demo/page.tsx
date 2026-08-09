@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { 
   Github, ShieldCheck, CheckCircle2, Sparkles, RefreshCw, Layers, Target, 
   Code2, Database, Cpu, ArrowRight, Lock, ExternalLink, Award, Volume2, Mic, MicOff, LogOut,
-  AlertCircle, Play, Check, FolderGit2, Globe, Search, Link2, LogIn, UserCheck, Compass, BookOpen, User
+  AlertCircle, Play, Check, FolderGit2, Globe, Search, Link2, LogIn, UserCheck, Compass, BookOpen, User, Rocket
 } from 'lucide-react';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 
